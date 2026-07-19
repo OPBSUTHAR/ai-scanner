@@ -1,4 +1,5 @@
 import re
+import os
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional, List
@@ -12,6 +13,19 @@ class OCRResult:
     words: List[dict] = None
 
 
+def _find_tesseract():
+    common_paths = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        "/usr/bin/tesseract",
+        "/usr/local/bin/tesseract",
+    ]
+    for path in common_paths:
+        if os.path.exists(path):
+            return path
+    return None
+
+
 class OCREngine:
     def __init__(self, use_google_vision: bool = False, tesseract_cmd: str = None):
         self.use_google_vision = use_google_vision
@@ -19,9 +33,13 @@ class OCREngine:
         self.vision_client = None
         self.easyocr_reader = None
 
+        import pytesseract
         if tesseract_cmd:
-            import pytesseract
             pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+        else:
+            found = _find_tesseract()
+            if found:
+                pytesseract.pytesseract.tesseract_cmd = found
         try:
             import pytesseract
             pytesseract.get_tesseract_version()
