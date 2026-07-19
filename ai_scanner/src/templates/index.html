@@ -4,392 +4,571 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>AI Document Scanner</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #070b12; --surface: #0f1622; --card: #161f2e; --card-hover: #1c2638;
-    --border: #223048; --border-light: #2a3a54; --text: #e2eaf0;
-    --text-sec: #8797b0; --text-dim: #4d6080;
-    --accent: #0dcd94; --accent-dim: #0aab7a; --accent-glow: rgba(13,205,148,.12);
-    --warn: #f5a623; --danger: #ef5562; --info: #4b8bff; --purple: #a977f5;
-    --radius: 16px; --radius-sm: 10px; --radius-xs: 6px;
-    --shadow: 0 8px 48px rgba(0,0,0,.55);
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface-2: #1a2332;
+    --card: #1e293b;
+    --card-hover: #253349;
+    --border: #2a3a52;
+    --border-light: #344a66;
+    --text: #e8edf5;
+    --text-2: #b0c0d8;
+    --text-3: #6b7fa0;
+    --accent: #0dcd94;
+    --accent-2: #06b6d4;
+    --accent-glow: rgba(13,205,148,.15);
+    --warn: #f5a623;
+    --danger: #ef5562;
+    --info: #4b8bff;
+    --purple: #a977f5;
+    --pink: #f472b6;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --radius-xs: 6px;
+    --shadow: 0 8px 40px rgba(0,0,0,.5);
+    --shadow-lg: 0 20px 60px rgba(0,0,0,.6);
+    --transition: .25s cubic-bezier(.4,0,.2,1);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; overflow: hidden; }
-  body { font-family: 'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:var(--text); display:flex; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text); display: flex;
+  }
 
-  /* ---- Sidebar ---- */
+  /* ============ SIDEBAR ============ */
   .sidebar {
-    width: 72px; background: linear-gradient(180deg, #0f1622 0%, #0a0f18 100%);
-    border-right: 1px solid var(--border); display: flex; flex-direction: column;
-    align-items: center; padding: 18px 0 12px; gap: 2px; flex-shrink: 0; z-index: 20;
-    transition: width .3s cubic-bezier(.4,0,.2,1); overflow: hidden;
+    width: 260px; background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0; z-index: 30;
+    transition: var(--transition); position: relative;
   }
-  .sidebar:hover { width: 200px; }
-  .sidebar:hover .nav-label { opacity: 1; }
-  .sidebar:hover .nav-item { justify-content: flex-start; padding-left: 16px; width: 184px; }
-  .sidebar .logo {
-    width: 44px; height: 44px; border-radius: 14px;
-    background: linear-gradient(135deg, var(--accent), #0b8fac);
+  .sidebar::after {
+    content: ''; position: absolute; top: 0; right: -1px; width: 1px;
+    height: 100%; background: linear-gradient(180deg, transparent, var(--accent), transparent);
+    opacity: .15;
+  }
+  .sidebar-brand {
+    display: flex; align-items: center; gap: 12px; padding: 20px 20px 8px;
+    border-bottom: 1px solid var(--border); margin-bottom: 8px;
+  }
+  .sidebar-brand .logo {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px; margin-bottom: 20px; font-weight: 800; flex-shrink: 0;
-    box-shadow: 0 0 24px var(--accent-glow); cursor: pointer; transition: .3s;
+    font-size: 18px; font-weight: 800; flex-shrink: 0;
+    box-shadow: 0 0 20px var(--accent-glow);
   }
-  .sidebar .logo:hover { transform: scale(1.06); }
-  .sidebar .new-scan-btn {
-    width: 44px; height: 44px; border-radius: 12px; border: none;
-    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-    color: #fff; cursor: pointer; font-size: 20px; display: flex;
-    align-items: center; justify-content: center; margin-bottom: 16px;
-    transition: .3s; box-shadow: 0 4px 16px var(--accent-glow); flex-shrink: 0;
-  }
-  .sidebar .new-scan-btn:hover { transform: scale(1.05); }
+  .sidebar-brand .brand-text { flex: 1; }
+  .sidebar-brand .brand-text .name { font-size: .95rem; font-weight: 700; }
+  .sidebar-brand .brand-text .sub { font-size: .62rem; color: var(--text-3); font-weight: 500; letter-spacing: .3px; }
+
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 4px 10px; }
+  .sidebar-nav::-webkit-scrollbar { width: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .nav-section { font-size: .6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); padding: 16px 14px 6px; }
   .nav-item {
-    width: 44px; height: 44px; border-radius: 12px; display: flex;
-    align-items: center; gap: 12px; cursor: pointer; color: var(--text-dim);
-    transition: all .25s; border: none; background: transparent; flex-shrink: 0;
-    font-size: 18px; position: relative;
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    margin: 2px 0; border-radius: var(--radius-sm); cursor: pointer;
+    color: var(--text-2); font-size: .82rem; font-weight: 500;
+    transition: var(--transition); border: none; background: transparent;
+    width: 100%; text-align: left; font-family: inherit; position: relative;
   }
   .nav-item:hover { color: var(--text); background: var(--card); }
-  .nav-item.active { color: var(--accent); background: var(--accent-glow); }
-  .nav-label { font-size: .78rem; font-weight: 600; white-space: nowrap; opacity: 0; transition: .25s; }
-  .nav-spacer { flex: 1; }
-  .nav-badge {
-    position: absolute; top: 6px; right: 6px; width: 8px; height: 8px;
-    border-radius: 50%; background: var(--accent); display: none;
+  .nav-item.active {
+    color: var(--accent); background: var(--accent-glow);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .nav-item .icon { width: 20px; text-align: center; font-size: 16px; flex-shrink: 0; }
+  .nav-item .badge {
+    margin-left: auto; background: var(--accent); color: #fff;
+    font-size: .6rem; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+  }
+  .sidebar-footer {
+    border-top: 1px solid var(--border); padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sidebar-footer .avatar {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .sidebar-footer .info { flex: 1; }
+  .sidebar-footer .info .name { font-size: .78rem; font-weight: 600; }
+  .sidebar-footer .info .role { font-size: .62rem; color: var(--text-3); }
+  .sidebar-footer .settings-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: none;
+    background: transparent; color: var(--text-3); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: var(--transition);
+  }
+  .sidebar-footer .settings-btn:hover { background: var(--card); color: var(--text); }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 68px; }
+    .sidebar-brand { padding: 14px 10px; justify-content: center; }
+    .sidebar-brand .brand-text { display: none; }
+    .sidebar-brand .logo { width: 36px; height: 36px; font-size: 16px; }
+    .nav-item { justify-content: center; padding: 10px; }
+    .nav-item .label, .nav-item .badge { display: none; }
+    .nav-section { display: none; }
+    .sidebar-footer { justify-content: center; padding: 10px; }
+    .sidebar-footer .info { display: none; }
+  }
+  @media (max-width: 480px) {
+    .sidebar { width: 56px; }
+    .sidebar-brand { padding: 10px 6px; }
+    .sidebar-brand .logo { width: 32px; height: 32px; font-size: 14px; }
+    .nav-item { padding: 8px; font-size: 14px; }
   }
 
-  /* ---- Top Bar ---- */
-  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  /* ============ MAIN ============ */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
+
+  /* Top Bar */
   .topbar {
-    height: 64px; display: flex; align-items: center;
-    padding: 0 24px; border-bottom: 1px solid var(--border);
-    gap: 14px; flex-shrink: 0; background: rgba(15,22,34,.8); backdrop-filter: blur(12px);
+    height: 64px; display: flex; align-items: center; padding: 0 24px;
+    border-bottom: 1px solid var(--border); gap: 16px;
+    flex-shrink: 0; background: rgba(17,24,39,.8); backdrop-filter: blur(16px);
     position: sticky; top: 0; z-index: 10;
   }
-  .topbar h2 { font-size: 1rem; font-weight: 700; flex: 1; }
-  .search-wrap {
+  .topbar h2 { font-size: 1rem; font-weight: 700; white-space: nowrap; }
+  .topbar .spacer { flex: 1; }
+  .search-box {
     display: flex; align-items: center; background: var(--card);
-    border: 1px solid var(--border); border-radius: 10px; padding: 0 12px;
-    max-width: 300px; width: 100%; transition: .3s; position: relative;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 0 14px; max-width: 320px; width: 100%; transition: var(--transition);
   }
-  .search-wrap:focus-within { max-width: 400px; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-  .search-wrap svg { color: var(--text-dim); flex-shrink: 0; }
-  .search-wrap input {
+  .search-box:focus-within { max-width: 380px; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .search-box svg { color: var(--text-3); flex-shrink: 0; }
+  .search-box input {
     background: none; border: none; outline: none; color: var(--text);
-    padding: 9px 8px; font-size: .8rem; width: 100%; font-family: inherit;
+    padding: 9px 10px; font-size: .8rem; width: 100%; font-family: inherit;
   }
-  .search-wrap input::placeholder { color: var(--text-dim); }
-  .search-filters {
-    display: none; position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
-    background: var(--card); border-radius: 10px; border: 1px solid var(--border);
-    padding: 8px; box-shadow: var(--shadow); z-index: 20;
+  .search-box input::placeholder { color: var(--text-3); }
+
+  .topbar-actions { display: flex; align-items: center; gap: 6px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: var(--radius-xs); border: none;
+    background: transparent; color: var(--text-3); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition); position: relative;
   }
-  .search-wrap:focus-within .search-filters { display: block; }
-  .search-filters select {
-    width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--border);
-    border-radius: 6px; padding: 6px 8px; font-size: .72rem; margin-bottom: 4px; font-family: inherit;
+  .icon-btn:hover { background: var(--card); color: var(--text); }
+  .icon-btn .dot {
+    position: absolute; top: 6px; right: 6px; width: 7px; height: 7px;
+    border-radius: 50%; background: var(--danger);
   }
-  .topbar-right { display: flex; align-items: center; gap: 10px; }
-  .topbar-right .avatar {
-    width: 34px; height: 34px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--info)); cursor: pointer;
-    display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;
+  .topbar .status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .72rem; color: var(--text-3);
   }
-  .topbar .status { font-size: .72rem; color: var(--text-sec); display: flex; align-items: center; gap: 6px; }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; animation: pulse 2s infinite; }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    animation: pulse 2s infinite;
+  }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-  /* ---- Content ---- */
-  .content { flex: 1; overflow-y: auto; padding: 24px; }
-  .content::-webkit-scrollbar { width: 5px; }
+  /* Content */
+  .content {
+    flex: 1; overflow-y: auto; padding: 24px 28px 32px;
+  }
+  .content::-webkit-scrollbar { width: 4px; }
   .content::-webkit-scrollbar-track { background: transparent; }
-  .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  .view { display: none; animation: fadeIn .35s ease; }
-  .view.active { display: block; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  /* ---- Buttons ---- */
+  .view { display: none; }
+  .view.active { display: block; animation: fadeIn .35s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ============ BUTTONS ============ */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 9px 18px; border-radius: var(--radius-sm); font-size: .8rem;
-    font-weight: 600; border: none; cursor: pointer; transition: all .2s;
+    padding: 10px 20px; border-radius: var(--radius-sm); font-size: .8rem;
+    font-weight: 600; border: none; cursor: pointer; transition: var(--transition);
     font-family: inherit; white-space: nowrap;
   }
   .btn:active { transform: scale(.97); }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: var(--accent-dim); box-shadow: 0 0 24px var(--accent-glow); }
-  .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
-  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-  .btn-outline:hover { background: var(--card); border-color: var(--border-light); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 4px 16px var(--accent-glow); }
+  .btn-primary:hover { box-shadow: 0 6px 24px var(--accent-glow); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; transform: none; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-2); }
+  .btn-outline:hover { background: var(--card); border-color: var(--border-light); color: var(--text); }
   .btn-danger { background: var(--danger); color: #fff; }
-  .btn-sm { padding: 6px 12px; font-size: .72rem; }
-  .btn-xs { padding: 4px 8px; font-size: .65rem; border-radius: 6px; }
-  .btn-ghost { background: transparent; color: var(--text-sec); padding: 6px 8px; }
+  .btn-ghost { background: transparent; color: var(--text-3); padding: 6px 10px; }
   .btn-ghost:hover { background: var(--card); color: var(--text); }
-  .btn-icon { width: 34px; height: 34px; padding: 0; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; }
+  .btn-sm { padding: 7px 14px; font-size: .73rem; }
+  .btn-xs { padding: 4px 8px; font-size: .65rem; border-radius: 6px; }
+  .btn-icon { width: 34px; height: 34px; padding: 0; border-radius: 8px; }
 
-  /* ---- Dashboard ---- */
-  .dash-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
-  .widget {
-    background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
-    padding: 18px 20px; transition: all .25s; position: relative; overflow: hidden;
+  /* ============ CARDS ============ */
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    border: 1px solid var(--border); overflow: hidden;
   }
-  .widget:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
-  .widget .wg-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-  .widget .wg-icon {
-    width: 38px; height: 38px; border-radius: 10px; display: flex;
-    align-items: center; justify-content: center; font-size: 16px;
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
   }
-  .widget .wg-num { font-size: 1.8rem; font-weight: 800; line-height: 1; }
-  .widget .wg-label { font-size: .72rem; color: var(--text-dim); font-weight: 500; margin-top: 4px; }
-  .widget .wg-trend { font-size: .68rem; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
-  .widget .sparkline { position: absolute; bottom: 12px; right: 12px; opacity: .5; }
-  .wg-radial {
-    position: absolute; top: 14px; right: 14px; width: 56px; height: 56px;
-  }
-  .dash-bottom { display: grid; grid-template-columns: 1fr 340px; gap: 14px; margin-bottom: 20px; }
+  .card-header h3 { font-size: .85rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .card-body { padding: 20px; }
 
-  /* ---- Pipeline ---- */
-  .pipeline {
-    background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
-    padding: 16px 20px; margin-bottom: 20px;
-  }
-  .pipeline h4 { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); margin-bottom: 12px; }
-  .pipe-flow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-  .pipe-node {
-    display: flex; align-items: center; gap: 6px; background: var(--surface);
-    border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
-    font-size: .72rem; font-weight: 500; transition: .2s; cursor: default;
-  }
-  .pipe-node .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
-  .pipe-node .dot.ok { background: var(--accent); }
-  .pipe-node .dot.busy { background: var(--info); animation: pulse 1s infinite; }
-  .pipe-node .dot.err { background: var(--danger); }
-  .pipe-arrow { color: var(--text-dim); font-size: .65rem; flex-shrink: 0; }
+  /* ============ DASHBOARD GRID ============ */
+  .page-title { margin-bottom: 20px; }
+  .page-title h1 { font-size: 1.3rem; font-weight: 800; }
+  .page-title p { font-size: .8rem; color: var(--text-3); margin-top: 2px; }
 
-  /* ---- Activity Feed ---- */
-  .activity-feed { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
-  .feed-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
-  .feed-header h4 { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); }
-  .feed-body { max-height: 300px; overflow-y: auto; padding: 4px 0; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--card); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 20px 22px;
+    transition: var(--transition); position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--border-light); }
+  .stat-card .stat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .stat-card .stat-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .stat-card .stat-number { font-size: 2rem; font-weight: 800; line-height: 1; letter-spacing: -.5px; }
+  .stat-card .stat-label { font-size: .75rem; color: var(--text-3); font-weight: 500; margin-top: 4px; }
+  .stat-card .stat-footer { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: .7rem; }
+  .stat-card .spark { position: absolute; bottom: 10px; right: 10px; opacity: .25; }
+  .stat-card .ring { position: absolute; top: 14px; right: 14px; width: 54px; height: 54px; }
+
+  /* Pipeline */
+  .pipeline-card {
+    background: var(--card); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 18px 22px; margin-bottom: 24px;
+  }
+  .pipeline-card .pipe-title {
+    font-size: .7rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .8px; color: var(--text-3); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .pipeline-flow {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .pipe-step {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    font-size: .74rem; font-weight: 500; transition: var(--transition);
+  }
+  .pipe-step .step-indicator {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 11px;
+    background: var(--border); color: var(--text-3); flex-shrink: 0;
+  }
+  .pipe-step .step-indicator.done { background: var(--accent-glow); color: var(--accent); }
+  .pipe-connector { color: var(--text-3); font-size: .7rem; flex-shrink: 0; }
+
+  /* Dashboard bottom */
+  .dash-bottom { display: grid; grid-template-columns: 1fr 340px; gap: 16px; margin-bottom: 24px; }
+
+  /* Activity Feed */
+  .feed-card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+  .feed-title {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+  }
+  .feed-title h4 { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); }
+  .feed-title .live-tag {
+    font-size: .55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--accent); background: var(--accent-glow); padding: 2px 8px; border-radius: 4px;
+    animation: pulse 2s infinite;
+  }
+  .feed-list { max-height: 320px; overflow-y: auto; }
   .feed-item {
-    display: flex; align-items: center; gap: 10px; padding: 9px 18px;
-    border-bottom: 1px solid rgba(34,48,72,.4); font-size: .78rem; transition: .2s;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 18px; border-bottom: 1px solid rgba(42,58,82,.3);
+    font-size: .78rem; transition: var(--transition);
   }
   .feed-item:last-child { border: none; }
-  .feed-item:hover { background: var(--card-hover); }
-  .feed-item .fdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .feed-item .fa { font-size: .72rem; color: var(--text-sec); flex: 1; }
-  .feed-item .fa strong { color: var(--text); }
-  .feed-item .ft { font-size: .65rem; color: var(--text-dim); white-space: nowrap; }
+  .feed-item:hover { background: var(--surface-2); }
+  .feed-item .feed-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .feed-item .feed-text { flex: 1; min-width: 0; }
+  .feed-item .feed-text strong { color: var(--text); }
+  .feed-item .feed-text .feed-sub { color: var(--text-3); font-size: .72rem; }
+  .feed-item .feed-time { font-size: .65rem; color: var(--text-3); white-space: nowrap; }
 
-  /* ---- Recent Grid ---- */
-  .recent-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .recent-header h3 { font-size: .82rem; font-weight: 600; color: var(--text-sec); text-transform: uppercase; letter-spacing: .5px; }
-  .recent-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 12px;
+  /* Recent Grid */
+  .recent-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  .recent-head h3 { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); }
+  .doc-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px;
   }
   .doc-card {
-    background: var(--card); border-radius: var(--radius-sm); border: 1px solid var(--border);
-    overflow: hidden; cursor: pointer; transition: all .25s; position: relative;
+    background: var(--card); border-radius: var(--radius-sm);
+    border: 1px solid var(--border); overflow: hidden;
+    cursor: pointer; transition: var(--transition); position: relative;
   }
-  .doc-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow); }
-  .doc-card .thumb {
-    width: 100%; aspect-ratio: 3/4; object-fit: cover; background: var(--surface);
-    display: block; transition: .3s;
+  .doc-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: var(--shadow); }
+  .doc-card .doc-thumb {
+    width: 100%; aspect-ratio: 3/4; object-fit: cover; background: var(--surface-2);
+    display: block; transition: .4s;
   }
-  .doc-card:hover .thumb { transform: scale(1.04); }
+  .doc-card:hover .doc-thumb { transform: scale(1.06); }
   .doc-card .doc-overlay {
-    position: absolute; inset: 0; background: rgba(0,0,0,.5);
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    opacity: 0; transition: .25s; backdrop-filter: blur(2px);
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.7), transparent 40%);
+    opacity: 0; transition: var(--transition);
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: 6px; padding: 12px;
   }
   .doc-card:hover .doc-overlay { opacity: 1; }
   .doc-card .doc-overlay button {
     width: 32px; height: 32px; border-radius: 8px; border: none;
-    background: rgba(255,255,255,.15); color: #fff; cursor: pointer;
-    font-size: 14px; transition: .2s; display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.15); backdrop-filter: blur(4px);
+    color: #fff; cursor: pointer; font-size: 13px; transition: var(--transition);
+    display: flex; align-items: center; justify-content: center;
   }
   .doc-card .doc-overlay button:hover { background: rgba(255,255,255,.3); }
   .doc-card .doc-meta { padding: 10px 12px; }
-  .doc-card .doc-meta .dn { font-size: .76rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .doc-card .doc-meta .ds { font-size: .66rem; color: var(--text-dim); margin-top: 2px; }
+  .doc-card .doc-meta .doc-name { font-size: .76rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc-card .doc-meta .doc-sub { font-size: .66rem; color: var(--text-3); margin-top: 2px; display: flex; justify-content: space-between; }
+  .doc-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
 
-  /* ---- Modal ---- */
+  /* ============ SCANNER VIEW ============ */
+  .scanner-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; max-width: 1200px; margin: 0 auto; }
+  .scanner-grid.full { grid-template-columns: 1fr; max-width: 820px; }
+
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    background: var(--card); min-height: 400px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; cursor: pointer; transition: var(--transition);
+    position: relative; overflow: hidden;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-glow); }
+  .drop-zone .dz-placeholder { text-align: center; padding: 30px; }
+  .drop-zone .dz-placeholder .dz-icon { font-size: 52px; margin-bottom: 14px; opacity: .5; }
+  .drop-zone .dz-placeholder h3 { font-size: 1rem; font-weight: 600; }
+  .drop-zone .dz-placeholder p { font-size: .75rem; color: var(--text-3); margin-top: 4px; }
+  .drop-zone input[type=file] { display: none; }
+
+  .cam-view {
+    display: none; flex-direction: column; flex: 1;
+    background: #000; border-radius: var(--radius); overflow: hidden; position: relative;
+  }
+  .cam-view video { width: 100%; display: block; flex: 1; object-fit: contain; background: #000; }
+  .cam-overlay {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; pointer-events: none;
+  }
+  .cam-overlay .frame {
+    width: 80%; height: 70%; border: 2px solid var(--accent);
+    border-radius: 10px; opacity: .4;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.35);
+  }
+  .cam-bar { display: flex; gap: 8px; padding: 12px 16px; background: #111; justify-content: center; }
+  .scan-preview { display: none; }
+  .scan-preview img { width: 100%; border-radius: var(--radius-sm); display: block; }
+
+  .ctrl-panel { display: flex; flex-direction: column; gap: 10px; }
+  .ctrl-group {
+    background: var(--card); border-radius: var(--radius-sm);
+    border: 1px solid var(--border); padding: 14px 16px;
+  }
+  .ctrl-group h4 { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .7px; color: var(--text-3); margin-bottom: 10px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: .8rem; }
+  .toggle { width: 36px; height: 20px; border-radius: 10px; background: var(--border); cursor: pointer; position: relative; transition: .2s; flex-shrink: 0; }
+  .toggle.on { background: var(--accent); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .2s; }
+  .toggle.on::after { left: 18px; }
+  .effect-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .effect-btn {
+    padding: 6px; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-3); cursor: pointer;
+    font-size: .68rem; font-weight: 500; transition: var(--transition);
+    font-family: inherit; text-align: center;
+  }
+  .effect-btn:hover { border-color: var(--border-light); color: var(--text); }
+  .effect-btn.active { border-color: var(--accent); background: var(--accent-glow); color: var(--accent); }
+
+  .result-panel { grid-column: 1 / -1; display: none; animation: fadeIn .35s ease; }
+  .result-compare { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .result-compare .img-box { flex: 1; min-width: 180px; border-radius: var(--radius-sm); overflow: hidden; background: #000; position: relative; }
+  .result-compare .img-box img { width: 100%; display: block; }
+  .result-compare .img-box .img-label {
+    position: absolute; bottom: 6px; left: 6px;
+    background: rgba(0,0,0,.7); padding: 2px 10px; border-radius: 5px;
+    font-size: .65rem; font-weight: 600; backdrop-filter: blur(4px);
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 20px; font-size: .65rem;
+    font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+  }
+  .badge-green { background: var(--accent-glow); color: var(--accent); }
+  .badge-red { background: rgba(239,85,98,.15); color: var(--danger); }
+
+  /* Modal */
   .modal-overlay {
     display: none; position: fixed; inset: 0; z-index: 100;
-    background: rgba(7,11,18,.85); backdrop-filter: blur(6px);
+    background: rgba(10,14,23,.85); backdrop-filter: blur(8px);
     align-items: center; justify-content: center;
   }
   .modal-overlay.show { display: flex; }
   .modal {
     background: var(--surface); border-radius: var(--radius);
     border: 1px solid var(--border); max-width: 90vw; max-height: 90vh;
-    width: 100%; overflow: hidden; box-shadow: var(--shadow); animation: fadeIn .25s ease;
+    width: 100%; overflow: hidden; box-shadow: var(--shadow-lg);
+    animation: fadeIn .25s ease;
   }
-  .modal-header {
+  .modal-head {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 22px; border-bottom: 1px solid var(--border);
   }
-  .modal-header h3 { font-size: .95rem; font-weight: 600; }
+  .modal-head h3 { font-size: .95rem; font-weight: 600; }
   .modal-body { padding: 22px; overflow-y: auto; max-height: calc(90vh - 120px); }
   .modal-close {
     width: 30px; height: 30px; border-radius: 8px; border: none; background: transparent;
-    color: var(--text-dim); cursor: pointer; font-size: 16px; transition: .2s;
+    color: var(--text-3); cursor: pointer; font-size: 16px; transition: var(--transition);
     display: flex; align-items: center; justify-content: center;
   }
   .modal-close:hover { background: var(--card); color: var(--text); }
   .viewer-img { max-width: 100%; max-height: 55vh; border-radius: var(--radius-sm); display: block; margin: 0 auto; }
+  .modal-body input[type=text] {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px; color: var(--text);
+    font-size: .78rem; font-family: inherit; width: 100%;
+  }
 
-  /* ---- Loader ---- */
+  /* Gallery */
+  .gallery-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .gallery-bar .filter-group {
+    display: flex; gap: 4px; background: var(--card);
+    border-radius: var(--radius-sm); padding: 3px; border: 1px solid var(--border);
+  }
+  .gallery-bar .filter-group button {
+    padding: 5px 12px; border-radius: 6px; font-size: .72rem; font-weight: 500;
+    border: none; cursor: pointer; transition: var(--transition);
+    font-family: inherit; background: transparent; color: var(--text-3);
+  }
+  .gallery-bar .filter-group button.active { background: var(--accent); color: #fff; }
+  .gallery-bar .filter-group button:hover:not(.active) { background: var(--surface-2); color: var(--text); }
+
+  /* Loader */
   .loader-overlay {
     display: none; position: fixed; inset: 0; z-index: 50;
-    background: rgba(7,11,18,.75); backdrop-filter: blur(3px);
+    background: rgba(10,14,23,.75); backdrop-filter: blur(4px);
     align-items: center; justify-content: center;
   }
   .loader-overlay.show { display: flex; }
   .loader-box {
-    background: var(--card); border-radius: var(--radius); padding: 40px 48px;
-    text-align: center; border: 1px solid var(--border); box-shadow: var(--shadow);
+    background: var(--card); border-radius: var(--radius);
+    padding: 40px 48px; text-align: center; border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
   }
   .spinner {
-    width: 40px; height: 40px; border: 4px solid var(--border);
+    width: 40px; height: 40px; border: 3px solid var(--border);
     border-top-color: var(--accent); border-radius: 50%;
     animation: spin .7s linear infinite; margin: 0 auto 16px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .loader-box p { font-size: .85rem; font-weight: 500; }
-  .loader-box .sub { font-size: .72rem; color: var(--text-dim); margin-top: 4px; }
 
-  /* ---- Toast ---- */
+  /* Toast */
   .toast-container {
     position: fixed; bottom: 20px; right: 20px; z-index: 200;
     display: flex; flex-direction: column-reverse; gap: 6px;
   }
   .toast {
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    padding: 10px 16px; font-size: .8rem; box-shadow: var(--shadow);
-    animation: slideIn .3s ease; max-width: 360px;
-    display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 16px;
+    font-size: .8rem; box-shadow: var(--shadow); min-width: 240px;
+    display: flex; align-items: center; gap: 10px;
+    border-left: 3px solid var(--accent); animation: slideIn .3s ease;
   }
-  .toast.error { border-left: 3px solid var(--danger); }
-  .toast.warn { border-left: 3px solid var(--warn); }
-  .toast.success { border-left: 3px solid var(--accent); }
-  @keyframes slideIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+  .toast.err { border-left-color: var(--danger); }
+  .toast.warn { border-left-color: var(--warn); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
 
-  /* ---- Existing views (scanner, gallery, settings) kept ---- */
-  .scanner-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; max-width: 1200px; margin: 0 auto; }
-  .scanner-layout.full { grid-template-columns: 1fr; max-width: 820px; }
-  .drop-area {
-    border: 2px dashed var(--border); border-radius: var(--radius); background: var(--card);
-    min-height: 380px; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; cursor: pointer; transition: all .3s; position: relative; overflow: hidden;
+  @media (max-width: 1000px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } .dash-bottom { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) {
+    .content { padding: 14px 16px; }
+    .stat-grid { gap: 10px; }
+    .doc-grid { grid-template-columns: repeat(2, 1fr); }
+    .scanner-grid { grid-template-columns: 1fr; }
+    .topbar { padding: 0 12px; gap: 8px; }
+    .search-box { max-width: 140px; }
+    .topbar .status { display: none; }
   }
-  .drop-area:hover, .drop-area.dragover { border-color: var(--accent); background: var(--accent-glow); }
-  .drop-area .placeholder { text-align: center; padding: 30px; }
-  .drop-area .placeholder .icon { font-size: 48px; margin-bottom: 12px; opacity: .6; }
-  .camera-view { display: none; flex-direction: column; flex:1; background:#000; border-radius:var(--radius); overflow:hidden; position:relative; }
-  .camera-view video { width:100%; display:block; flex:1; object-fit:contain; }
-  .camera-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-  .camera-overlay .frame { width:82%; height:72%; border:2px solid var(--accent); border-radius:8px; opacity:.5; box-shadow:0 0 0 9999px rgba(0,0,0,.3); }
-  .camera-bar { display:flex; gap:8px; padding:10px 14px; background:#111; justify-content:center; }
-  .scanner-preview { display:none; }
-  .scanner-preview img { width:100%; border-radius:var(--radius-sm); display:block; }
-  .controls-panel { display:flex; flex-direction:column; gap:10px; }
-  .ctrl-group { background:var(--card); border-radius:var(--radius-sm); border:1px solid var(--border); padding:12px 14px; }
-  .ctrl-group h4 { font-size:.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.6px; color:var(--text-dim); margin-bottom:8px; }
-  .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:4px 0; font-size:.8rem; }
-  .toggle-row .lbl { display:flex; align-items:center; gap:6px; }
-  .toggle { width:36px; height:20px; border-radius:10px; background:var(--border); cursor:pointer; position:relative; transition:.2s; flex-shrink:0; }
-  .toggle.on { background:var(--accent); }
-  .toggle::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:.2s; }
-  .toggle.on::after { left:18px; }
-  .effect-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
-  .effect-btn { padding:6px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--text-sec); cursor:pointer; font-size:.68rem; font-weight:500; transition:.2s; font-family:inherit; text-align:center; }
-  .effect-btn:hover { border-color:var(--border-light); color:var(--text); }
-  .effect-btn.active { border-color:var(--accent); background:var(--accent-glow); color:var(--accent); }
-  .results-panel { grid-column:1/-1; display:none; animation:slideUp .35s ease; }
-  .result-strip { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-  .result-strip .img-box { flex:1; min-width:180px; border-radius:var(--radius-sm); overflow:hidden; background:#000; position:relative; }
-  .result-strip .img-box img { width:100%; display:block; }
-  .result-strip .img-box .lbl { position:absolute; bottom:6px; left:6px; background:rgba(0,0,0,.7); padding:2px 8px; border-radius:5px; font-size:.65rem; font-weight:600; backdrop-filter:blur(4px); }
-
-  .gallery-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
-  .gallery-toolbar .filter-group { display:flex; gap:4px; background:var(--card); border-radius:var(--radius-sm); padding:3px; border:1px solid var(--border); }
-  .gallery-toolbar .filter-group button { padding:5px 12px; border-radius:6px; font-size:.72rem; font-weight:500; border:none; cursor:pointer; transition:.2s; font-family:inherit; background:transparent; color:var(--text-sec); }
-  .gallery-toolbar .filter-group button.active { background:var(--accent); color:#fff; }
-  .gallery-toolbar .view-toggle { display:flex; gap:2px; background:var(--card); border-radius:7px; padding:3px; }
-  .gallery-toolbar .view-toggle button { width:30px; height:30px; border-radius:5px; border:none; cursor:pointer; background:transparent; color:var(--text-dim); display:flex; align-items:center; justify-content:center; transition:.2s; }
-  .gallery-toolbar .view-toggle button.active { background:var(--accent-glow); color:var(--accent); }
-  .gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
-  .gallery-list { display:flex; flex-direction:column; gap:5px; }
-  .list-item { display:flex; align-items:center; gap:12px; background:var(--card); border-radius:var(--radius-sm); border:1px solid var(--border); padding:8px 14px; cursor:pointer; transition:.2s; }
-  .list-item:hover { border-color:var(--border-light); background:var(--card-hover); }
-  .list-item .thumb { width:40px; height:50px; border-radius:5px; object-fit:cover; background:var(--surface); flex-shrink:0; }
-  .list-item .info { flex:1; min-width:0; }
-  .list-item .info .name { font-size:.78rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .list-item .info .sub { font-size:.66rem; color:var(--text-dim); }
-  .list-item .meta { text-align:right; flex-shrink:0; }
-  .list-item .meta .sz { font-size:.7rem; color:var(--text-sec); }
-
-  @media (max-width:1000px) { .dash-grid { grid-template-columns:repeat(2,1fr); } .dash-bottom { grid-template-columns:1fr; } }
-  @media (max-width:720px) {
-    .sidebar { width: 56px; } .sidebar:hover { width: 56px; }
-    .sidebar .nav-label, .sidebar:hover .nav-label { display: none; }
-    .sidebar .new-scan-btn, .sidebar .logo { width: 36px; height: 36px; font-size: 16px; }
-    .nav-item { width: 36px; height: 36px; }
-    .sidebar:hover .nav-item { width: 36px; padding-left: 0; }
-    .content { padding: 14px; }
-    .dash-grid { grid-template-columns:1fr 1fr; gap:10px; }
-    .recent-grid { grid-template-columns:repeat(2,1fr); }
-    .scanner-layout { grid-template-columns:1fr; }
-  }
-  @media (max-width:480px) { .dash-grid { grid-template-columns:1fr; } }
+  @media (max-width: 480px) { .stat-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
-<!-- SIDEBAR -->
+<!-- ============ SIDEBAR ============ -->
 <nav class="sidebar">
-  <div class="logo" onclick="switchView('dashboard')">📄</div>
-  <button class="new-scan-btn" onclick="switchView('scanner')" title="New Scan">+</button>
-  <button class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-    <span class="nav-label">Dashboard</span>
-  </button>
-  <button class="nav-item" data-view="scanner" onclick="switchView('scanner')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-    <span class="nav-label">Scanner</span>
-  </button>
-  <button class="nav-item" data-view="gallery" onclick="switchView('gallery')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    <span class="nav-label">Gallery</span>
-    <span class="nav-badge" id="gallery-badge"></span>
-  </button>
-  <div class="nav-spacer"></div>
-  <button class="nav-item" data-view="settings" onclick="switchView('settings')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    <span class="nav-label">Settings</span>
-  </button>
+  <div class="sidebar-brand">
+    <div class="logo">📄</div>
+    <div class="brand-text">
+      <div class="name">AI Scanner</div>
+      <div class="sub">WebEnoid Intern</div>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Main</div>
+    <button class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
+      <span class="icon">📊</span>
+      <span class="label">Dashboard</span>
+    </button>
+    <button class="nav-item" data-view="scanner" onclick="switchView('scanner')">
+      <span class="icon">📷</span>
+      <span class="label">Scanner</span>
+    </button>
+    <button class="nav-item" data-view="gallery" onclick="switchView('gallery')">
+      <span class="icon">🖼️</span>
+      <span class="label">Gallery</span>
+      <span class="badge" id="gallery-count">0</span>
+    </button>
+
+    <div class="nav-section">Tools</div>
+    <button class="nav-item" onclick="mergeToPdf()">
+      <span class="icon">📄</span>
+      <span class="label">Merge PDF</span>
+    </button>
+    <button class="nav-item" onclick="switchView('settings')">
+      <span class="icon">⚙️</span>
+      <span class="label">Settings</span>
+    </button>
+  </div>
+  <div class="sidebar-footer">
+    <div class="avatar">A</div>
+    <div class="info">
+      <div class="name">Admin User</div>
+      <div class="role">Scanner Operator</div>
+    </div>
+    <button class="settings-btn" onclick="switchView('settings')" title="Settings">⚙️</button>
+  </div>
 </nav>
 
-<!-- MAIN -->
+<!-- ============ MAIN ============ -->
 <div class="main">
   <div class="topbar">
     <h2 id="view-title">Dashboard</h2>
-    <div class="search-wrap">
+    <div class="spacer"></div>
+    <div class="search-box">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" placeholder="Search documents..." id="search-input" onkeydown="if(event.key==='Enter')doSearch()">
-      <div class="search-filters">
-        <select id="sf-type"><option value="">All Types</option><option>Invoice</option><option>Receipt</option><option>ID</option><option>Contract</option><option>Document</option></select>
-        <select id="sf-date"><option value="">Any Date</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option></select>
-      </div>
     </div>
-    <div class="topbar-right">
+    <div class="topbar-actions">
+      <button class="icon-btn" onclick="loadDashboard();loadActivity()" title="Refresh">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
       <div class="status"><span class="status-dot"></span><span>Online</span></div>
-      <div class="avatar">A</div>
     </div>
   </div>
 
@@ -397,166 +576,167 @@
 
     <!-- ===== DASHBOARD ===== -->
     <div class="view active" id="view-dashboard">
-
-      <!-- Stats Widgets -->
-      <div class="dash-grid" id="dash-stats"></div>
-
-      <!-- Pipeline Visualization -->
-      <div class="pipeline">
-        <h4>🤖 AI Processing Pipeline</h4>
-        <div class="pipe-flow">
-          <div class="pipe-node"><span class="dot ok"></span>📷 Capture</div><span class="pipe-arrow">→</span>
-          <div class="pipe-node"><span class="dot ok"></span>🔍 Edge Detection</div><span class="pipe-arrow">→</span>
-          <div class="pipe-node"><span class="dot ok"></span>✨ Enhancement</div><span class="pipe-arrow">→</span>
-          <div class="pipe-node"><span class="dot ok"></span>📝 OCR</div><span class="pipe-arrow">→</span>
-          <div class="pipe-node"><span class="dot ok"></span>🏷️ Classification</div><span class="pipe-arrow">→</span>
-          <div class="pipe-node"><span class="dot ok"></span>💾 Storage</div>
+      <div class="page-title">
+        <h1>Dashboard</h1>
+        <p>Overview of your scanned documents and AI activity</p>
+      </div>
+      <div class="stat-grid" id="stat-grid"></div>
+      <div class="pipeline-card">
+        <div class="pipe-title">🤖 AI Processing Pipeline</div>
+        <div class="pipeline-flow">
+          <div class="pipe-step"><span class="step-indicator done">📷</span> Capture</div>
+          <span class="pipe-connector">→</span>
+          <div class="pipe-step"><span class="step-indicator done">🔍</span> Edge Detection</div>
+          <span class="pipe-connector">→</span>
+          <div class="pipe-step"><span class="step-indicator done">✨</span> Enhancement</div>
+          <span class="pipe-connector">→</span>
+          <div class="pipe-step"><span class="step-indicator done">📝</span> OCR</div>
+          <span class="pipe-connector">→</span>
+          <div class="pipe-step"><span class="step-indicator done">🏷️</span> Classification</div>
+          <span class="pipe-connector">→</span>
+          <div class="pipe-step"><span class="step-indicator done">💾</span> Storage</div>
         </div>
       </div>
-
-      <!-- Bottom: Recent + Activity -->
       <div class="dash-bottom">
         <div>
-          <div class="recent-header">
+          <div class="recent-head">
             <h3>Recent Scans</h3>
             <button class="btn btn-ghost btn-sm" onclick="switchView('gallery')">View All →</button>
           </div>
-          <div class="recent-grid" id="dash-recent"></div>
+          <div class="doc-grid" id="recent-grid"></div>
         </div>
-        <div class="activity-feed">
-          <div class="feed-header">
-            <h4>⚡ AI Activity Feed</h4>
-            <span style="font-size:.6rem;color:var(--text-dim);font-weight:500">LIVE</span>
+        <div class="feed-card">
+          <div class="feed-title">
+            <h4>⚡ Activity Feed</h4>
+            <span class="live-tag">● Live</span>
           </div>
-          <div class="feed-body" id="feed-body">
-            <div style="text-align:center;padding:20px;color:var(--text-dim);font-size:.75rem">Loading activity...</div>
+          <div class="feed-list" id="feed-list">
+            <div style="text-align:center;padding:20px;color:var(--text-3);font-size:.75rem">Loading...</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ===== SCANNER ===== (kept from previous) -->
+    <!-- ===== SCANNER ===== -->
     <div class="view" id="view-scanner">
-      <div class="scanner-layout" id="scanner-layout">
+      <div class="scanner-grid" id="scanner-grid">
         <div>
-          <div class="drop-area" id="drop-area">
-            <div class="placeholder" id="placeholder">
-              <div class="icon">📄</div><h3>Drop your document here</h3>
-              <p style="font-size:.75rem;color:var(--text-sec);margin-top:4px">PNG, JPG, JPEG (max 64 MB)</p>
-              <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-                <button class="btn btn-primary btn-lg" onclick="document.getElementById('file-input').click()">Choose File</button>
-                <button class="btn btn-outline btn-lg" id="btn-open-camera">
+          <div class="drop-zone" id="drop-zone">
+            <div class="dz-placeholder" id="dz-placeholder">
+              <div class="dz-icon">📄</div>
+              <h3>Drop your document here</h3>
+              <p>PNG, JPG, JPEG — up to 64 MB</p>
+              <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();document.getElementById('file-input').click()">Choose File</button>
+                <button class="btn btn-outline btn-lg" id="btn-open-cam">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                  Open Camera
+                  Camera
                 </button>
               </div>
             </div>
-            <div class="camera-view" id="camera-view">
+            <div class="cam-view" id="cam-view">
               <video id="video" autoplay playsinline></video>
-              <div class="camera-overlay"><div class="frame"></div></div>
-              <div class="camera-bar">
+              <div class="cam-overlay"><div class="frame"></div></div>
+              <div class="cam-bar">
                 <button class="btn btn-primary" id="btn-capture">📸 Capture</button>
-                <button class="btn btn-outline" id="btn-close-camera">✕ Close</button>
+                <button class="btn btn-outline" id="btn-close-cam">✕ Close</button>
               </div>
             </div>
-            <div class="scanner-preview" id="scanner-preview"><img id="preview-img"></div>
+            <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
             <input type="file" accept="image/*" id="file-input">
           </div>
-          <div class="results-panel" id="results-panel">
-            <div class="card" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-              <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)">
-                <h3 style="font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:8px"><span>📋</span> <span id="result-title">Scan Results</span></h3>
-                <span class="badge" id="result-badge" style="display:none;padding:3px 10px;border-radius:20px;font-size:.65rem;font-weight:600">--</span>
+
+          <div class="result-panel" id="result-panel">
+            <div class="card">
+              <div class="card-header">
+                <h3><span>📋</span> <span id="result-title">Scan Results</span></h3>
+                <span class="badge" id="result-badge" style="display:none">--</span>
               </div>
-              <div class="card-body" style="padding:18px">
-                <div class="result-strip" id="result-strip"></div>
-                <div class="dash-grid" id="result-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-bottom:14px"></div>
+              <div class="card-body">
+                <div class="result-compare" id="result-compare"></div>
+                <div class="stat-grid" id="result-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-bottom:14px"></div>
                 <div id="result-details"></div>
                 <div id="result-ocr" style="margin-top:10px"></div>
                 <div id="result-qr" style="margin-top:10px"></div>
                 <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-                  <button class="btn btn-primary" onclick="resetScanner()">🔄 New Scan</button>
-                  <button class="btn btn-outline" id="btn-download-result">⬇ Download</button>
+                  <button class="btn btn-primary" onclick="resetScanner()">?? New Scan</button>
+                  <button class="btn btn-outline" id="btn-dl">? Download</button>
+                  <button class="btn btn-outline" id="btn-cloud" style="display:none" onclick="cloudUploadFromResult()">?? Upload to Cloud</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="controls-panel">
+
+        <div class="ctrl-panel">
           <div class="ctrl-group">
             <h4>🤖 AI Features</h4>
-            <div class="toggle-row"><span class="lbl">Auto Capture &amp; Crop</span><div class="toggle on" id="tog-crop" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-row"><span class="lbl">Shadow Removal</span><div class="toggle on" id="tog-shadow" onclick="this.classList.toggle('on')"></div></div>
-            <div class="toggle-row"><span class="lbl">Auto Enhance</span><div class="toggle on" id="tog-enhance" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><span>Auto Crop</span><div class="toggle on" id="tog-crop" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><span>Shadow Removal</span><div class="toggle on" id="tog-shadow" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><span>Enhance</span><div class="toggle on" id="tog-enhance" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><span>Google Vision OCR</span><div class="toggle" id="tog-vision" onclick="this.classList.toggle('on')"></div></div>
           </div>
           <div class="ctrl-group">
             <h4>🎨 Effects</h4>
-            <div class="effect-grid" id="effect-grid">
+            <div class="effect-grid">
               <button class="effect-btn active" data-effect="none">None</button>
               <button class="effect-btn" data-effect="grayscale">Gray</button>
-              <button class="effect-btn" data-effect="binarize">B&W</button>
+              <button class="effect-btn" data-effect="binarize">B&amp;W</button>
               <button class="effect-btn" data-effect="sharpen">Sharpen</button>
               <button class="effect-btn" data-effect="invert">Invert</button>
               <button class="effect-btn" data-effect="enhance">Enhance</button>
             </div>
           </div>
           <button class="btn btn-primary btn-lg" id="btn-process" style="width:100%" disabled>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Process &amp; Scan
+            ▶ Process &amp; Scan
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ===== GALLERY ===== (kept) -->
+    <!-- ===== GALLERY ===== -->
     <div class="view" id="view-gallery">
-      <div class="gallery-toolbar">
-        <div style="flex:1;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <div class="filter-group" id="filter-group">
-            <button class="active" data-filter="all">All</button>
-            <button data-filter="invoice">Invoice</button>
-            <button data-filter="receipt">Receipt</button>
-            <button data-filter="id">ID</button>
-            <button data-filter="contract">Contract</button>
-          </div>
+      <div class="page-title">
+        <h1>Gallery</h1>
+        <p>Browse and manage your scanned documents</p>
+      </div>
+      <div class="gallery-bar">
+        <div class="filter-group" id="filter-group">
+          <button class="active" data-filter="all">All</button>
+          <button data-filter="invoice">Invoice</button>
+          <button data-filter="receipt">Receipt</button>
+          <button data-filter="id">ID</button>
+          <button data-filter="contract">Contract</button>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-outline btn-sm" id="btn-merge-pdf" style="display:none" onclick="mergeToPdf()">📄 Merge PDF (<span id="merge-count">0</span>)</button>
-          <div class="view-toggle">
-            <button class="active" data-mode="grid" onclick="setGalleryMode('grid')" title="Grid">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            </button>
-            <button data-mode="list" onclick="setGalleryMode('list')" title="List">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            </button>
-          </div>
-        </div>
+        <div style="flex:1"></div>
+        <button class="btn btn-outline btn-sm" id="btn-merge" style="display:none" onclick="mergeToPdf()">📄 Merge PDF (<span id="merge-n">0</span>)</button>
       </div>
       <div id="gallery-container"></div>
     </div>
 
-    <!-- ===== SETTINGS ===== (kept) -->
+    <!-- ===== SETTINGS ===== -->
     <div class="view" id="view-settings">
-      <div style="max-width:560px;margin:0 auto">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:18px">Settings</h3>
+      <div class="page-title">
+        <h1>Settings</h1>
+        <p>Configure storage and cloud sync options</p>
+      </div>
+      <div style="max-width:600px">
         <div class="ctrl-group" style="margin-bottom:12px">
           <h4>💾 Storage</h4>
-          <div class="toggle-row"><span class="lbl">Save Location</span><span style="color:var(--text-sec);font-size:.78rem" id="set-path">data/documents/</span></div>
-          <div class="toggle-row"><span class="lbl">Total Documents</span><span style="color:var(--text-sec);font-size:.78rem" id="set-count">--</span></div>
-          <div class="toggle-row"><span class="lbl">Storage Used</span><span style="color:var(--text-sec);font-size:.78rem" id="set-size">--</span></div>
+          <div class="toggle-row"><span>Location</span><span style="color:var(--text-3);font-size:.78rem">data/documents/</span></div>
+          <div class="toggle-row"><span>Documents</span><span style="color:var(--text-3);font-size:.78rem" id="set-count">--</span></div>
+          <div class="toggle-row"><span>Storage Used</span><span style="color:var(--text-3);font-size:.78rem" id="set-size">--</span></div>
         </div>
         <div class="ctrl-group" style="margin-bottom:12px">
-          <h4>☁️ Cloud Sync</h4>
-          <p style="font-size:.78rem;color:var(--text-sec);margin-bottom:8px">Configure API keys in <code>.env</code> to enable cloud upload.</p>
-          <div class="toggle-row"><span class="lbl">Google Drive</span><span style="font-size:.68rem;color:var(--text-dim)" id="set-gdrive">Not configured</span></div>
-          <div class="toggle-row"><span class="lbl">Dropbox</span><span style="font-size:.68rem;color:var(--text-dim)" id="set-dropbox">Not configured</span></div>
-          <div class="toggle-row"><span class="lbl">OneDrive</span><span style="font-size:.68rem;color:var(--text-dim)" id="set-onedrive">Not configured</span></div>
+          <h4>?? Cloud Sync</h4>
+          <p style="font-size:.78rem;color:var(--text-3);margin-bottom:8px">Connect to cloud providers for backup &amp; sharing</p>
+          <div id="cloud-status-list"></div>
         </div>
         <div class="ctrl-group">
           <h4>ℹ️ About</h4>
-          <div class="toggle-row"><span class="lbl">Version</span><span style="color:var(--text-sec);font-size:.78rem">1.0.0</span></div>
-          <div class="toggle-row"><span class="lbl">Project</span><span style="color:var(--text-sec);font-size:.78rem">WebEnoid Intern</span></div>
-          <div class="toggle-row"><span class="lbl">Rating</span><span style="color:var(--warn);font-size:.82rem">⭐ 5.0</span></div>
+          <div class="toggle-row"><span>Version</span><span style="color:var(--text-3)">1.0.0</span></div>
+          <div class="toggle-row"><span>Project</span><span style="color:var(--text-3)">WebEnoid Intern</span></div>
+          <div class="toggle-row"><span>Rating</span><span style="color:var(--warn)">⭐ 5.0</span></div>
         </div>
       </div>
     </div>
@@ -567,8 +747,8 @@
 <!-- MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal" style="max-width:760px">
-    <div class="modal-header">
-      <h3 id="modal-title">Document Preview</h3>
+    <div class="modal-head">
+      <h3 id="modal-title">Document</h3>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body" id="modal-body"></div>
@@ -580,155 +760,113 @@
   <div class="loader-box">
     <div class="spinner"></div>
     <p id="loader-text">Processing...</p>
-    <p class="sub" id="loader-sub">AI analyzing document</p>
+    <p class="sub" style="font-size:.72rem;color:var(--text-3);margin-top:4px" id="loader-sub">AI analyzing document</p>
   </div>
 </div>
 
 <!-- TOAST -->
-<div class="toast-container" id="toast-container"></div>
+<div class="toast-container" id="toast-c"></div>
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-// ===== STATE =====
-let state = {
-  capturedBlob: null, selectedEffect: 'none', galleryMode: 'grid',
-  filter: 'all', selectedDocs: [], galleryDocs: [], currentResult: null, stream: null
-};
+const state={capturedBlob:null,selectedEffect:'none',stream:null,filter:'all',selectedDocs:[],galleryDocs:[],currentResult:null,galleryMode:'grid'};
 
-// ===== TOAST =====
-function toast(msg, type='success') {
-  const c=document.getElementById('toast-container');
-  const t=document.createElement('div');
-  t.className=`toast ${type}`;
-  t.innerHTML=`<span>${type==='error'?'✕':type==='warn'?'⚠':'✓'}</span> ${msg}`;
-  c.appendChild(t);
-  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},3500);
+function toast(m,t='success'){const c=document.getElementById('toast-c');const e=document.createElement('div');e.className=`toast ${t}`;e.innerHTML=`<span>${t==='err'?'✕':t==='warn'?'⚠':'✓'}</span> ${m}`;c.appendChild(e);setTimeout(()=>{e.style.opacity='0';setTimeout(()=>e.remove(),300)},3500)}
+
+function switchView(v){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===`view-${v}`));
+  const t={dashboard:'Dashboard',scanner:'Scanner',gallery:'Gallery',settings:'Settings'};
+  document.getElementById('view-title').textContent=t[v]||'Dashboard';
+  if(v==='gallery')loadGallery();if(v==='dashboard'){loadDashboard();loadActivity()}if(v==='settings')loadSettings();
 }
 
-// ===== VIEW SWITCHING =====
-function switchView(view) {
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
-  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${view}`));
-  const titles={dashboard:'Dashboard',scanner:'Scanner',gallery:'Gallery',settings:'Settings'};
-  document.getElementById('view-title').textContent=titles[view]||'Dashboard';
-  if(view==='gallery') loadGallery();
-  if(view==='dashboard'){loadDashboard();loadActivity();}
-  if(view==='settings') loadSettings();
-}
+/* ---- DASHBOARD ---- */
+async function loadDashboard(){
+  try{
+    const r=await fetch('/stats');const s=await r.json();
+    const te=Object.entries(s.type_counts||{});
+    document.getElementById('stat-grid').innerHTML=`
+      <div class="stat-card" style="--accent-c:var(--accent)"><div class="stat-top"><div class="stat-icon" style="background:var(--accent-glow);color:var(--accent)">📄</div></div><div class="stat-number">${s.total}</div><div class="stat-label">Total Documents</div><div class="stat-footer" style="color:var(--accent)">● Active</div><svg class="spark" width="80" height="24" viewBox="0 0 80 24"><polyline points="0,18 10,14 20,16 30,8 40,12 50,4 60,6 70,2 80,4" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity=".6"/></svg></div>
+      <div class="stat-card" style="--accent-c:var(--info)"><div class="stat-top"><div class="stat-icon" style="background:rgba(75,139,255,.15);color:var(--info)">📂</div></div><div class="stat-number">${s.types}</div><div class="stat-label">Document Types</div><div class="stat-footer" style="color:var(--info);font-size:.62rem">${te.map(([k,v])=>`${k}:${v}`).join(' · ')||'—'}</div><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--border)" stroke-width="2.5"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--info)" stroke-width="2.5" stroke-dasharray="${s.total>0?100:0} 100" stroke-dashoffset="25" stroke-linecap="round"/><text x="18" y="21" text-anchor="middle" fill="var(--text)" font-size="8" font-weight="700">${s.types}</text></svg></div>
+      <div class="stat-card" style="--accent-c:var(--warn)"><div class="stat-top"><div class="stat-icon" style="background:rgba(245,166,35,.15);color:var(--warn)">💾</div></div><div class="stat-number">${s.total_size}</div><div class="stat-label">Storage Used</div><div class="stat-footer" style="color:var(--warn)">● ${s.total} files</div><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--border)" stroke-width="2.5"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-dasharray="60 100" stroke-dashoffset="25" stroke-linecap="round"/></svg></div>
+      <div class="stat-card" style="--accent-c:var(--purple)"><div class="stat-top"><div class="stat-icon" style="background:rgba(169,119,245,.15);color:var(--purple)">🤖</div></div><div class="stat-number">${s.total}</div><div class="stat-label">AI Data Points</div><div class="stat-footer" style="color:var(--purple);font-size:.6rem">${te.map(([k,v])=>`${k}: ${v}`).join(' · ')||'No data'}</div><svg class="spark" width="80" height="24" viewBox="0 0 80 24"><polyline points="0,20 15,16 30,18 45,10 60,12 80,6" fill="none" stroke="var(--purple)" stroke-width="1.5" opacity=".6"/></svg></div>`;
 
-// ===== DASHBOARD =====
-async function loadDashboard() {
-  try {
-    const r=await fetch('/stats'); const s=await r.json();
-    const typeEntries=Object.entries(s.type_counts||{});
-    const totalTypes=typeEntries.length;
-    const donutSegments=typeEntries.map(([k,v],i)=>`${k} ${Math.round(v/s.total*100)}%`).join(', ')||'N/A';
-
-    document.getElementById('dash-stats').innerHTML=`
-      <div class="widget">
-        <div class="wg-head"><div class="wg-icon" style="background:var(--accent-glow);color:var(--accent)">📄</div></div>
-        <div class="wg-num">${s.total}</div><div class="wg-label">Total Documents</div>
-        <div class="wg-trend" style="color:var(--accent)">↑ Active</div>
-        <svg class="sparkline" width="80" height="24" viewBox="0 0 80 24"><polyline points="0,18 10,14 20,16 30,8 40,12 50,4 60,6 70,2 80,4" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity=".6"/></svg>
-      </div>
-      <div class="widget">
-        <div class="wg-head"><div class="wg-icon" style="background:rgba(75,139,255,.15);color:var(--info)">📂</div></div>
-        <div class="wg-num">${s.types}</div><div class="wg-label">Document Types</div>
-        <div class="wg-trend" style="color:var(--text-dim);font-size:.62rem">${donutSegments}</div>
-        <svg class="wg-radial" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--border)" stroke-width="2.5"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--info)" stroke-width="2.5" stroke-dasharray="${s.total>0?100:0} 100" stroke-dashoffset="25" stroke-linecap="round"/><text x="18" y="21" text-anchor="middle" fill="var(--text)" font-size="9" font-weight="700">${s.types}</text></svg>
-      </div>
-      <div class="widget">
-        <div class="wg-head"><div class="wg-icon" style="background:rgba(245,166,35,.15);color:var(--warn)">💾</div></div>
-        <div class="wg-num">${s.total_size}</div><div class="wg-label">Storage Used</div>
-        <div class="wg-trend" style="color:var(--warn)">● ${s.total} files</div>
-        <svg class="wg-radial" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--border)" stroke-width="2.5"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-dasharray="60 100" stroke-dashoffset="25" stroke-linecap="round"/><text x="18" y="21" text-anchor="middle" fill="var(--text)" font-size="8" font-weight="700">🟡</text></svg>
-      </div>
-      <div class="widget">
-        <div class="wg-head"><div class="wg-icon" style="background:rgba(169,119,245,.15);color:var(--purple)">🤖</div></div>
-        <div class="wg-num">${s.total}</div><div class="wg-label">AI Data Points Extracted</div>
-        <div class="wg-trend" style="color:var(--purple);font-size:.6rem">${typeEntries.map(([k,v])=>`${k}: ${v}`).join(' · ')||'No data'}</div>
-        <svg class="sparkline" width="80" height="24" viewBox="0 0 80 24"><polyline points="0,20 15,16 30,18 45,10 60,12 80,6" fill="none" stroke="var(--purple)" stroke-width="1.5" opacity=".6"/></svg>
-      </div>`;
-
-    const r2=await fetch('/history'); const docs=await r2.json();
-    const recent=document.getElementById('dash-recent');
-    if(!docs.length) recent.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim);font-size:.8rem">No scans yet — start by scanning a document</div>';
-    else recent.innerHTML=docs.slice(0,6).map(d=>`
+    const r2=await fetch('/history');const docs=await r2.json();
+    const rg=document.getElementById('recent-grid');
+    document.getElementById('gallery-count').textContent=docs.length;
+    if(!docs.length) rg.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-3);font-size:.8rem">No scans yet</div>';
+    else rg.innerHTML=docs.slice(0,6).map(d=>`
       <div class="doc-card" onclick="openPreview('${d.path}')">
-        <div class="thumb-wrap" style="position:relative;overflow:hidden;aspect-ratio:3/4">
-          <img class="thumb" src="${d.image_url}" loading="lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.4\\'>📄</div>'">
-          <div class="doc-overlay">
-            <button onclick="event.stopPropagation();window.open('${d.image_url}','_blank')" title="Download">⬇</button>
-            <button onclick="event.stopPropagation();openPreview('${d.path}')" title="Preview">👁</button>
-            <button onclick="event.stopPropagation();deleteDoc('${d.path}')" title="Delete">🗑</button>
-          </div>
+        <img class="doc-thumb" src="${d.image_url}" loading="lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--surface-2)\\'>📄</div>'">
+        <div class="doc-overlay">
+          <button onclick="event.stopPropagation();window.open('${d.image_url}','_blank')" title="Download">⬇</button>
+          <button onclick="event.stopPropagation();openPreview('${d.path}')" title="Preview">👁</button>
+          <button onclick="event.stopPropagation();deleteDoc('${d.path}')" title="Delete">🗑</button>
         </div>
-        <div class="doc-meta"><div class="dn">${d.name}</div><div class="ds">${d.folder} · ${d.size}</div></div>
+        <div class="doc-meta"><div class="doc-name">${d.name}</div><div class="doc-sub"><span>${d.folder}</span><span>${d.size}</span></div></div>
       </div>`).join('');
-  } catch(e){toast('Dashboard error','error')}
+  }catch(e){toast('Dashboard error','err')}
 }
 
-// ===== ACTIVITY FEED =====
-async function loadActivity() {
-  try {
-    const r=await fetch('/activity'); const entries=await r.json();
-    const feed=document.getElementById('feed-body');
-    if(!entries.length) feed.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:.75rem">No recent activity</div>';
+async function loadActivity(){
+  try{
+    const r=await fetch('/activity');const entries=await r.json();
+    const feed=document.getElementById('feed-list');
+    if(!entries.length) feed.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-3);font-size:.75rem">No activity</div>';
     else feed.innerHTML=entries.map(e=>`
       <div class="feed-item">
-        <span class="fdot" style="background:${e.action==='Scanned'?'var(--accent)':'var(--info)'}"></span>
-        <span class="fa"><strong>${e.action}</strong> ${e.file} <span style="color:var(--text-dim)">→ ${e.folder}</span></span>
-        <span class="ft">${e.time}</span>
+        <span class="feed-dot" style="background:${e.action==='Scanned'?'var(--accent)':'var(--info)'}"></span>
+        <div class="feed-text"><strong>${e.action}</strong> ${e.file}<div class="feed-sub">→ ${e.folder}</div></div>
+        <span class="feed-time">${e.time}</span>
       </div>`).join('');
-  } catch(e){}
+  }catch(e){}
 }
 
-// ===== SCANNER FUNCTIONS (kept from previous) =====
+/* ---- SCANNER ---- */
 document.querySelectorAll('.effect-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
+  b.addEventListener('click',function(){
     document.querySelectorAll('.effect-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active'); state.selectedEffect=b.dataset.effect;
-    if(state.capturedBlob) updatePreview();
+    this.classList.add('active');state.selectedEffect=this.dataset.effect;
+    if(state.capturedBlob)updatePreview();
   });
 });
-document.getElementById('btn-open-camera').addEventListener('click',async()=>{
-  try{
-    state.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+document.getElementById('btn-open-cam').addEventListener('click',async e=>{
+  e.stopPropagation();
+  try{state.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
     document.getElementById('video').srcObject=state.stream;
-    document.getElementById('camera-view').style.display='flex';
-    document.getElementById('placeholder').style.display='none';
-  }catch(e){toast('Camera: '+e.message,'error')}
+    document.getElementById('cam-view').style.display='flex';
+    document.getElementById('dz-placeholder').style.display='none';
+  }catch(e){toast('Camera: '+e.message,'err')}
 });
-document.getElementById('btn-close-camera').addEventListener('click',()=>{
-  if(state.stream){state.stream.getTracks().forEach(t=>t.stop());state.stream=null}
-  document.getElementById('camera-view').style.display='none';
-  document.getElementById('placeholder').style.display='';
+document.getElementById('btn-close-cam').addEventListener('click',e=>{
+  e.stopPropagation();if(state.stream){state.stream.getTracks().forEach(t=>t.stop());state.stream=null}
+  document.getElementById('cam-view').style.display='none';document.getElementById('dz-placeholder').style.display='';
 });
-document.getElementById('btn-capture').addEventListener('click',()=>{
+document.getElementById('btn-capture').addEventListener('click',e=>{
+  e.stopPropagation();
   const v=document.getElementById('video'),c=document.getElementById('canvas');
   c.width=v.videoWidth||1280;c.height=v.videoHeight||720;
   c.getContext('2d').drawImage(v,0,0,c.width,c.height);
   c.toBlob(b=>{state.capturedBlob=b;if(state.stream){state.stream.getTracks().forEach(t=>t.stop());state.stream=null}
-    document.getElementById('camera-view').style.display='none';
-    const url=URL.createObjectURL(b);
-    document.getElementById('preview-img').src=url;
-    document.getElementById('scanner-preview').style.display='block';
-    document.getElementById('placeholder').style.display='none';
+    document.getElementById('cam-view').style.display='none';
+    document.getElementById('preview-img').src=URL.createObjectURL(b);
+    document.getElementById('scan-preview').style.display='block';
+    document.getElementById('dz-placeholder').style.display='none';
     document.getElementById('btn-process').disabled=false;
   },'image/jpeg',.95);
 });
-const dropArea=document.getElementById('drop-area');
-const fileInput=document.getElementById('file-input');
-dropArea.addEventListener('click',()=>fileInput.click());
-dropArea.addEventListener('dragover',e=>{e.preventDefault();dropArea.classList.add('dragover')});
-dropArea.addEventListener('dragleave',()=>dropArea.classList.remove('dragover'));
-dropArea.addEventListener('drop',e=>{e.preventDefault();dropArea.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))handleScanFile(f);else toast('Drop an image','error')});
-fileInput.addEventListener('change',e=>{if(e.target.files[0])handleScanFile(e.target.files[0])});
-function handleScanFile(file){
-  state.capturedBlob=file;
-  document.getElementById('preview-img').src=URL.createObjectURL(file);
-  document.getElementById('scanner-preview').style.display='block';
-  document.getElementById('placeholder').style.display='none';
+const dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');
+dz.addEventListener('click',e=>{if(document.getElementById('dz-placeholder').style.display!=='none'&&document.getElementById('cam-view').style.display!=='flex')fi.click()});
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))handleFile(f);else toast('Drop an image','err')});
+fi.addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0])});
+function handleFile(f){
+  state.capturedBlob=f;
+  document.getElementById('preview-img').src=URL.createObjectURL(f);
+  document.getElementById('scan-preview').style.display='block';
+  document.getElementById('dz-placeholder').style.display='none';
   document.getElementById('btn-process').disabled=false;
 }
 async function updatePreview(){
@@ -737,182 +875,225 @@ async function updatePreview(){
   fd.append('effect',state.selectedEffect);
   fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on'));
   fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on'));
-  try{const r=await fetch('/effects/preview',{method:'POST',body:fd});document.getElementById('preview-img').src=URL.createObjectURL(await r.blob())}catch(e){}
+  try{const r=await fetch('/effects/preview',{method:'POST',body:fd});if(r.ok)document.getElementById('preview-img').src=URL.createObjectURL(await r.blob())}catch(e){}
 }
 document.getElementById('btn-process').addEventListener('click',async()=>{
   if(!state.capturedBlob)return;
   document.getElementById('loader').classList.add('show');
-  document.getElementById('results-panel').style.display='none';
+  document.getElementById('result-panel').style.display='none';
   const fd=new FormData();fd.append('image',state.capturedBlob,'scan.jpg');
   fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on'));
   fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on'));
   fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on'));
   fd.append('effect',state.selectedEffect);
+  fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on'));
   try{
     const r=await fetch('/scan/advanced',{method:'POST',body:fd});const data=await r.json();
     document.getElementById('loader').classList.remove('show');
-    if(data.error){toast(data.error,'error');return}
-    state.currentResult=data;showResults(data);toast('Scan complete!','success');
-  }catch(e){document.getElementById('loader').classList.remove('show');toast('Error: '+e.message,'error')}
+    if(data.error){toast(data.error,'err');return}
+    state.currentResult=data;showResults(data);toast('Scan complete!');
+  }catch(e){document.getElementById('loader').classList.remove('show');toast('Error: '+e.message,'err')}
 });
 function showResults(r){
-  document.getElementById('results-panel').style.display='block';
-  document.getElementById('scanner-layout').classList.add('full');
-  const type=r.classification.type.charAt(0).toUpperCase()+r.classification.type.slice(1);
-  document.getElementById('result-title').textContent=type;
-  const badge=document.getElementById('result-badge');badge.style.display='';
-  badge.className=`badge ${r.quality.quality_pass?'badge-green':'badge-red'}`;
-  badge.textContent=r.quality.quality_pass?'✅ PASS':'❌ FAIL';
-  const strip=document.getElementById('result-strip');
-  let shtml='';
-  if(r.original_url)shtml+=`<div class="img-box"><img src="${r.original_url}"><span class="lbl">Original</span></div>`;
-  if(r.image_url)shtml+=`<div class="img-box"><img src="${r.image_url}"><span class="lbl">Scanned</span></div>`;
-  strip.innerHTML=shtml;
+  document.getElementById('result-panel').style.display='block';
+  document.getElementById('scanner-grid').classList.add('full');
+  const t=r.classification.type.charAt(0).toUpperCase()+r.classification.type.slice(1);
+  document.getElementById('result-title').textContent=t;
+  const b=document.getElementById('result-badge');b.style.display='';
+  b.className=`badge ${r.quality.quality_pass?'badge-green':'badge-red'}`;
+  b.textContent=r.quality.quality_pass?'PASS':'FAIL';
+  const cp=document.getElementById('result-compare');
+  let h='';
+  if(r.original_url)h+=`<div class="img-box"><img src="${r.original_url}"><span class="img-label">Original</span></div>`;
+  if(r.image_url)h+=`<div class="img-box"><img src="${r.image_url}"><span class="img-label">Enhanced</span></div>`;
+  cp.innerHTML=h;
   const conf=(r.classification.confidence*100).toFixed(0);
   document.getElementById('result-grid').innerHTML=`
-    <div class="widget" style="padding:12px"><div style="color:var(--accent);font-size:1.1rem;font-weight:700">${type}</div><div class="wg-label">Type</div></div>
-    <div class="widget" style="padding:12px"><div style="font-size:1.1rem;font-weight:700">${conf}%</div><div class="wg-label">Confidence</div></div>
-    <div class="widget" style="padding:12px"><div style="font-size:1.1rem;font-weight:700">${r.dimensions||'--'}</div><div class="wg-label">Dimensions</div></div>
-    <div class="widget" style="padding:12px"><div style="font-size:1.1rem;font-weight:700">${r.file_size||'--'}</div><div class="wg-label">File Size</div></div>
-    <div class="widget" style="padding:12px"><div style="font-size:1.1rem;font-weight:700">${r.ocr_length}</div><div class="wg-label">Text Length</div></div>
-    <div class="widget" style="padding:12px"><div style="font-size:1.1rem;font-weight:700;color:${r.quality.quality_pass?'var(--accent)':'var(--danger)'}">${r.quality.quality_pass?'✅':'❌'}</div><div class="wg-label">Quality</div></div>`;
+    <div class="stat-card" style="padding:12px"><div style="color:var(--accent);font-size:1.1rem;font-weight:700">${t}</div><div class="stat-label">Type</div></div>
+    <div class="stat-card" style="padding:12px"><div style="font-size:1.1rem;font-weight:700">${conf}%</div><div class="stat-label">Confidence</div></div>
+    <div class="stat-card" style="padding:12px"><div style="font-size:1.1rem;font-weight:700">${r.dimensions||'--'}</div><div class="stat-label">Dimensions</div></div>
+    <div class="stat-card" style="padding:12px"><div style="font-size:1.1rem;font-weight:700">${r.file_size||'--'}</div><div class="stat-label">Size</div></div>
+    <div class="stat-card" style="padding:12px"><div style="font-size:1.1rem;font-weight:700">${r.ocr_length}</div><div class="stat-label">Text Len</div></div>
+    <div class="stat-card" style="padding:12px"><div style="font-size:1.1rem;font-weight:700;color:${r.quality.quality_pass?'var(--accent)':'var(--danger)'}">${r.quality.quality_pass?'✅':'❌'}</div><div class="stat-label">Quality</div></div>`;
   const det=document.getElementById('result-details');
-  let dhtml='<div class="ctrl-group" style="margin-top:6px"><h4>📄 Details</h4>';
-  dhtml+=`<div class="toggle-row"><span class="lbl">Filename</span><span style="font-size:.75rem;color:var(--text-sec)">${r.filename}</span></div>`;
-  dhtml+=`<div class="toggle-row"><span class="lbl">Brightness</span><span style="font-size:.75rem;color:var(--text-sec)">${r.quality.brightness}</span></div>`;
-  dhtml+=`<div class="toggle-row"><span class="lbl">Lighting</span><span style="font-size:.75rem;color:var(--text-sec)">${r.quality.good_lighting?'✅ Good':'❌ Poor'}</span></div>`;
-  dhtml+=`<div class="toggle-row"><span class="lbl">Blur</span><span style="font-size:.75rem;color:var(--text-sec)">${r.quality.blur_score}</span></div>`;
-  dhtml+=`<div class="toggle-row"><span class="lbl">OCR Conf</span><span style="font-size:.75rem;color:var(--text-sec)">${(r.ocr.confidence*100).toFixed(0)}%</span></div>`;
-  const ext=r.classification.extracted_data||{};
-  if(Object.keys(ext).length) for(const[k,v]of Object.entries(ext)) dhtml+=`<div class="toggle-row"><span class="lbl">${k}</span><span style="font-size:.75rem;color:var(--text-sec)">${v}</span></div>`;
-  dhtml+='</div>';det.innerHTML=dhtml;
-  const ocrDiv=document.getElementById('result-ocr');
-  if(r.ocr.text) ocrDiv.innerHTML=`<div class="ctrl-group"><h4>📝 OCR Text</h4><div style="background:var(--surface);padding:10px;border-radius:6px;font-size:.76rem;line-height:1.5;max-height:150px;overflow-y:auto;white-space:pre-wrap;color:var(--text-sec);font-family:monospace;margin-top:4px">${escHtml(r.ocr.text)}</div></div>`;
-  else ocrDiv.innerHTML='';
-  const qrDiv=document.getElementById('result-qr');
-  if(r.qr_codes&&r.qr_codes.length) qrDiv.innerHTML=`<div class="ctrl-group"><h4>📱 QR / Barcodes</h4>${r.qr_codes.map(q=>`<div style="background:var(--surface);padding:6px 10px;border-radius:5px;margin-top:3px;font-size:.74rem;word-break:break-all"><strong>${q.type}:</strong> ${q.data}</div>`).join('')}</div>`;
-  else qrDiv.innerHTML='';
-  document.getElementById('btn-download-result').onclick=()=>window.open(r.image_url,'_blank');
+  let dh='<div class="ctrl-group" style="margin-top:6px"><h4>📄 Details</h4>';
+  dh+=`<div class="toggle-row"><span>Filename</span><span style="font-size:.74rem;color:var(--text-3)">${r.filename}</span></div>`;
+  dh+=`<div class="toggle-row"><span>Brightness</span><span style="font-size:.74rem;color:var(--text-3)">${r.quality.brightness}</span></div>`;
+  dh+=`<div class="toggle-row"><span>Lighting</span><span style="font-size:.74rem;color:var(--text-3)">${r.quality.good_lighting?'✅ Good':'❌ Poor'}</span></div>`;
+  dh+=`<div class="toggle-row"><span>Blur Score</span><span style="font-size:.74rem;color:var(--text-3)">${r.quality.blur_score}</span></div>`;
+  dh+=`<div class="toggle-row"><span>OCR Conf</span><span style="font-size:.74rem;color:var(--text-3)">${(r.ocr.confidence*100).toFixed(0)}%</span></div>`;
+  const ex=r.classification.extracted_data||{};
+  if(Object.keys(ex).length) for(const[k,v]of Object.entries(ex)) dh+=`<div class="toggle-row"><span>${k}</span><span style="font-size:.74rem;color:var(--text-3)">${v}</span></div>`;
+  dh+='</div>';det.innerHTML=dh;
+  const od=document.getElementById('result-ocr');
+  if(r.ocr.text) od.innerHTML=`<div class="ctrl-group"><h4>?? OCR Text</h4><div style="background:var(--surface-2);padding:10px;border-radius:6px;font-size:.75rem;line-height:1.5;max-height:150px;overflow-y:auto;white-space:pre-wrap;color:var(--text-2);font-family:monospace;margin-top:4px">${esc(r.ocr.text)}</div></div>`;
+  else od.innerHTML='';
+  const qd=document.getElementById('result-qr');
+  if(r.qr_codes&&r.qr_codes.length) qd.innerHTML=`<div class="ctrl-group"><h4>?? QR</h4>${r.qr_codes.map(q=>`<div style="background:var(--surface-2);padding:6px 10px;border-radius:5px;margin-top:3px;font-size:.73rem;word-break:break-all"><strong>${q.type}:</strong> ${q.data}</div>`).join('')}</div>`;
+  else qd.innerHTML='';
+  document.getElementById('btn-dl').onclick=()=>window.open(r.image_url,'_blank');
+  const cb=document.getElementById('btn-cloud');
+  if(r.saved_path){cb.style.display='';cb.dataset.path=r.saved_path.split('documents\\').pop()||r.saved_path.split('documents/').pop()}else cb.style.display='none';
+}
+function cloudUploadFromResult(){
+  const cb=document.getElementById('btn-cloud');
+  const path=cb.dataset.path;
+  if(!path){toast('No saved path','err');return}
+  const prov=prompt('Enter provider (google_drive, dropbox, onedrive, or all):')||'all';
+  if(prov==='all'){cloudUpload(path,'google_drive');cloudUpload(path,'dropbox');cloudUpload(path,'onedrive')}
+  else cloudUpload(path,prov);
 }
 function resetScanner(){
-  document.getElementById('results-panel').style.display='none';
-  document.getElementById('scanner-layout').classList.remove('full');
-  document.getElementById('scanner-preview').style.display='none';
-  document.getElementById('placeholder').style.display='';
+  document.getElementById('result-panel').style.display='none';
+  document.getElementById('scanner-grid').classList.remove('full');
+  document.getElementById('scan-preview').style.display='none';
+  document.getElementById('dz-placeholder').style.display='';
   state.capturedBlob=null;state.currentResult=null;
-  fileInput.value='';document.getElementById('btn-process').disabled=true;
+  fi.value='';document.getElementById('btn-process').disabled=true;
 }
 
-// ===== GALLERY FUNCTIONS (kept) =====
+/* ---- GALLERY ---- */
 async function loadGallery(){
-  try{const r=await fetch('/history');state.galleryDocs=await r.json();
-  document.getElementById('gallery-badge').style.display=state.galleryDocs.length?'block':'none';renderGallery()}catch(e){toast('Gallery error','error')}
+  try{const r=await fetch('/history');state.galleryDocs=await r.json();document.getElementById('gallery-count').textContent=state.galleryDocs.length;renderGallery()}catch(e){toast('Gallery error','err')}
 }
 function renderGallery(){
   const c=document.getElementById('gallery-container');
   let docs=state.galleryDocs;
   if(state.filter!=='all')docs=docs.filter(d=>d.folder===state.filter);
-  if(!docs.length){c.innerHTML='<div class="empty-state" style="text-align:center;padding:60px;color:var(--text-dim)"><div style="font-size:48px;margin-bottom:8px;opacity:.4">📂</div><p>No documents</p></div>';document.getElementById('btn-merge-pdf').style.display='none';return}
-  document.getElementById('btn-merge-pdf').style.display=state.selectedDocs.length?'inline-flex':'none';
-  document.getElementById('merge-count').textContent=state.selectedDocs.length;
-  if(state.galleryMode==='grid'){
-    c.innerHTML=`<div class="gallery-grid">${docs.map(d=>{const sel=state.selectedDocs.includes(d.path);
-      return `<div class="doc-card ${sel?'selected':''}" onclick="toggleDoc('${d.path}')" style="${sel?'border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)':''}">
-        <div class="thumb-wrap" style="position:relative;overflow:hidden;aspect-ratio:3/4">
-          <img class="thumb" src="${d.image_url}" loading="lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.4\\'>📄</div>'">
-          <div class="doc-overlay">
-            <button onclick="event.stopPropagation();window.open('${d.image_url}','_blank')" title="Download">⬇</button>
-            <button onclick="event.stopPropagation();openPreview('${d.path}')" title="Preview">👁</button>
-            <button onclick="event.stopPropagation();deleteDoc('${d.path}')" title="Delete">🗑</button>
-          </div>
-        </div>
-        <div class="doc-meta"><div class="dn">${d.name}</div><div class="ds">${d.folder} · ${d.size}</div></div>
-      </div>`}).join('')}</div>`;
-  } else {
-    c.innerHTML=`<div class="gallery-list">${docs.map(d=>{const sel=state.selectedDocs.includes(d.path);
-      return `<div class="list-item ${sel?'selected':''}" onclick="toggleDoc('${d.path}')">
-        <img class="thumb" src="${d.image_url}" onerror="this.style.display='none'">
-        <div class="info"><div class="name">${d.name}</div><div class="sub">${d.folder} · ${d.date}</div></div>
-        <div class="meta"><div class="sz">${d.size}</div>
-          <div style="display:flex;gap:4px;margin-top:4px">
-            <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openPreview('${d.path}')">Open</button>
-            <button class="btn btn-xs btn-ghost" style="color:var(--danger)" onclick="event.stopPropagation();deleteDoc('${d.path}')">Del</button>
-          </div>
-        </div>
-      </div>`}).join('')}</div>`;
-  }
+  if(!docs.length){c.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-3)"><div style="font-size:48px;margin-bottom:8px;opacity:.4">📂</div><p>No documents</p></div>';document.getElementById('btn-merge').style.display='none';return}
+  document.getElementById('btn-merge').style.display=state.selectedDocs.length?'inline-flex':'none';
+  document.getElementById('merge-n').textContent=state.selectedDocs.length;
+  c.innerHTML=`<div class="doc-grid">${docs.map(d=>{const s=state.selectedDocs.includes(d.path);return`
+    <div class="doc-card ${s?'selected':''}" onclick="toggleDoc('${d.path}')">
+      <img class="doc-thumb" src="${d.image_url}" loading="lazy" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--surface-2)\\'>📄</div>'">
+      <div class="doc-overlay">
+        <button onclick="event.stopPropagation();window.open('${d.image_url}','_blank')" title="Download">⬇</button>
+        <button onclick="event.stopPropagation();openPreview('${d.path}')" title="Preview">👁</button>
+        <button onclick="event.stopPropagation();deleteDoc('${d.path}')" title="Delete">🗑</button>
+      </div>
+      <div class="doc-meta"><div class="doc-name">${d.name}</div><div class="doc-sub"><span>${d.folder}</span><span>${d.size}</span></div></div>
+    </div>`}).join('')}</div>`;
 }
 document.querySelectorAll('#filter-group button').forEach(b=>{
-  b.addEventListener('click',()=>{
+  b.addEventListener('click',function(){
     document.querySelectorAll('#filter-group button').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');state.filter=b.dataset.filter;renderGallery();
+    this.classList.add('active');state.filter=this.dataset.filter;renderGallery();
   });
 });
-function setGalleryMode(mode){state.galleryMode=mode;document.querySelectorAll('.view-toggle button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));renderGallery()}
-function toggleDoc(path){const i=state.selectedDocs.indexOf(path);if(i>-1)state.selectedDocs.splice(i,1);else state.selectedDocs.push(path);renderGallery()}
-function openPreview(path){
-  const doc=state.galleryDocs.find(d=>d.path===path);
-  if(!doc)return;
-  document.getElementById('modal-title').textContent=doc.name;
+function toggleDoc(p){const i=state.selectedDocs.indexOf(p);if(i>-1)state.selectedDocs.splice(i,1);else state.selectedDocs.push(p);renderGallery()}
+
+function openPreview(p){
+  const d=state.galleryDocs.find(x=>x.path===p);if(!d)return;
+  document.getElementById('modal-title').textContent=d.name;
   document.getElementById('modal-body').innerHTML=`
-    <img class="viewer-img" src="${doc.image_url}" alt="${doc.name}">
+    <img class="viewer-img" src="${d.image_url}" alt="${d.name}">
     <div class="ctrl-group" style="margin-top:14px"><h4>📄 Details</h4>
-      <div class="toggle-row"><span class="lbl">Filename</span><span style="font-size:.75rem;color:var(--text-sec)">${doc.name}</span></div>
-      <div class="toggle-row"><span class="lbl">Folder</span><span style="font-size:.75rem;color:var(--text-sec)">${doc.folder}</span></div>
-      <div class="toggle-row"><span class="lbl">Size</span><span style="font-size:.75rem;color:var(--text-sec)">${doc.size}</span></div>
-      <div class="toggle-row"><span class="lbl">Date</span><span style="font-size:.75rem;color:var(--text-sec)">${doc.date}</span></div>
+      <div class="toggle-row"><span>Filename</span><span style="font-size:.74rem;color:var(--text-3)">${d.name}</span></div>
+      <div class="toggle-row"><span>Folder</span><span style="font-size:.74rem;color:var(--text-3)">${d.folder}</span></div>
+      <div class="toggle-row"><span>Size</span><span style="font-size:.74rem;color:var(--text-3)">${d.size}</span></div>
+      <div class="toggle-row"><span>Date</span><span style="font-size:.74rem;color:var(--text-3)">${d.date}</span></div>
+    </div>
+    <div style="margin-top:10px" class="ctrl-group"><h4>✏️ Rename</h4>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input type="text" id="rn-input" value="${d.name}">
+        <button class="btn btn-primary btn-sm" onclick="renameDoc('${d.path}')">Save</button>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="window.open('${doc.image_url}','_blank')">⬇ Download</button>
-      <button class="btn btn-danger" onclick="deleteDoc('${doc.path}');closeModal()">🗑 Delete</button>
+      <button class="btn btn-primary" onclick="window.open('${d.image_url}','_blank')">⬇ Download</button>
+      <button class="btn btn-outline" onclick="navigator.clipboard.writeText(window.location.origin+'${d.image_url}');toast('Link copied!')">🔗 Share</button>
+      <button class="btn btn-outline" onclick="cloudUpload('${d.path}','google_drive')">☁ Drive</button>
+      <button class="btn btn-outline" onclick="cloudUpload('${d.path}','dropbox')">☁ Dropbox</button>
+      <button class="btn btn-outline" onclick="cloudUpload('${d.path}','onedrive')">☁ OneDrive</button>
+      <button class="btn btn-danger" onclick="deleteDoc('${d.path}');closeModal()">🗑 Delete</button>
       <button class="btn btn-outline" onclick="closeModal()">Close</button>
     </div>`;
   document.getElementById('modal').classList.add('show');
 }
 function closeModal(){document.getElementById('modal').classList.remove('show')}
-async function deleteDoc(path){
-  if(!confirm('Delete this document?'))return;
-  try{const r=await fetch(`/documents/${path}`,{method:'DELETE'});const d=await r.json();
-    if(d.deleted){toast('Deleted');state.selectedDocs=state.selectedDocs.filter(p=>p!==path);loadGallery();loadDashboard()}
-    else toast('Delete failed','error')
-  }catch(e){toast('Error deleting','error')}
+async function renameDoc(p){
+  const n=document.getElementById('rn-input').value.trim();
+  if(!n){toast('Enter a name','warn');return}
+  try{const r=await fetch(`/documents/${p}/rename`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});const d=await r.json();if(d.renamed){toast('Renamed!');closeModal();loadGallery();loadDashboard()}else toast('Rename failed','err')}catch(e){toast('Error','err')}
 }
-async function mergeToPdf(){
-  if(!state.selectedDocs.length){toast('Select documents first','warn');return}
-  document.getElementById('loader').classList.add('show');
-  try{
-    const r=await fetch('/pdf/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:state.selectedDocs})});
-    const d=await r.json();document.getElementById('loader').classList.remove('show');
-    if(d.error){toast(d.error,'error');return}
-    toast(`PDF: ${d.name}`,'success');window.open(d.url,'_blank');
-    state.selectedDocs=[];loadGallery();
-  }catch(e){document.getElementById('loader').classList.remove('show');toast('PDF merge failed','error')}
+async function deleteDoc(p){
+  if(!confirm('Delete this document?'))return;
+  try{const r=await fetch(`/documents/${p}`,{method:'DELETE'});const d=await r.json();if(d.deleted){toast('Deleted');state.selectedDocs=state.selectedDocs.filter(x=>x!==p);loadGallery();loadDashboard()}else toast('Delete failed','err')}catch(e){toast('Error','err')}
 }
 
-// ===== SEARCH =====
+/* ---- PDF MERGE ---- */
+async function mergeToPdf(){
+  if(!state.selectedDocs.length){if(document.getElementById('view-gallery').classList.contains('active'))toast('Select documents first','warn');return}
+  document.getElementById('loader').classList.add('show');
+  try{const r=await fetch('/pdf/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:state.selectedDocs})});const d=await r.json();document.getElementById('loader').classList.remove('show');if(d.error){toast(d.error,'err');return}toast(`PDF: ${d.name}`);window.open(d.url,'_blank');state.selectedDocs=[];loadGallery()}catch(e){document.getElementById('loader').classList.remove('show');toast('PDF merge failed','err')}
+}
+
+/* ---- SEARCH ---- */
 async function doSearch(){
   const q=document.getElementById('search-input').value.trim();
   if(!q)return;
-  try{
-    const r=await fetch(`/search?q=${encodeURIComponent(q)}`);const docs=await r.json();
-    switchView('gallery');state.galleryDocs=docs;state.filter='all';
-    document.querySelectorAll('#filter-group button').forEach(b=>b.classList.toggle('active',b.dataset.filter==='all'));
-    renderGallery();toast(`Found ${docs.length} result${docs.length!==1?'s':''}`);
-  }catch(e){toast('Search failed','error')}
+  try{const r=await fetch(`/search?q=${encodeURIComponent(q)}`);const docs=await r.json();switchView('gallery');state.galleryDocs=docs;state.filter='all';document.querySelectorAll('#filter-group button').forEach(b=>b.classList.toggle('active',b.dataset.filter==='all'));renderGallery();toast(`Found ${docs.length} result${docs.length!==1?'s':''}`)}catch(e){toast('Search failed','err')}
 }
 
-// ===== SETTINGS =====
+.cloud-badge{font-size:.68rem;padding:2px 8px;border-radius:10px;font-weight:600}
+.cloud-badge.ok{background:rgba(76,201,130,.15);color:var(--accent)}
+.cloud-badge.no{background:rgba(255,99,99,.12);color:var(--danger)}
+/* ---- SETTINGS ---- */
 async function loadSettings(){
-  try{const r=await fetch('/stats');const s=await r.json();
-    document.getElementById('set-count').textContent=s.total+' documents';
-    document.getElementById('set-size').textContent=s.total_size;
+  try{const r=await fetch('/stats');const s=await r.json();document.getElementById('set-count').textContent=s.total+' documents';document.getElementById('set-size').textContent=s.total_size}catch(e){}
+  loadCloudStatus();
+}
+async function loadCloudStatus(){
+  try{
+    const r=await fetch('/cloud/status');const d=await r.json();
+    const list=document.getElementById('cloud-status-list');
+    const labels={google_drive:'Google Drive',dropbox:'Dropbox',onedrive:'OneDrive'};
+    const icons={google_drive:'??',dropbox:'??',onedrive:'??'};
+    list.innerHTML=Object.entries(d.providers).map(([k,v])=>{
+      const ok=v.connected?'connected':'';
+      return `<div class="toggle-row"><span>${icons[k]} ${labels[k]}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${v.connected
+            ?`<span class="cloud-badge ok">Connected</span><button class="btn btn-outline btn-sm" onclick="cloudDisconnect('${k}')">Disconnect</button>`
+            :v.configured
+              ?`<span class="cloud-badge no">Not connected</span><button class="btn btn-primary btn-sm" onclick="cloudAuth('${k}')">Connect</button>`
+              :`<span class="cloud-badge no" title="Add API keys in .env file">Not configured</span>`}
+        </div></div>`;
+    }).join('');
   }catch(e){}
 }
+async function cloudAuth(provider){
+  try{
+    const r=await fetch(`/cloud/auth/${provider}`);const d=await r.json();
+    if(d.error){toast(d.error,'err');return}
+    if(d.auth_url){
+      const w=window.open(d.auth_url,'_blank','width=600,height=700');
+      const code=prompt(`Authorized? Paste the code from the redirect URL (after ?code=):`);
+      if(code){
+        const r2=await fetch(`/cloud/callback/${provider}?code=${encodeURIComponent(code)}`);
+        const d2=await r2.json();
+        if(d2.error)toast(d2.error,'err');else{toast('Connected!');loadCloudStatus()}
+      }
+    }
+  }catch(e){toast('Auth failed: '+e.message,'err')}
+}
+async function cloudDisconnect(provider){
+  try{const r=await fetch(`/cloud/disconnect/${provider}`,{method:'POST'});const d=await r.json();if(d.disconnected){toast('Disconnected');loadCloudStatus()}}catch(e){}
+}
+async function cloudUpload(path,provider){
+  try{
+    const r=await fetch(`/cloud/upload/${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({providers:[provider]})});
+    const d=await r.json();if(d.error){toast(d.error,'err');return}
+    const link=Object.values(d.results||{})[0];
+    if(link){toast('Uploaded!');if(confirm('Open in cloud?'))window.open(link,'_blank')}
+    else toast('Upload failed','err')
+  }catch(e){toast('Upload error','err')}
+}
 
-// ===== UTILS =====
-function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+/* ---- UTILS ---- */
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
-// ===== INIT =====
+/* ---- INIT ---- */
 loadDashboard();loadActivity();
 </script>
 </body>

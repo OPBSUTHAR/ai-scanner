@@ -194,6 +194,7 @@ def scan_advanced():
     shadow_removal = request.form.get("shadow_removal", "true") == "true"
     enhance = request.form.get("enhance", "true") == "true"
     effect = request.form.get("effect", "none")
+    use_google_vision = request.form.get("use_google_vision", "false") == "true"
 
     edges = scanner.edges
     enhancer = scanner.enhancer
@@ -240,7 +241,10 @@ def scan_advanced():
     shutil.copy2(str(save_path), str(orig_path))
     result["_orig_url"] = url_for("serve_image", subpath=f"orig_{ts}.{ext}")
 
+    if use_google_vision:
+        scanner.ocr.use_google_vision = True
     ocr_res = scanner.ocr.extract_text(img)
+    scanner.ocr.use_google_vision = False
     text = ocr_res.text
     conf = ocr_res.confidence
     result["ocr"] = {"text": text, "confidence": conf}
@@ -497,6 +501,87 @@ def serve_image(subpath):
     if not full_path.exists():
         return "Not found", 404
     return send_file(str(full_path), mimetype=mimetypes.guess_type(str(full_path))[0])
+
+
+# ---------------------------------------------------------------------------
+#  Cloud Sync
+# ---------------------------------------------------------------------------
+
+@app.route("/cloud/status")
+def cloud_status():
+    return jsonify({"providers": scanner.cloud.status()})
+
+
+@app.route("/cloud/auth/<provider>")
+def cloud_auth(provider):
+    redirect_uri = request.args.get("redirect_uri", request.host_url.rstrip("/") + "/cloud/callback/" + provider)
+    auth_url = None
+    if provider == "google_drive":
+        auth_url = scanner.cloud.get_google_drive_auth_url(redirect_uri)
+    elif provider == "dropbox":
+        auth_url = scanner.cloud.get_dropbox_auth_url(redirect_uri)
+    elif provider == "onedrive":
+        auth_url = scanner.cloud.get_onedrive_auth_url(redirect_uri)
+
+    if auth_url:
+        return jsonify({"auth_url": auth_url})
+    return jsonify({"error": "Provider not configured or not supported"}), 400
+
+
+@app.route("/cloud/callback/<provider>")
+def cloud_callback(provider):
+    auth_code = request.args.get("code", "")
+    if not auth_code:
+        return jsonify({"error": "No auth code"}), 400
+
+    success = False
+    if provider == "google_drive":
+        redirect_uri = request.host_url.rstrip("/") + "/cloud/callback/google_drive"
+        success = scanner.cloud.handle_google_drive_callback(auth_code, redirect_uri)
+    elif provider == "dropbox":
+        success = scanner.cloud.handle_dropbox_callback(auth_code)
+    elif provider == "onedrive":
+        success = scanner.cloud.handle_onedrive_callback(auth_code)
+
+    if success:
+        return "", 200
+    return jsonify({"error": "Auth failed"}), 400
+
+
+@app.route("/cloud/connect/<provider>", methods=["POST"])
+def cloud_connect(provider):
+    if provider == "dropbox":
+        token = (request.json or {}).get("access_token", "")
+        if token:
+            os.environ["DROPBOX_ACCESS_TOKEN"] = token
+    success = scanner.cloud.setup_dropbox() if provider == "dropbox" else False
+    if success:
+        return jsonify({"connected": True})
+    return jsonify({"error": "Connection failed"}), 400
+
+
+@app.route("/cloud/disconnect/<provider>", methods=["POST"])
+def cloud_disconnect(provider):
+    if provider == "google_drive":
+        scanner.cloud.drive_service = None
+    elif provider == "dropbox":
+        scanner.cloud.dropbox_client = None
+    elif provider == "onedrive":
+        scanner.cloud.onedrive_client = None
+        scanner.cloud.onedrive_token = None
+    return jsonify({"disconnected": True})
+
+
+@app.route("/cloud/upload/<path:subpath>", methods=["POST"])
+def cloud_upload(subpath):
+    full = DOCUMENTS_FOLDER / subpath
+    if not full.exists() or not full.is_file():
+        return jsonify({"error": "Document not found"}), 404
+
+    providers = (request.json or {}).get("providers", ["google_drive", "dropbox", "onedrive"])
+    filename = request.json.get("filename") if request.json else None
+    results = scanner.cloud.upload_to_providers(str(full), providers, filename)
+    return jsonify({"results": results})
 
 
 # ---------------------------------------------------------------------------
