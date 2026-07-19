@@ -1,0 +1,44 @@
+# Environment variables (CONTAINS SECRETS - NEVER COMMIT)
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE & editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Data directory (user data, temp files)
+data/*
+
+# Model files (can be large)
+models/
+*.pth
+*.pt
+*.h5
+*.onnx
+
+# Logs (auto-generated)
+log_file.txt
+diary_log.txt
+
+# Service account keys (JSON credentials)
+*.json
+!secrets/example.json
+
+# Virtual environment
+venv/
+.venv/
+env/

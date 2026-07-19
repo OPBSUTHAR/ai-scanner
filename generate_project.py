@@ -152,7 +152,17 @@ def generate():
     log_entry = update_log("Project structure generated successfully")
     print(f"  [LOG]  {log_entry.strip()}")
 
-    diary_entry = update_diary(
+    diary_entry =     env_path = os.path.join(BASE_DIR, ".env")
+    if not os.path.exists(env_path):
+        write_file(env_path, "# AI Scanner - Fill in your API keys here\n")
+        print(f"  [FILE] {env_path}")
+
+    gitignore_path = os.path.join(BASE_DIR, ".gitignore")
+    if not os.path.exists(gitignore_path):
+        write_file(gitignore_path, ".env\n__pycache__/\n*.pyc\n.env\n")
+        print(f"  [FILE] {gitignore_path}")
+
+    update_diary(
         "Initialized AI Scanner project.\n"
         "Created project structure with modules:\n"
         "  - Camera, Edge Detection, Enhancement, OCR,\n"
