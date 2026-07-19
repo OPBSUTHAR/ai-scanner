@@ -1,0 +1,1 @@
+# QR/Barcode detection module
