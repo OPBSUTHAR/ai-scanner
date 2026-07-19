@@ -446,6 +446,49 @@ def doc_info_route(subpath):
     return jsonify(info)
 
 
+@app.route("/activity")
+def activity():
+    entries = []
+    if DOCUMENTS_FOLDER.exists():
+        for f in sorted(DOCUMENTS_FOLDER.rglob("*"), key=os.path.getmtime, reverse=True)[:20]:
+            if f.is_file() and f.suffix.lower() in (".png", ".jpg", ".jpeg", ".pdf"):
+                mtime = datetime.fromtimestamp(os.path.getmtime(f))
+                ago = _time_ago(mtime)
+                action = "Scanned" if f.suffix.lower() != ".pdf" else "Merged into PDF"
+                entries.append({
+                    "action": action,
+                    "file": f.name,
+                    "folder": f.parent.name,
+                    "time": ago,
+                    "timestamp": mtime.strftime("%H:%M"),
+                })
+    return jsonify(entries)
+
+def _time_ago(dt):
+    diff = datetime.now() - dt
+    if diff.days > 0: return f"{diff.days}d ago"
+    if diff.seconds >= 3600: return f"{diff.seconds//3600}h ago"
+    if diff.seconds >= 60: return f"{diff.seconds//60}m ago"
+    return "Just now"
+
+@app.route("/documents/<path:subpath>/rename", methods=["POST"])
+def rename_doc(subpath):
+    data = request.json or {}
+    new_name = data.get("name", "")
+    if not new_name:
+        return jsonify({"error": "No name provided"}), 400
+    full = DOCUMENTS_FOLDER / subpath
+    if not full.exists():
+        return jsonify({"error": "Not found"}), 404
+    new_path = full.parent / new_name
+    full.rename(new_path)
+    meta_old = scanner.storage.base_dir / "metadata" / f"{full.stem}.json"
+    meta_new = scanner.storage.base_dir / "metadata" / f"{new_path.stem}.json"
+    if meta_old.exists():
+        shutil.move(str(meta_old), str(meta_new))
+    return jsonify({"renamed": True, "new_path": str(new_path)})
+
+
 @app.route("/images/<path:subpath>")
 def serve_image(subpath):
     full_path = DOCUMENTS_FOLDER / subpath
