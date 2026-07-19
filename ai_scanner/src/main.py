@@ -167,22 +167,15 @@ class AIScanner:
 
 def main():
     parser = argparse.ArgumentParser(description="AI Document Scanner")
-    parser.add_argument("--image", "-i", help="Process an image file")
-    parser.add_argument("--camera", "-c", action="store_true", help="Capture from camera")
-    parser.add_argument("--preview", "-p", action="store_true", help="Preview camera with edge detection")
+    parser.add_argument("--web", "-w", action="store_true", help="Launch web UI (access from any device)")
     args = parser.parse_args()
 
-    scanner = AIScanner()
+    if args.web:
+        from src.web_app import main as web_main
+        web_main()
+        return
 
-    if args.image:
-        scanner.process_file(args.image)
-    elif args.preview:
-        cam = CameraCapture()
-        cam.preview()
-    elif args.camera:
-        scanner.process_camera()
-    else:
-        parser.print_help()
+    parser.print_help()
 
 
 if __name__ == "__main__":

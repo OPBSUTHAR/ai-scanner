@@ -1,6 +1,7 @@
 # AI Scanner
 
 > AI-powered document scanner with edge detection, enhancement, OCR, classification, and cloud sync.
+> Access from **any device** (phone, tablet, desktop) via web browser.
 
 **Rating:** 5.0  
 **Duration:** 2–3 Months  
@@ -10,12 +11,11 @@
 
 ## Features
 
-- **Document Capture** — Auto-detects document edges, corrects perspective
+- **Document Capture** — Upload or snap from phone camera, auto-detects edges, corrects perspective
 - **Enhancement** — Auto-contrast, sharpening, shadow removal, dewarping
 - **OCR** — Extracts text via Tesseract + Google Cloud Vision
 - **Auto-Naming** — Names files based on content (e.g. `Invoice_AcmeCorp_March15.pdf`)
 - **Cloud Sync** — Auto-uploads to Google Drive, Dropbox, OneDrive
-- **Multi-Page** — Scans multiple pages into a single document
 - **QR / Barcode Detection** — Extracts information from codes
 - **Search** — Full-text search within scanned documents
 
@@ -42,13 +42,16 @@ ai_scanner/
 │   │   ├── cloud_sync.py
 │   │   └── local_storage.py
 │   ├── utils/               # Auto-naming, QR detection, search
-│   └── main.py              # Entry point
+│   ├── templates/           # Web UI templates
+│   ├── web_app.py           # Flask web server
+│   └── main.py              # Core scanner pipeline
 ├── tests/                   # Unit tests
 ├── config/                  # Configuration
 ├── data/                    # Working directory (gitignored)
 ├── .env                     # API keys & secrets (gitignored)
 ├── .gitignore
 ├── requirements.txt
+├── startup.sh               # Azure App Service startup script
 ├── log_file.txt             # Auto-generated timestamped logs
 ├── diary_log.txt            # Development diary (auto-generated)
 └── README.md
@@ -59,16 +62,8 @@ ai_scanner/
 ## Pipeline
 
 ```
-Camera → Edge Detection → Enhancement → OCR → Classification → Storage
+Upload/Camera → Edge Detection → Enhancement → OCR → Classification → Storage
 ```
-
-### Edge Cases Handled
-
-| Edge Case | Solution |
-|---|---|
-| Curved pages | Dewarping algorithm |
-| Glare on glossy documents | Multi-shot fusion |
-| Handwritten text | Handwriting OCR model (EasyOCR) |
 
 ---
 
@@ -102,6 +97,8 @@ cp .env .env
 
 ### API Keys Required
 
+Only if using cloud features (optional — scanner works without them):
+
 | Service | File | Variables |
 |---|---|---|
 | Google Drive | `.env` | `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET` |
@@ -112,7 +109,18 @@ cp .env .env
 ### Usage
 
 ```bash
-python src/main.py
+# Start the web server
+python -m src.web_app
+
+# Or double-click run.bat
+```
+
+Open `http://localhost:5000` in your browser.  
+On your phone (same Wi-Fi), use `http://YOUR_PC_IP:5000`.
+
+To deploy to Azure App Service:
+```bash
+gunicorn --bind=0.0.0.0:8000 src.web_app:app
 ```
 
 ---
@@ -121,10 +129,8 @@ python src/main.py
 
 Two files track progress automatically:
 
-- **`log_file.txt`** — Timestamped one-liners (use `update_log()`)
-- **`diary_log.txt`** — Detailed diary entries (use `update_diary()`)
-
-Run `python generate_project.py` to append a new entry whenever you make changes.
+- **`log_file.txt`** — Timestamped one-liners
+- **`diary_log.txt`** — Detailed diary entries
 
 ---
 

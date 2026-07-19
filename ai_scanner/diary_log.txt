@@ -81,3 +81,20 @@ Implemented all core modules:
 Fixed: brightness threshold in quality check (30-240 range for documents)
 Fixed: JSON serialization of numpy types in metadata
 
+=== 2026-07-19 12:10:59 ===
+Added GUI application (src/gui.py):
+- Modern desktop interface using CustomTkinter
+- Three tabs: Capture, Results, Settings
+- Live camera preview with edge detection overlay
+- Quality indicators (blur, brightness, pass/fail)
+- Open camera, capture frame, load image file buttons
+- Full processing pipeline triggered via Process button
+- Results tab: before/after images, OCR text, classification,
+  extracted data, QR codes, quality assessment
+- Settings tab: API keys, theme toggle, storage path
+- Added --gui flag to main.py entry point
+- Added run.bat launcher with menu options
+
+Fixed: Tesseract auto-detection in common install paths
+Added: Tesseract to user PATH environment variable
+
