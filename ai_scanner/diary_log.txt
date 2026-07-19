@@ -6,3 +6,78 @@ Created project structure with modules:
 Requirements written to requirements.txt
 Total files created: 41
 
+=== 2026-07-19 10:43:02 ===
+Implemented all core modules:
+
+[src/camera/capture.py]
+- Webcam access with OpenCV (CameraCapture class)
+- Frame capture and auto-detect document edges (findContours)
+- Corner ordering and detection overlay drawing
+- Interactive preview (SPACE to capture, ESC to exit)
+
+[src/edge_detection/detector.py]
+- Canny edge detection (EdgeDetector class)
+- Document contour finding (largest 4-point polygon)
+- Perspective correction via warpPerspective
+- Dewarping for curved pages using convex hull
+- Auto-crop based on detected document boundaries
+
+[src/enhancement/enhancer.py]
+- Auto-contrast via CLAHE on LAB space (ImageEnhancer class)
+- Unsharp mask sharpening
+- Shadow removal using dilation + background subtraction
+- Quality assessment: blur detection (Laplacian variance), lighting check
+- Multi-shot fusion for glare reduction (median blend)
+- Full enhance_document pipeline
+
+[src/ocr/ocr_engine.py]
+- Tesseract OCR integration (OCREngine class)
+- Google Cloud Vision OCR support
+- EasyOCR handwriting recognition fallback
+- Word-level confidence and bounding box data
+- Auto-detection of handwritten vs printed text
+
+[src/classification/classifier.py]
+- Document type classification (DocumentClassifier class)
+- Types: invoice, receipt, ID, contract
+- Pattern-based content extraction (amounts, dates, names, IDs)
+- Regex date and amount extraction utilities
+- Confidence scoring per document type
+
+[src/storage/local_storage.py]
+- Local file saving organized by document type (LocalStorage class)
+- JSON metadata generation with NumpyEncoder
+- PDF generation via img2pdf
+- Document listing by type or all documents
+- Fixed: Numpy bool/int/float serialization for JSON
+
+[src/storage/cloud_sync.py]
+- Google Drive OAuth2 setup and upload (CloudSync class)
+- Dropbox API setup and upload
+- Multi-cloud upload (send to all configured providers)
+- Auto folder creation on Drive
+
+[src/utils/auto_naming.py]
+- Content-aware filename generation (AutoNamer class)
+- Pattern: Type_Entity_Date_Amount (e.g. Invoice_AcmeCorp_Mar15_$1234.50)
+- Entity extraction from text or extracted data
+- Date extraction for filename inclusion
+
+[src/utils/qr_detection.py]
+- QR and barcode detection via pyzbar + OpenCV QRCodeDetector (QRDetector class)
+- Decoded data parsing (URLs, vCards, barcodes)
+
+[src/utils/search.py]
+- Full-text index-based search (DocumentSearch class)
+- Term frequency scoring with filename boost
+- Top-K ranked results
+
+[src/main.py]
+- AIScanner class wiring full pipeline
+- capture_and_process() orchestrates all modules
+- CLI: --image, --camera, --preview flags
+- Detailed result output (quality, OCR, classification, QR, storage)
+
+Fixed: brightness threshold in quality check (30-240 range for documents)
+Fixed: JSON serialization of numpy types in metadata
+
