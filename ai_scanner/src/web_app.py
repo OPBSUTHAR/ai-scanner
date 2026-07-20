@@ -16,15 +16,25 @@ from PIL import Image
 from src.main import AIScanner
 from src.storage.local_storage import LocalStorage
 from src.utils.search import DocumentSearch
+from src.utils.key_manager import KeyManager
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024
 
 scanner = AIScanner()
 searcher = DocumentSearch()
+key_manager = KeyManager()
 UPLOAD_FOLDER = scanner.storage.base_dir / "uploads"
 DOCUMENTS_FOLDER = scanner.storage.base_dir / "documents"
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+
+
+def _sync_keys_to_env():
+    for name, value in key_manager.get_all().items():
+        os.environ[name.upper()] = value
+
+
+_sync_keys_to_env()
 
 # ---------------------------------------------------------------------------
 #  Helpers
@@ -89,6 +99,63 @@ def _doc_info(fpath):
         "folder": fpath.parent.name,
         "image_url": url_for("serve_image", subpath=rel.replace("\\", "/")),
     }
+
+# ---------------------------------------------------------------------------
+#  API Key Management
+# ---------------------------------------------------------------------------
+
+KEY_META = {
+    "google_drive_client_id": {"label": "Google Drive Client ID", "service": "google_drive"},
+    "google_drive_client_secret": {"label": "Google Drive Client Secret", "service": "google_drive", "secret": True},
+    "dropbox_app_key": {"label": "Dropbox App Key", "service": "dropbox"},
+    "dropbox_app_secret": {"label": "Dropbox App Secret", "service": "dropbox", "secret": True},
+    "dropbox_access_token": {"label": "Dropbox Access Token", "service": "dropbox", "secret": True},
+    "onedrive_client_id": {"label": "OneDrive Client ID", "service": "onedrive"},
+    "onedrive_client_secret": {"label": "OneDrive Client Secret", "service": "onedrive", "secret": True},
+    "onedrive_tenant_id": {"label": "OneDrive Tenant ID", "service": "onedrive", "secret": True},
+    "google_vision_api_key": {"label": "Google Vision API Key", "service": "google_vision", "secret": True},
+    "google_application_credentials": {"label": "Google Service Account JSON (full path or raw JSON)", "service": "google_vision", "secret": True},
+}
+
+
+@app.route("/api/keys", methods=["GET"])
+def api_list_keys():
+    stored = key_manager.list_keys()
+    result = []
+    for name, meta in KEY_META.items():
+        entry = {
+            "name": name,
+            "label": meta["label"],
+            "service": meta["service"],
+            "configured": name in stored,
+            "masked_value": stored.get(name, None),
+        }
+        result.append(entry)
+    return jsonify(result)
+
+
+@app.route("/api/keys", methods=["POST"])
+def api_save_key():
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    value = data.get("value", "").strip()
+    if not name or not value:
+        return jsonify({"error": "Name and value required"}), 400
+    if name not in KEY_META:
+        return jsonify({"error": f"Unknown key: {name}"}), 400
+    key_manager.set_key(name, value)
+    _sync_keys_to_env()
+    return jsonify({"saved": True, "name": name})
+
+
+@app.route("/api/keys/<name>", methods=["DELETE"])
+def api_delete_key(name):
+    if name not in KEY_META:
+        return jsonify({"error": f"Unknown key: {name}"}), 400
+    key_manager.delete_key(name)
+    _sync_keys_to_env()
+    return jsonify({"deleted": True, "name": name})
+
 
 # ---------------------------------------------------------------------------
 #  Routes

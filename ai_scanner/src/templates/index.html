@@ -732,6 +732,20 @@
           <p style="font-size:.78rem;color:var(--text-3);margin-bottom:8px">Connect to cloud providers for backup &amp; sharing</p>
           <div id="cloud-status-list"></div>
         </div>
+        <div class="ctrl-group" style="margin-bottom:12px">
+          <h4>🔑 API Keys</h4>
+          <p style="font-size:.78rem;color:var(--text-3);margin-bottom:8px">Manage API keys for cloud services. Keys are encrypted and never shown in full.</p>
+          <div id="api-keys-list"></div>
+          <div id="api-key-form" style="display:none;margin-top:8px;padding:10px;background:var(--surface-2);border-radius:8px">
+            <select id="ak-service" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.78rem;margin-bottom:6px;font-family:inherit"></select>
+            <input type="password" id="ak-value" placeholder="Paste your API key / secret" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.78rem;margin-bottom:6px;font-family:inherit">
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-primary btn-sm" onclick="saveApiKey()">💾 Save</button>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('api-key-form').style.display='none'">Cancel</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-add-key" onclick="showAddKeyForm()" style="margin-top:6px">➕ Add API Key</button>
+        </div>
         <div class="ctrl-group">
           <h4>ℹ️ About</h4>
           <div class="toggle-row"><span>Version</span><span style="color:var(--text-3)">1.0.0</span></div>
@@ -1038,10 +1052,82 @@ async function doSearch(){
 .cloud-badge{font-size:.68rem;padding:2px 8px;border-radius:10px;font-weight:600}
 .cloud-badge.ok{background:rgba(76,201,130,.15);color:var(--accent)}
 .cloud-badge.no{background:rgba(255,99,99,.12);color:var(--danger)}
+/* ---- API KEYS ---- */
+const KEY_META={
+  google_drive_client_id:{label:'Google Drive Client ID',icon:'☁'},
+  google_drive_client_secret:{label:'Google Drive Client Secret',icon:'☁'},
+  dropbox_app_key:{label:'Dropbox App Key',icon:'📦'},
+  dropbox_app_secret:{label:'Dropbox App Secret',icon:'📦'},
+  dropbox_access_token:{label:'Dropbox Access Token',icon:'📦'},
+  onedrive_client_id:{label:'OneDrive Client ID',icon:'🪟'},
+  onedrive_client_secret:{label:'OneDrive Client Secret',icon:'🪟'},
+  onedrive_tenant_id:{label:'OneDrive Tenant ID',icon:'🪟'},
+  google_vision_api_key:{label:'Google Vision API Key',icon:'👁'},
+  google_application_credentials:{label:'Google Service Account JSON',icon:'👁'},
+};
+async function loadApiKeys(){
+  try{
+    const r=await fetch('/api/keys');const keys=await r.json();
+    const list=document.getElementById('api-keys-list');
+    const configured=keys.filter(k=>k.configured);
+    if(!configured.length){list.innerHTML='<div style="font-size:.75rem;color:var(--text-3);padding:6px 0">No API keys configured</div>';return}
+    list.innerHTML=configured.map(k=>`
+      <div class="toggle-row">
+        <span>${KEY_META[k.name]?.icon||'🔑'} ${KEY_META[k.name]?.label||k.name}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <code style="font-size:.7rem;color:var(--text-3);background:var(--surface-2);padding:2px 8px;border-radius:4px">${k.masked_value||'****'}</code>
+          <button class="btn btn-outline btn-sm" onclick="deleteApiKey('${k.name}')" style="padding:2px 8px;font-size:.65rem;color:var(--danger)">🗑</button>
+        </div>
+      </div>`).join('');
+  }catch(e){}
+}
+function showAddKeyForm(){
+  const sel=document.getElementById('ak-service');sel.innerHTML='';
+  const existing=document.querySelectorAll('#api-keys-list .toggle-row');
+  const configuredNames=new Set();
+  existing.forEach(el=>{const m=el.textContent.trim();if(m)configuredNames.add(m)});
+  let hasUnconfigured=false;
+  Object.entries(KEY_META).forEach(([name,meta])=>{
+    const opt=document.createElement('option');opt.value=name;
+    opt.textContent=`${meta.icon||'🔑'} ${meta.label}`;
+    sel.appendChild(opt);
+    hasUnconfigured=true;
+  });
+  if(!hasUnconfigured){document.getElementById('api-key-form').style.display='none';return}
+  document.getElementById('ak-value').value='';
+  document.getElementById('api-key-form').style.display='block';
+  document.getElementById('btn-add-key').style.display='none';
+}
+async function saveApiKey(){
+  const name=document.getElementById('ak-service').value;
+  const value=document.getElementById('ak-value').value.trim();
+  if(!value){toast('Enter a key value','warn');return}
+  try{
+    const r=await fetch('/api/keys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,value})});
+    const d=await r.json();
+    if(d.error){toast(d.error,'err');return}
+    toast('API key saved!');
+    document.getElementById('api-key-form').style.display='none';
+    document.getElementById('btn-add-key').style.display='';
+    loadApiKeys();
+    loadCloudStatus();
+  }catch(e){toast('Error saving key','err')}
+}
+async function deleteApiKey(name){
+  if(!confirm(`Delete ${KEY_META[name]?.label||name}?`))return;
+  try{
+    const r=await fetch(`/api/keys/${name}`,{method:'DELETE'});
+    const d=await r.json();
+    if(d.deleted){toast('Key deleted');loadApiKeys();loadCloudStatus()}
+    else toast('Delete failed','err')
+  }catch(e){toast('Error','err')}
+}
+
 /* ---- SETTINGS ---- */
 async function loadSettings(){
   try{const r=await fetch('/stats');const s=await r.json();document.getElementById('set-count').textContent=s.total+' documents';document.getElementById('set-size').textContent=s.total_size}catch(e){}
   loadCloudStatus();
+  loadApiKeys();
 }
 async function loadCloudStatus(){
   try{

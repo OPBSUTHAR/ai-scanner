@@ -36,6 +36,9 @@ img2pdf>=0.4.8
 flask>=3.0.0
 gunicorn>=21.2.0
 
+# Encryption for API key storage
+cryptography>=41.0.0
+
 # Utilities
 python-dotenv>=1.0.0
 tqdm>=4.65.0
