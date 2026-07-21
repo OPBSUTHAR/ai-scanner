@@ -1180,6 +1180,9 @@ body{
                   <button class="btn btn-primary btn-lg" id="btn-open-cam" style="background:var(--gradient-cyan-magenta);border:none;color:#fff;box-shadow:0 0 20px var(--cyan-glow)">
                     ⟐ OPEN CAMERA
                   </button>
+                  <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();document.getElementById('native-capture').click()" style="background:linear-gradient(135deg,#a855f7,#6366f1);border:none;color:#fff">
+                    📷 PHONE CAMERA
+                  </button>
                   <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();processAllCaptures()" id="btn-process-all" style="display:none;background:var(--gradient-cyan-violet)">
                     ⚡ PROCESS ALL
                   </button>
@@ -1244,7 +1247,15 @@ body{
                 <select id="cam-device-select" style="background:rgba(3,7,18,0.85);backdrop-filter:blur(8px);border:1px solid rgba(0,242,254,0.15);border-radius:6px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.5rem;padding:3px 6px;max-width:160px;outline:none"></select>
               </div>
               <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
+              <!-- Native camera capture input (works on ALL phones, no HTTPS needed) -->
+              <input type="file" accept="image/*" capture="environment" id="native-capture" style="opacity:0;position:absolute;width:1px;height:1px;pointer-events:none">
               <input type="file" accept="image/*" id="file-input">
+              <!-- Post-process save/download buttons -->
+              <div id="post-process-actions" style="display:none;margin-top:8px;gap:6px;flex-wrap:wrap;justify-content:center;width:100%">
+                <button class="btn btn-primary btn-sm" onclick="saveProcessedResults()">💾 SAVE TO VAULT</button>
+                <button class="btn btn-outline btn-sm" onclick="downloadLastResult()">⬇ DOWNLOAD</button>
+                <button class="btn btn-outline btn-sm" onclick="resetScanner()">◉ NEW SCAN</button>
+              </div>
             </div>
           </div>
 
@@ -1762,42 +1773,63 @@ document.getElementById('cam-device-select').addEventListener('change',function(
 function startAutoDetect(){
   autoCaptureActive=true;
   var v=document.getElementById('video'),c=document.getElementById('canvas'),ctx=c.getContext('2d');
-  var consecutiveDetects=0;
+  var prevPixels=null,stillFrames=0;
+  var CAPTURE_THRESHOLD=8; // higher = more stable required
+  var STILL_FRAMES_NEEDED=6; // frames document must be steady before capture
+
   autoCaptureTimer=setInterval(function(){
     if(!v.videoWidth||!autoCaptureActive)return;
-    c.width=Math.min(v.videoWidth,480);
-    c.height=Math.min(v.videoHeight,360);
-    ctx.drawImage(v,0,0,c.width,c.height);
-    c.toBlob(function(blob){
-      var fd=new FormData();
-      fd.append('image',blob,'frame.jpg');
-      fetch('/api/auto-detect',{method:'POST',body:fd})
-        .then(function(r){return r.json()})
-        .then(function(d){
-          if(!autoCaptureActive)return;
-          if(d.document_detected&&(d.fill_ratio||0)>0.06){
-            consecutiveDetects++;
-            document.getElementById('tel-edge').textContent='⟐ DETECTED';
-            if(consecutiveDetects>=2){
-              consecutiveDetects=0;
-              var bigC=document.createElement('canvas');
-              bigC.width=v.videoWidth;bigC.height=v.videoHeight;
-              bigC.getContext('2d').drawImage(v,0,0);
-              bigC.toBlob(function(bigBlob){
-                state.capturedBlobs.push(bigBlob);
-                state.capturedBlob=bigBlob;
-                var cnt=state.capturedBlobs.length;
-                document.getElementById('capture-count-badge').textContent='📄 '+cnt;
-                toast('⟐ CAPTURED #'+cnt);
-              },'image/jpeg',0.85);
-            }
-          }else{
-            consecutiveDetects=0;
-            document.getElementById('tel-edge').textContent='--';
-          }
-        }).catch(function(){});
-    },'image/jpeg',0.6);
-  },350);
+    // Grab a tiny thumbnail (80x60) for fast pixel comparison
+    var tw=80,th=60;
+    c.width=tw;c.height=th;
+    ctx.drawImage(v,0,0,tw,th);
+    var data=ctx.getImageData(0,0,tw,th).data;
+
+    // Compute difference from previous frame
+    var diff=0;
+    if(prevPixels){
+      for(var i=0;i<data.length;i+=4){
+        var gray=(data[i]+data[i+1]+data[i+2])/3;
+        var prevGray=(prevPixels[i]+prevPixels[i+1]+prevPixels[i+2])/3;
+        diff+=Math.abs(gray-prevGray);
+      }
+      diff/=(tw*th); // average per-pixel difference
+    }
+    prevPixels=data;
+
+    // Also compute average brightness (to know if something is in frame)
+    var totalBright=0;
+    for(var i=0;i<data.length;i+=4){
+      totalBright+=(data[i]+data[i+1]+data[i+2])/3;
+    }
+    var avgBright=totalBright/(tw*th);
+
+    // Update telemetry
+    document.getElementById('tel-edge').textContent=diff<CAPTURE_THRESHOLD?'⟐ STEADY':'⟐ MOVING';
+    document.getElementById('tel-blur').textContent='Δ'+diff.toFixed(1);
+    document.getElementById('tel-glare').textContent='LV'+avgBright.toFixed(0);
+
+    // Auto-capture logic: frame is steady AND has content (not black/white)
+    if(diff<CAPTURE_THRESHOLD&&avgBright>30&&avgBright<240){
+      stillFrames++;
+      if(stillFrames>=STILL_FRAMES_NEEDED){
+        stillFrames=0;
+        // Capture full-res frame
+        var bigC=document.createElement('canvas');
+        bigC.width=v.videoWidth;bigC.height=v.videoHeight;
+        bigC.getContext('2d').drawImage(v,0,0);
+        bigC.toBlob(function(bigBlob){
+          state.capturedBlobs.push(bigBlob);
+          state.capturedBlob=bigBlob;
+          var cnt=state.capturedBlobs.length;
+          document.getElementById('capture-count-badge').textContent='📄 '+cnt;
+          toast('⟐ CAPTURED #'+cnt);
+        },'image/jpeg',0.85);
+      }
+    }else{
+      stillFrames=0;
+    }
+  },200); // faster check interval
 }
 function stopAutoDetect(){
   autoCaptureActive=false;
@@ -1837,15 +1869,18 @@ function processAllCaptures(){
   (function processNext(){
     if(idx>=state.capturedBlobs.length){
       hideLoader();
+      processedResults=results;
       if(results.length){
-        toast('Processed '+results.length+' pages');
+        toast('✅ Processed '+results.length+' page'+(results.length>1?'s':''));
         var last=results[results.length-1];
         if(last&&last.image_url){
           document.getElementById('preview-img').src=last.image_url;
           document.getElementById('scan-preview').classList.add('active');
         }
+        document.getElementById('post-process-actions').style.display='flex';
       }
       document.getElementById('btn-process-all').style.display='none';
+      state.capturedBlobs=[];
       return;
     }
     var fd=new FormData();
@@ -1877,10 +1912,38 @@ dz.addEventListener('drop',function(e){
 fi.addEventListener('change',function(e){if(e.target.files[0])handleFile(e.target.files[0])});
 function handleFile(f){
   state.capturedBlob=f;
+  state.capturedBlobs.push(f);
+  var cnt=state.capturedBlobs.length;
+  document.getElementById('capture-count-badge').textContent='📄 '+cnt;
   document.getElementById('preview-img').src=URL.createObjectURL(f);
   document.getElementById('scan-preview').classList.add('active');
   document.getElementById('dz-placeholder').style.display='none';
   document.getElementById('btn-process').disabled=false;
+  document.getElementById('btn-process-all').style.display='';
+}
+// Native camera capture handler (works on ALL phones, no getUserMedia needed)
+document.getElementById('native-capture').addEventListener('change',function(e){
+  var f=e.target.files[0];
+  if(!f)return;
+  handleFile(f);
+  toast('📷 PHOTO CAPTURED #'+state.capturedBlobs.length);
+  this.value='';
+});
+// Post-process save/download
+var processedResults=[];
+function saveProcessedResults(){
+  // Results are already saved by /scan/advanced — this notifies user
+  var n=processedResults.length;
+  if(!n){toast('No processed results','warn');return}
+  toast('✅ SAVED '+n+' document'+(n>1?'s':'')+' TO VAULT');
+  document.getElementById('post-process-actions').style.display='none';
+  processedResults=[];
+  loadGallery();
+}
+function downloadLastResult(){
+  if(!processedResults.length){toast('No results','warn');return}
+  var last=processedResults[processedResults.length-1];
+  if(last&&last.image_url) window.location.href=last.image_url;
 }
 function updatePreview(){
   if(!state.capturedBlob)return;
