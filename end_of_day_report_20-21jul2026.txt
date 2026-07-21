@@ -1,0 +1,95 @@
+END OF DAY REPORT — 20 & 21 Jul 2026
+AI Document Scanner (WebEnoid Intern)
+
+REFERENCE: Previous report at end_of_day_report_19jul2026.txt
+
+─────────────────────────────────────────────────────
+JULY 20 — CHANGES
+─────────────────────────────────────────────────────
+
+1. API KEY MANAGEMENT WITH ENCRYPTION
+   - New file: src/utils/key_manager.py — Fernet-based encrypted key storage
+   - New file: src/data/.key_enc — encryption key file
+   - Added /api/keys (GET/POST/DELETE) routes in web_app.py
+   - KEY_META config for Google Drive, Dropbox, OneDrive, Google Vision keys
+   - Keys synced to env vars on save/delete for downstream cloud modules
+   - Added requirements.txt (cryptography dependency)
+
+2. GENERAL FUNCTIONALITY ENHANCEMENTS
+   - index.html heavily refactored — UI polish, performance tweaks
+   - Various backend improvements across web_app.py
+
+─────────────────────────────────────────────────────
+JULY 21 — CHANGES
+─────────────────────────────────────────────────────
+
+3. WIRELESS CAMERA & IP RETRIEVAL
+   - /api/ip endpoint — returns local IP, hostname, port for LAN access
+   - index.html: wireless camera tab with live IP display + QR code link
+   - Users can scan via browser on phone by visiting the local IP
+
+4. MOUSE TRACKING GLOW & KEYBOARD SHORTCUTS
+   - index.html: cursor glow effect that follows mouse movement
+   - Keyboard shortcut hints overlay (Ctrl+S scan, Ctrl+G gallery, etc.)
+   - Back button navigation across all views
+
+5. PHONE CAMERA RELAY — MULTI-TAB WIRELESS STREAMING
+   - New template: phone_camera.html — dedicated mobile camera page
+   - /phone-camera route (serve page), /api/relay-frame POST (receive frame),
+     /api/relay-latest GET (consume latest frame)
+   - index.html: button to open phone camera page, live relay feed in UI
+   - Mobile page uses environment-facing camera, streams JPEG frames at ~5 FPS
+
+6. BLUETOOTH TAB OVERHAUL
+   - Updated project branding in Bluetooth tab
+   - Clearer device scanning messages and status indicators
+   - Connection management UI with connect/disconnect controls
+   - Status indicators (connected/disconnected/scanning)
+
+7. IN-APP CONFIRMATION & PROMPT DIALOGS
+   - Custom modal dialogs for delete confirmations, unsaved changes, etc.
+   - Replaces browser native confirm() for consistent dark theme experience
+
+8. CLOUD AUTH FIX
+   - Fixed cloud authentication connection closure — ensures proper cleanup
+     of HTTP connections after OAuth flow
+
+9. ENHANCED CAPTURE FUNCTIONALITY
+   - Capture button improvements, better visual feedback
+   - .key_enc now tracked in repo
+
+10. DOCUMENT CARD & PREVIEW MODAL
+    - Improved card layout, hover effects, metadata display
+    - Full-screen preview modal for images with zoom/pan
+
+11. BLUETOOTH UI ENHANCEMENTS
+    - Status indicator dots (green/red/yellow) for connection states
+    - Device list with signal strength, last seen timestamps
+    - Connect/disconnect workflow polished
+
+─────────────────────────────────────────────────────
+FILES CHANGED (20-21 Jul)
+─────────────────────────────────────────────────────
+  ai_scanner/requirements.txt               |  +3    (new dep: cryptography)
+  ai_scanner/src/data/.key_enc              |  +1    (encryption key file)
+  ai_scanner/src/utils/key_manager.py       |  +87   (NEW — encrypted key store)
+  ai_scanner/src/templates/phone_camera.html | +104  (NEW — mobile relay page)
+  ai_scanner/src/templates/index.html       | ~3000  (major rewrite)
+  ai_scanner/src/web_app.py                 | ~101   (new routes + fixes)
+  6 files changed, 2454 insertions, 843 deletions
+
+─────────────────────────────────────────────────────
+CURRENT STATE
+─────────────────────────────────────────────────────
+- Run: cd ai_scanner && python -m src.web_app
+- API keys can now be managed via Settings UI (encrypted at rest)
+- Phone camera relay works over LAN — open /phone-camera on mobile
+- Wireless Camera tab shows IP + QR for easy LAN access
+- Bluetooth tab fully functional with live status
+- All cloud providers wired: Google Drive, Dropbox, OneDrive
+- Google Vision OCR option available (key required)
+
+NEXT UP
+- Azure deployment prep (azd / Docker)
+- Multi-user auth
+- Performance optimization for large galleries
