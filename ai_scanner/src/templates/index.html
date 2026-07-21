@@ -1179,10 +1179,20 @@ body{
                 <div class="wtab-content" data-wtab="bluetooth" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-bluetooth">
                   <div style="font-size:36px;opacity:0.4">🔵</div>
                   <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">BLUETOOTH</h3>
-                  <p style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary);max-width:320px">Discover nearby Bluetooth devices. Note: Most phone cameras require WiFi or USB for video streaming.</p>
-                  <button class="btn btn-primary" id="btn-scan-bt">🔍 SCAN FOR DEVICES</button>
-                  <div id="bt-results" style="width:100%;max-height:140px;overflow-y:auto;display:none;flex-direction:column;gap:4px"></div>
-                  <div id="bt-info" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:8px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:320px">For camera streaming, use the <strong>PHONE</strong> or <strong>NETWORK</strong> tab instead.</div>
+                  <div id="bt-project-name" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--cyan);background:var(--cyan-dim);padding:4px 10px;border-radius:var(--radius-sm)">PROJECT: NEXUS-OS SCANNER</div>
+                  <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);max-width:320px">On your phone, go to Bluetooth settings and look for:</p>
+                  <div id="bt-hostname" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--emerald);font-weight:600">Loading...</div>
+                  <div class="bt-pair-steps" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);line-height:1.6;text-align:left;background:var(--bg-card);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:320px">
+                    <div>1. Enable Bluetooth on your phone</div>
+                    <div>2. Look for <strong id="bt-pair-name" style="color:var(--cyan)">[PC NAME]</strong> in available devices</div>
+                    <div>3. Send pairing request from phone</div>
+                    <div>4. Accept on this PC when prompted</div>
+                  </div>
+                  <button class="btn btn-primary" id="btn-scan-bt">🔍 SCAN FOR NEARBY DEVICES</button>
+                  <div id="bt-results" style="width:100%;max-height:120px;overflow-y:auto;display:none;flex-direction:column;gap:4px"></div>
+                  <div id="bt-info" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);line-height:1.5;padding:8px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:320px">
+                    <strong style="color:var(--text-secondary)">NEXUS-OS Scanner</strong> uses Bluetooth to detect nearby devices. For camera streaming, the <strong>PHONE</strong> tab (WiFi QR) or <strong>NETWORK</strong> tab is recommended.
+                  </div>
                 </div>
 
                 <!-- MANUAL URL TAB -->
@@ -1642,23 +1652,35 @@ document.getElementById('btn-network-connect').addEventListener('click',function
 });
 
 /* ========= BLUETOOTH ========= */
+var btHostname='';
+fetch('/api/ip').then(function(r){return r.json()}).then(function(d){
+  btHostname=d.hostname;
+  document.getElementById('bt-hostname').textContent='■ '+btHostname;
+  document.getElementById('bt-pair-name').textContent=btHostname;
+}).catch(function(){});
+
 document.getElementById('btn-scan-bt').addEventListener('click',function(){
   var btn=this,res=document.getElementById('bt-results');
   btn.disabled=true;btn.textContent='⏳ SCANNING...';
   if(!navigator.bluetooth){
     res.style.display='flex';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--crimson);padding:8px">Web Bluetooth not supported. Use Chrome/Edge on desktop or Android.</div>';
-    btn.disabled=false;btn.textContent='🔍 SCAN FOR DEVICES';
+    btn.disabled=false;btn.textContent='🔍 SCAN FOR NEARBY DEVICES';
     return;
   }
-  navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[]}).then(function(device){
+  navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: []
+  }).then(function(device){
     res.style.display='flex';
-    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;padding:6px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.06)"><strong>'+device.name+'</strong><br><span style="color:var(--text-tertiary)">ID: '+device.id+'</span></div>';
+    var isProject = device.name && device.name.toLowerCase().includes('nexus') || (btHostname && device.name === btHostname);
+    var badge = isProject ? '<span style="color:var(--emerald);font-size:0.45rem;margin-left:4px">● THIS PC</span>' : '';
+    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;padding:6px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.06)"><strong>'+device.name+'</strong>'+badge+'<br><span style="color:var(--text-tertiary)">ID: '+device.id+'</span></div>';
     toast('FOUND: '+device.name);
-    btn.disabled=false;btn.textContent='🔍 SCAN FOR DEVICES';
+    btn.disabled=false;btn.textContent='🔍 SCAN FOR NEARBY DEVICES';
   }).catch(function(e){
     res.style.display='flex';
-    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:8px">Scan cancelled or failed. For camera streaming, use PHONE tab.</div>';
-    btn.disabled=false;btn.textContent='🔍 SCAN FOR DEVICES';
+    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:8px">Scan cancelled.<br>On your phone, look for <strong style="color:var(--cyan)">'+btHostname+'</strong> in Bluetooth settings and pair manually.</div>';
+    btn.disabled=false;btn.textContent='🔍 SCAN FOR NEARBY DEVICES';
   });
 });
 
