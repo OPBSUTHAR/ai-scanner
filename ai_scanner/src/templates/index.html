@@ -873,6 +873,62 @@ body{
   .stat-grid{grid-template-columns:1fr}.doc-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:1400px){.content{padding:24px 36px 32px}}
+
+/* ============================================================
+   MOUSE TRACKING GLOW
+   ============================================================ */
+.mouse-glow{position:fixed;width:300px;height:300px;border-radius:50%;pointer-events:none;z-index:999;background:radial-gradient(circle,rgba(0,242,254,0.04),transparent 70%);transform:translate(-50%,-50%);transition:opacity 0.3s;opacity:0}
+.mouse-glow.show{opacity:1}
+
+/* ============================================================
+   KEYBOARD SHORTCUT HINT
+   ============================================================ */
+.kbd-hint{
+  position:fixed;bottom:20px;left:20px;z-index:50;
+  font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);
+  background:var(--bg-card);padding:6px 12px;border-radius:var(--radius-sm);
+  border:1px solid rgba(0,242,254,0.06);backdrop-filter:blur(8px);
+  opacity:0.3;transition:var(--transition);pointer-events:none;
+}
+.kbd-hint:hover{opacity:0.8}
+.kbd-hint kbd{
+  display:inline-block;padding:1px 5px;margin:0 2px;
+  background:var(--bg-void);border-radius:3px;
+  border:1px solid rgba(0,242,254,0.1);font-size:0.45rem;color:var(--text-secondary);
+}
+
+/* ============================================================
+   BACK BUTTON
+   ============================================================ */
+.btn-back{
+  display:none;align-items:center;gap:4px;padding:4px 10px;
+  font-family:var(--font-mono);font-size:0.55rem;font-weight:600;
+  color:var(--text-secondary);background:var(--bg-card);
+  border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);
+  cursor:pointer;transition:var(--transition);white-space:nowrap;
+}
+.btn-back:hover{color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 10px var(--cyan-glow)}
+.btn-back.show{display:inline-flex}
+
+/* ============================================================
+   PORTABLE TOUCH OPTIMIZATIONS
+   ============================================================ */
+@media(hover:none){
+  .btn{padding:12px 24px;min-height:44px}
+  .nav-item{padding:12px 10px}
+  .sidebar .nav-item .nav-label{display:block!important}
+  .sidebar-footer .info{display:block!important}
+  .hud-topbar .brand-tag{display:block!important}
+  .doc-card .doc-overlay{opacity:1!important;background:linear-gradient(to top,rgba(3,7,18,0.7),transparent 40%)}
+  .feed-item{padding:10px 12px}
+  .stat-card:hover{transform:none}
+  .doc-card:hover{transform:none}
+}
+@media(max-width:480px){
+  .btn-back .back-label{display:none}
+  .hud-topbar .hud-tabs{overflow-x:auto;gap:0}
+  .hud-tab{padding:6px 8px;font-size:0.5rem}
+}
 </style>
 </head>
 <body>
@@ -884,6 +940,9 @@ body{
   <div class="bg-nebula"></div>
   <div class="bg-scanline"></div>
 </div>
+
+<!-- MOUSE GLOW -->
+<div class="mouse-glow" id="mouse-glow"></div>
 
 <!-- APP -->
 <div class="app">
@@ -937,6 +996,7 @@ body{
 
   <!-- HUD Top Bar -->
   <div class="hud-topbar">
+    <button class="btn-back" id="btn-back" onclick="goBack()"><span>←</span><span class="back-label">BACK</span></button>
     <div class="brand-tag"><strong>AI SCANNER</strong> // NEXUS-OS</div>
     <div class="hud-tabs">
       <button class="hud-tab active" data-tab="dashboard" onclick="switchView('dashboard')">01 DASHBOARD</button>
@@ -1235,13 +1295,39 @@ body{
   </div>
 </div>
 
+<!-- KEYBOARD HINT -->
+<div class="kbd-hint" id="kbd-hint"><kbd>Esc</kbd> Close · <kbd>1</kbd>-<kbd>4</kbd> Navigate · <kbd>Enter</kbd> Process</div>
+
 <!-- TOAST -->
 <div class="toast-container" id="toast-c"></div>
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-const state={capturedBlob:null,selectedEffect:'none',stream:null,filter:'all',selectedDocs:[],galleryDocs:[],currentResult:null};
+const state={capturedBlob:null,selectedEffect:'none',stream:null,filter:'all',selectedDocs:[],galleryDocs:[],currentResult:null,currentView:'dashboard',navHistory:[]};
 var scanActive=false;
+
+/* ---- LOCAL STORAGE PERSISTENCE ---- */
+function saveState(){
+  try{localStorage.setItem('scanner_view',state.currentView)}catch(e){}
+}
+function restoreState(){
+  try{
+    var v=localStorage.getItem('scanner_view');
+    if(v&&['dashboard','scanner','gallery','settings'].includes(v))switchView(v);
+  }catch(e){}
+}
+
+/* ---- NAVIGATION HISTORY ---- */
+function goBack(){
+  if(state.navHistory.length>1){
+    state.navHistory.pop();
+    switchView(state.navHistory.pop()||'dashboard');
+  }else{switchView('dashboard')}
+}
+function updateBackBtn(){
+  var b=document.getElementById('btn-back');
+  b.classList.toggle('show',state.navHistory.length>1);
+}
 
 function toast(m,t){
   var c=document.getElementById('toast-c');
@@ -1252,15 +1338,27 @@ function toast(m,t){
   setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.remove()},300)},3500);
 }
 
+/* ---- NAVIGATION ---- */
+var navTimer;
 function switchView(v){
+  if(state.currentView===v)return;
+  if(state.navHistory[state.navHistory.length-1]!==state.currentView)
+    state.navHistory.push(state.currentView);
+  state.currentView=v;
+  saveState();
+  updateBackBtn();
   document.querySelectorAll('.nav-item').forEach(function(b){b.classList.toggle('active',b.dataset.view===v)});
   document.querySelectorAll('.hud-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===v)});
   document.querySelectorAll('.view').forEach(function(x){x.classList.toggle('active',x.id==='view-'+v)});
   var t={dashboard:'DASHBOARD',scanner:'SCANNER',gallery:'VAULT',settings:'CONFIG'};
-  document.querySelector('.brand-tag').innerHTML='<strong>AI SCANNER</strong> // '+(t[v]||'NEXUS-OS');
-  if(v==='gallery')loadGallery();
-  if(v==='dashboard'){loadDashboard();loadActivity()}
-  if(v==='settings')loadSettings();
+  var tag=document.querySelector('.brand-tag');
+  if(tag)tag.innerHTML='<strong>AI SCANNER</strong> // '+(t[v]||'NEXUS-OS');
+  clearTimeout(navTimer);
+  navTimer=setTimeout(function(){
+    if(v==='gallery')loadGallery();
+    if(v==='dashboard'){loadDashboard();loadActivity()}
+    if(v==='settings')loadSettings();
+  },50);
 }
 
 /* ---- CLOCK ---- */
@@ -1747,13 +1845,56 @@ document.getElementById('search-input').addEventListener('keydown',function(e){i
 function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
 /* ---- REAL-TIME POLLING ---- */
-setInterval(function(){
+var realtimeIntervals=[];
+realtimeIntervals.push(setInterval(function(){
   if(document.getElementById('view-dashboard').classList.contains('active')){
     loadDashboard();loadActivity();
   }
-}, 8000);
+}, 8000));
+realtimeIntervals.push(setInterval(function(){
+  if(document.getElementById('view-gallery').classList.contains('active')){
+    loadGallery();
+  }
+}, 12000));
+
+/* ---- KEYBOARD SHORTCUTS ---- */
+document.addEventListener('keydown',function(e){
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==='Escape'){
+    if(document.getElementById('modal').classList.contains('show')){closeModal();e.preventDefault()}
+    else if(document.getElementById('loader').classList.contains('show')){hideLoader()}
+    else if(state.stream){document.getElementById('btn-close-cam').click();e.preventDefault()}
+    else if(document.getElementById('wireless-panel').style.display==='flex'){document.getElementById('btn-wireless-close').click();e.preventDefault()}
+    else if(document.getElementById('scan-preview').classList.contains('active')){resetScanner();e.preventDefault()}
+    else if(state.currentView!=='dashboard'){goBack();e.preventDefault()}
+  }
+  if(e.key==='Enter'){
+    if(document.getElementById('view-scanner').classList.contains('active')&&!document.getElementById('btn-process').disabled)
+      document.getElementById('btn-process').click();
+  }
+  var navMap={'1':'dashboard','2':'scanner','3':'gallery','4':'settings'};
+  if(e.key in navMap&&document.getElementById('view-'+navMap[e.key])){
+    switchView(navMap[e.key]);e.preventDefault();
+  }
+});
+
+/* ---- MOUSE TRACKING ---- */
+var mg=document.getElementById('mouse-glow'),mgTimer;
+document.addEventListener('mousemove',function(e){
+  mg.style.left=e.clientX+'px';mg.style.top=e.clientY+'px';
+  mg.classList.add('show');
+  clearTimeout(mgTimer);
+  mgTimer=setTimeout(function(){mg.classList.remove('show')},3000);
+});
+
+/* ---- KEYBOARD HINT AUTO-HIDE ---- */
+setTimeout(function(){
+  var kh=document.getElementById('kbd-hint');
+  if(kh)kh.style.opacity='0.15';
+},10000);
 
 /* ---- INIT ---- */
+restoreState();
 loadDashboard();loadActivity();
 </script>
 </body>
