@@ -1346,6 +1346,25 @@ body{
   </div>
 </div>
 
+<!-- CONFIRM / PROMPT DIALOG -->
+<div class="modal-overlay" id="dialog">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <h3 id="dialog-title">CONFIRM</h3>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:20px">
+      <p id="dialog-msg" style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-secondary);line-height:1.5"></p>
+      <div id="dialog-input-wrap" style="display:none;margin:12px 0">
+        <input type="text" id="dialog-input" placeholder="Type here..." style="width:100%;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.08);background:var(--bg-card);color:var(--text-primary);font-family:var(--font-mono);font-size:0.65rem;outline:none;text-align:center">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button class="btn btn-primary btn-sm" id="dialog-ok">✓ CONFIRM</button>
+        <button class="btn btn-outline btn-sm" id="dialog-cancel">✕ CANCEL</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- LOADER -->
 <div class="loader-overlay" id="loader">
   <div class="loader-box">
@@ -1366,6 +1385,34 @@ body{
 <script>
 const state={capturedBlob:null,selectedEffect:'none',stream:null,filter:'all',selectedDocs:[],galleryDocs:[],currentResult:null,currentView:'dashboard',navHistory:[]};
 var scanActive=false;
+
+/* ---- IN-APP CONFIRM / PROMPT ---- */
+function showConfirm(msg,onConfirm){
+  var d=document.getElementById('dialog');
+  document.getElementById('dialog-title').textContent='CONFIRM';
+  document.getElementById('dialog-msg').textContent=msg;
+  document.getElementById('dialog-input-wrap').style.display='none';
+  document.getElementById('dialog-ok').style.display='';
+  document.getElementById('dialog-ok').textContent='✓ CONFIRM';
+  d.classList.add('show');
+  document.getElementById('dialog-ok').onclick=function(){d.classList.remove('show');if(onConfirm)onConfirm()};
+  document.getElementById('dialog-cancel').onclick=function(){d.classList.remove('show')};
+}
+function showPrompt(msg,onConfirm,defaultVal){
+  var d=document.getElementById('dialog');
+  document.getElementById('dialog-title').textContent='INPUT';
+  document.getElementById('dialog-msg').textContent=msg;
+  document.getElementById('dialog-input-wrap').style.display='';
+  var inp=document.getElementById('dialog-input');
+  inp.value=defaultVal||'';
+  document.getElementById('dialog-ok').style.display='';
+  document.getElementById('dialog-ok').textContent='✓ OK';
+  d.classList.add('show');
+  inp.focus();inp.select();
+  document.getElementById('dialog-ok').onclick=function(){var v=inp.value.trim();d.classList.remove('show');if(onConfirm)onConfirm(v)};
+  document.getElementById('dialog-cancel').onclick=function(){d.classList.remove('show');if(onConfirm)onConfirm('')};
+  inp.onkeydown=function(e){if(e.key==='Enter')document.getElementById('dialog-ok').click()};
+}
 
 /* ---- LOCAL STORAGE PERSISTENCE ---- */
 function saveState(){
@@ -1827,9 +1874,10 @@ function cloudUploadFromResult(){
   var cb=document.getElementById('btn-cloud');
   var path=cb.dataset.path;
   if(!path){toast('NO SAVED PATH','err');return}
-  var prov=prompt('PROVIDER (google_drive, dropbox, onedrive, all):')||'all';
-  if(prov==='all'){cloudUpload(path,'google_drive');cloudUpload(path,'dropbox');cloudUpload(path,'onedrive')}
-  else cloudUpload(path,prov);
+  showPrompt('PROVIDER (google_drive, dropbox, onedrive, all):',function(v){
+    if(v==='all'||!v){cloudUpload(path,'google_drive');cloudUpload(path,'dropbox');cloudUpload(path,'onedrive')}
+    else cloudUpload(path,v);
+  });
 }
 function resetScanner(){
   document.getElementById('result-panel').style.display='none';
@@ -1914,7 +1962,9 @@ function renameDoc(p){
     .catch(function(){toast('ERROR','err')});
 }
 function deleteDoc(p){
-  if(!confirm('DELETE THIS DOCUMENT?'))return;
+  showConfirm('DELETE THIS DOCUMENT?',function(){_deleteDoc(p)});
+}
+function _deleteDoc(p){
   fetch('/documents/'+p,{method:'DELETE'}).then(function(r){return r.json()})
     .then(function(d){if(d.deleted){toast('DELETED');state.selectedDocs=state.selectedDocs.filter(function(x){return x!==p});loadGallery();loadDashboard()}else toast('DELETE FAILED','err')})
     .catch(function(){toast('ERROR','err')});
@@ -1964,12 +2014,12 @@ function cloudAuth(provider){
     if(d.error){toast(d.error,'err');return}
     if(d.auth_url){
       window.open(d.auth_url,'_blank','width=600,height=700');
-      var code=prompt('PASTE AUTHORIZATION CODE:');
-      if(code) fetch('/cloud/callback/'+provider+'?code='+encodeURIComponent(code))
-        .then(function(r){return r.json()}).then(function(d2){
-          if(d2.error)toast(d2.error,'err');else{toast('CONNECTED');loadCloudStatus()}
-        }).catch(function(){});
-    }
+      showPrompt('PASTE AUTHORIZATION CODE:',function(code){
+        if(code) fetch('/cloud/callback/'+provider+'?code='+encodeURIComponent(code))
+          .then(function(r){return r.json()}).then(function(d2){
+            if(d2.error)toast(d2.error,'err');else{toast('CONNECTED');loadCloudStatus()}
+          }).catch(function(){});
+      });
   }).catch(function(e){toast('AUTH FAILED: '+e.message,'err')});
 }
 function cloudDisconnect(provider){
@@ -1981,7 +2031,7 @@ function cloudUpload(path,provider){
     .then(function(r){return r.json()})
     .then(function(d){if(d.error){toast(d.error,'err');return}
       var link=Object.values(d.results||{})[0];
-      if(link){toast('UPLOADED');if(confirm('OPEN IN CLOUD?'))window.open(link,'_blank')}
+      if(link){toast('UPLOADED');showConfirm('OPEN IN CLOUD?',function(){window.open(link,'_blank')})}
       else toast('UPLOAD FAILED','err');
     }).catch(function(){toast('UPLOAD ERROR','err')});
 }
@@ -2035,7 +2085,9 @@ function saveApiKey(){
     }).catch(function(){toast('ERROR SAVING KEY','err')});
 }
 function deleteApiKey(name){
-  if(!confirm('DELETE '+KEY_META_UI[name]?.label+'?'))return;
+  showConfirm('DELETE '+KEY_META_UI[name]?.label+'?',function(){_deleteApiKey(name)});return;
+}
+function _deleteApiKey(name){
   fetch('/api/keys/'+name,{method:'DELETE'}).then(function(r){return r.json()})
     .then(function(d){if(d.deleted){toast('KEY DELETED');loadApiKeys();loadCloudStatus()}else toast('DELETE FAILED','err')})
     .catch(function(){toast('ERROR','err')});
