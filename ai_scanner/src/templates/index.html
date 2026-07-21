@@ -944,6 +944,9 @@ body{
       <button class="hud-tab" data-tab="gallery" onclick="switchView('gallery')">03 VAULT</button>
     </div>
     <div class="hud-spacer"></div>
+    <div style="display:flex;align-items:center;position:relative">
+      <input type="text" id="search-input" placeholder="SEARCH..." style="background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.6rem;width:140px;outline:none;transition:var(--transition)">
+    </div>
     <div class="hud-telemetry">
       <div class="hud-tel-item"><span class="dot on"></span> <span class="label-text"><strong>OCR</strong> ONLINE</span></div>
       <div class="hud-tel-item" id="hud-storage"><strong>STORAGE</strong> 0%</div>
@@ -1012,6 +1015,10 @@ body{
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                     CAMERA
                   </button>
+                  <button class="btn btn-outline btn-lg" id="btn-wireless">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+                    WIRELESS
+                  </button>
                 </div>
               </div>
               <div class="cam-view" id="cam-view">
@@ -1061,9 +1068,32 @@ body{
                   <div class="shutter-btn" id="shutter-btn"><div class="btn btn-primary btn-icon" style="width:52px;height:52px;border-radius:50%;padding:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" onclick="captureFromCam()">◉</div></div>
                 </div>
               </div>
-              <div class="cam-bar" style="display:none">
+              <div class="cam-bar" id="cam-bar" style="display:none;gap:8px;padding:10px;justify-content:center;flex-shrink:0">
                 <button class="btn btn-primary" id="btn-capture">◉ CAPTURE</button>
                 <button class="btn btn-outline" id="btn-close-cam">✕ CLOSE</button>
+              </div>
+              <div class="wireless-panel" id="wireless-panel" style="display:none;flex-direction:column;flex:1;background:#000;border-radius:var(--radius-lg);overflow:hidden;position:relative">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:20px;gap:10px;text-align:center" id="wireless-connect">
+                  <div style="font-size:32px;opacity:0.3;font-family:var(--font-mono)">📡</div>
+                  <h3 style="font-family:var(--font-display);font-size:0.85rem;font-weight:600">CONNECT WIRELESS CAMERA</h3>
+                  <p style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-tertiary);max-width:360px">Install <strong>IP Webcam</strong> on your phone, start the server, then enter the URL below.</p>
+                  <div id="wireless-ip-display" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);background:var(--cyan-dim);padding:6px 14px;border-radius:var(--radius-sm)"></div>
+                  <div style="display:flex;gap:6px;width:100%;max-width:360px">
+                    <input type="text" id="wireless-url" placeholder="http://192.168.1.x:8080/video" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.65rem;outline:none">
+                    <button class="btn btn-primary" id="btn-wireless-connect">CONNECT</button>
+                  </div>
+                  <div style="margin-top:4px;display:flex;align-items:center;gap:8px">
+                    <img id="wireless-qr" style="width:80px;height:80px;border-radius:var(--radius-sm);display:none">
+                    <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">Scan QR to open on phone</span>
+                  </div>
+                </div>
+                <div style="display:none;flex-direction:column;flex:1;position:relative" id="wireless-stream">
+                  <img id="wireless-img" style="width:100%;flex:1;object-fit:contain;background:#000">
+                  <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5">
+                    <button class="btn btn-primary btn-lg" id="btn-wireless-capture" style="box-shadow:0 0 20px var(--cyan-glow)">◉ CAPTURE</button>
+                    <button class="btn btn-outline" id="btn-wireless-close">✕ DISCONNECT</button>
+                  </div>
+                </div>
               </div>
               <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
               <input type="file" accept="image/*" id="file-input">
@@ -1313,6 +1343,7 @@ document.getElementById('btn-open-cam').addEventListener('click',function(e){
     state.stream=s;document.getElementById('video').srcObject=s;
     document.getElementById('cam-view').style.display='flex';
     document.getElementById('dz-placeholder').style.display='none';
+    document.getElementById('cam-bar').style.display='flex';
     document.getElementById('vf-overlay').classList.add('active');
     document.getElementById('shutter-btn').classList.add('active');
   }).catch(function(e){toast('CAMERA: '+e.message,'err')});
@@ -1322,6 +1353,7 @@ document.getElementById('btn-close-cam').addEventListener('click',function(e){
   if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
   document.getElementById('cam-view').style.display='none';
   document.getElementById('dz-placeholder').style.display='';
+  document.getElementById('cam-bar').style.display='none';
   document.getElementById('vf-overlay').classList.remove('active');
   document.getElementById('shutter-btn').classList.remove('active');
 });
@@ -1337,6 +1369,7 @@ function captureFromCam(){
     state.capturedBlob=b;
     if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
     document.getElementById('cam-view').style.display='none';
+    document.getElementById('cam-bar').style.display='none';
     document.getElementById('vf-overlay').classList.remove('active');
     document.getElementById('shutter-btn').classList.remove('active');
     document.getElementById('preview-img').src=URL.createObjectURL(b);
@@ -1345,6 +1378,58 @@ function captureFromCam(){
     document.getElementById('btn-process').disabled=false;
   },'image/jpeg',0.95);
 }
+/* ---- WIRELESS CAMERA ---- */
+var wirelessInterval=null;
+document.getElementById('btn-wireless').addEventListener('click',function(e){
+  e.stopPropagation();
+  document.getElementById('dz-placeholder').style.display='none';
+  document.getElementById('wireless-panel').style.display='flex';
+  document.getElementById('wireless-connect').style.display='flex';
+  document.getElementById('wireless-stream').style.display='none';
+  fetch('/api/ip').then(function(r){return r.json()}).then(function(d){
+    var ipText='YOUR IP: '+d.ip+':'+d.port;
+    document.getElementById('wireless-ip-display').textContent=ipText;
+    document.getElementById('wireless-qr').src='https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(d.url);
+    document.getElementById('wireless-qr').style.display='inline';
+  }).catch(function(){});
+});
+document.getElementById('btn-wireless-connect').addEventListener('click',function(){
+  var url=document.getElementById('wireless-url').value.trim();
+  if(!url){toast('ENTER A STREAM URL','warn');return}
+  var img=document.getElementById('wireless-img');
+  img.src=url;
+  img.onload=function(){
+    document.getElementById('wireless-connect').style.display='none';
+    document.getElementById('wireless-stream').style.display='flex';
+    state.wirelessUrl=url;
+    toast('WIRELESS CAMERA CONNECTED');
+  };
+  img.onerror=function(){
+    toast('CANNOT CONNECT TO '+url,'err');
+  };
+});
+document.getElementById('btn-wireless-close').addEventListener('click',function(){
+  document.getElementById('wireless-img').src='';
+  document.getElementById('wireless-panel').style.display='none';
+  document.getElementById('dz-placeholder').style.display='';
+  state.wirelessUrl=null;
+  if(wirelessInterval){clearInterval(wirelessInterval);wirelessInterval=null}
+});
+document.getElementById('btn-wireless-capture').addEventListener('click',function(){
+  var img=document.getElementById('wireless-img');
+  if(!img.src||!img.complete||!img.naturalWidth){toast('NO STREAM','err');return}
+  var c=document.getElementById('canvas'),ctx=c.getContext('2d');
+  c.width=img.naturalWidth;c.height=img.naturalHeight;
+  ctx.drawImage(img,0,0);
+  c.toBlob(function(b){
+    state.capturedBlob=b;
+    document.getElementById('wireless-panel').style.display='none';
+    document.getElementById('preview-img').src=URL.createObjectURL(b);
+    document.getElementById('scan-preview').classList.add('active');
+    document.getElementById('btn-process').disabled=false;
+  },'image/jpeg',0.95);
+});
+
 var dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');
 dz.addEventListener('click',function(e){
   if(document.getElementById('dz-placeholder').style.display!=='none'&&document.getElementById('cam-view').style.display!=='flex')fi.click();
@@ -1660,6 +1745,13 @@ document.getElementById('search-input').addEventListener('keydown',function(e){i
 
 /* ---- UTILS ---- */
 function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+/* ---- REAL-TIME POLLING ---- */
+setInterval(function(){
+  if(document.getElementById('view-dashboard').classList.contains('active')){
+    loadDashboard();loadActivity();
+  }
+}, 8000);
 
 /* ---- INIT ---- */
 loadDashboard();loadActivity();

@@ -1,4 +1,4 @@
-import os, sys, json, mimetypes, shutil, re
+import os, sys, json, mimetypes, shutil, re, socket
 from pathlib import Path
 from datetime import datetime
 from io import BytesIO
@@ -160,6 +160,13 @@ def api_delete_key(name):
 # ---------------------------------------------------------------------------
 #  Routes
 # ---------------------------------------------------------------------------
+
+@app.route("/api/ip")
+def api_ip():
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+    port = request.host.split(":")[1] if ":" in request.host else "80"
+    return jsonify({"ip": local_ip, "hostname": hostname, "port": port, "url": f"http://{local_ip}:{port}"})
 
 @app.route("/")
 def index():
@@ -567,7 +574,10 @@ def serve_image(subpath):
         full_path = UPLOAD_FOLDER / subpath
     if not full_path.exists():
         return "Not found", 404
-    return send_file(str(full_path), mimetype=mimetypes.guess_type(str(full_path))[0])
+    mime = mimetypes.guess_type(str(full_path))[0]
+    if mime:
+        return send_file(str(full_path), mimetype=mime)
+    return send_file(str(full_path))
 
 
 # ---------------------------------------------------------------------------
