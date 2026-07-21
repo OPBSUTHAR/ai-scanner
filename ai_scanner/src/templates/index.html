@@ -1733,12 +1733,14 @@ function startCamera(deviceId){
 document.getElementById('btn-open-cam').addEventListener('click',function(e){
   e.stopPropagation();e.preventDefault();
   if(state.stream){closeCamera();return}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    toast('Camera API not available in this browser','err');return
-  }
+
+  // Check HTTPS FIRST — on HTTP, mediaDevices is often null, so order matters
   if(!isSecureContext()){
-    toast('⚠ CAMERA REQUIRES HTTPS — use https:// or localhost','err');
+    toast('⚠ CAMERA REQUIRES HTTPS — add --ngrok flag or deploy with HTTPS','err');
     return;
+  }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    toast('Your browser does not support camera API. Use Chrome or Edge.','err');return
   }
 
   // Step 1: try to get permission silently (grants enumerateDevices labels)
