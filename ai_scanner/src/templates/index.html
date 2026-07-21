@@ -1179,7 +1179,7 @@ body{
                 <div class="wtab-content" data-wtab="bluetooth" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-bluetooth">
                   <div style="font-size:36px;opacity:0.4">🔵</div>
                   <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">BLUETOOTH</h3>
-                  <div id="bt-project-name" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--cyan);background:var(--cyan-dim);padding:4px 10px;border-radius:var(--radius-sm)">PROJECT: NEXUS-OS SCANNER</div>
+                  <div id="bt-project-name" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--cyan);background:var(--cyan-dim);padding:4px 10px;border-radius:var(--radius-sm)">PROJECT: AI SCANNER</div>
                   <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);max-width:320px">On your phone, go to Bluetooth settings and look for:</p>
                   <div id="bt-hostname" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--emerald);font-weight:600">Loading...</div>
                   <div class="bt-pair-steps" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);line-height:1.6;text-align:left;background:var(--bg-card);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:320px">
@@ -1191,7 +1191,7 @@ body{
                   <button class="btn btn-primary" id="btn-scan-bt">🔍 SCAN FOR NEARBY DEVICES</button>
                   <div id="bt-results" style="width:100%;max-height:120px;overflow-y:auto;display:none;flex-direction:column;gap:4px"></div>
                   <div id="bt-info" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);line-height:1.5;padding:8px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:320px">
-                    <strong style="color:var(--text-secondary)">NEXUS-OS Scanner</strong> uses Bluetooth to detect nearby devices. For camera streaming, the <strong>PHONE</strong> tab (WiFi QR) or <strong>NETWORK</strong> tab is recommended.
+                    <strong style="color:var(--text-secondary)">AI Scanner</strong> uses Bluetooth to detect nearby devices. For camera streaming, the <strong>PHONE</strong> tab (WiFi QR) or <strong>NETWORK</strong> tab is recommended.
                   </div>
                 </div>
 
@@ -1383,7 +1383,7 @@ body{
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-const state={capturedBlob:null,selectedEffect:'none',stream:null,filter:'all',selectedDocs:[],galleryDocs:[],currentResult:null,currentView:'dashboard',navHistory:[]};
+const state={capturedBlob:null,capturedBlobs:[],selectedEffect:'none',stream:null,filter:'all',selectedDocs:[],galleryDocs:[],currentResult:null,currentView:'dashboard',navHistory:[]};
 var scanActive=false;
 
 /* ---- IN-APP CONFIRM / PROMPT ---- */
@@ -1573,16 +1573,155 @@ function captureFromCam(){
   c.getContext('2d').drawImage(v,0,0,c.width,c.height);
   c.toBlob(function(b){
     state.capturedBlob=b;
-    if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
-    document.getElementById('cam-view').style.display='none';
-    document.getElementById('cam-bar').style.display='none';
-    document.getElementById('vf-overlay').classList.remove('active');
-    document.getElementById('shutter-btn').classList.remove('active');
+    state.capturedBlobs.push(b);
+    var cnt=state.capturedBlobs.length;
+    var badge=document.getElementById('capture-count');
+    if(!badge){
+      badge=document.createElement('div');
+      badge.id='capture-count';
+      badge.style.cssText='position:absolute;top:10px;right:10px;background:var(--gradient-cyan-magenta);color:#fff;font-family:var(--font-mono);font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:20px;z-index:10;box-shadow:0 0 20px var(--cyan-glow)';
+      document.getElementById('cam-view').appendChild(badge);
+    }
+    badge.textContent=cnt+' CAPTURED';
+    var fb=document.getElementById('btn-finish-capture');
+    if(!fb){
+      fb=document.createElement('button');
+      fb.id='btn-finish-capture';
+      fb.textContent='DONE CAPTURING';
+      fb.style.cssText='position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:10;background:var(--bg-card);backdrop-filter:blur(12px);border:1px solid var(--cyan);color:var(--cyan);padding:6px 16px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.55rem;font-weight:600;cursor:pointer';
+      fb.onclick=finishCapture;
+      document.getElementById('cam-view').appendChild(fb);
+    }
+    fb.style.display='';
     document.getElementById('preview-img').src=URL.createObjectURL(b);
     document.getElementById('scan-preview').classList.add('active');
     document.getElementById('dz-placeholder').style.display='none';
     document.getElementById('btn-process').disabled=false;
+    toast('CAPTURED #'+cnt);
   },'image/jpeg',0.95);
+}
+function finishCapture(){
+  if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
+  document.getElementById('cam-view').style.display='none';
+  document.getElementById('cam-bar').style.display='none';
+  document.getElementById('vf-overlay').classList.remove('active');
+  document.getElementById('shutter-btn').classList.remove('active');
+  var badge=document.getElementById('capture-count');
+  if(badge)badge.remove();
+  var fb=document.getElementById('btn-finish-capture');
+  if(fb)fb.style.display='none';
+  if(state.capturedBlobs.length===0){resetScanner();return}
+  showCaptureActions();
+}
+function showCaptureActions(){
+  var sp=document.getElementById('scan-preview');
+  sp.classList.add('active');
+  document.getElementById('dz-placeholder').style.display='none';
+  var existing=document.getElementById('capture-actions');
+  if(existing)existing.remove();
+  var div=document.createElement('div');
+  div.id='capture-actions';
+  div.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding:10px;background:var(--bg-card);border-radius:var(--radius-md);border:1.5px solid transparent;border-image:var(--gradient-border) 1;backdrop-filter:blur(16px);justify-content:center';
+  div.innerHTML='<span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);width:100%;text-align:center;margin-bottom:4px">CAPTURED: <strong style="color:var(--cyan)">'+state.capturedBlobs.length+' IMAGES</strong></span>'+
+    '<button class="btn btn-primary btn-sm" onclick="batchProcess()">AI PROCESS ALL</button>'+
+    '<button class="btn btn-outline btn-sm" onclick="batchSaveToVault()">SAVE TO VAULT</button>'+
+    '<button class="btn btn-outline btn-sm" onclick="batchMakePdf()">CONVERT TO PDF</button>'+
+    '<button class="btn btn-outline btn-sm" onclick="captureMore()">ADD MORE</button>'+
+    '<button class="btn btn-danger btn-sm" onclick="clearCaptures()">CLEAR ALL</button>';
+  sp.parentNode.insertBefore(div,sp.nextSibling);
+  document.getElementById('preview-img').src=URL.createObjectURL(state.capturedBlobs[state.capturedBlobs.length-1]);
+}
+function captureMore(){
+  var ca=document.getElementById('capture-actions');
+  if(ca)ca.remove();
+  document.getElementById('scan-preview').classList.remove('active');
+  document.getElementById('btn-open-cam').click();
+}
+function clearCaptures(){
+  state.capturedBlobs=[];
+  state.capturedBlob=null;
+  var ca=document.getElementById('capture-actions');
+  if(ca)ca.remove();
+  resetScanner();
+  toast('CAPTURES CLEARED');
+}
+function batchProcess(){
+  var ca=document.getElementById('capture-actions');
+  if(ca)ca.remove();
+  if(state.capturedBlobs.length===1){
+    document.getElementById('btn-process').click();
+    return;
+  }
+  showLoader('BATCH PROCESSING...','PROCESSING '+state.capturedBlobs.length+' IMAGES');
+  var results=[],idx=0;
+  (function processNext(){
+    if(idx>=state.capturedBlobs.length){
+      hideLoader();
+      state.capturedBlobs=[];state.capturedBlob=null;
+      toast('ALL '+results.length+' IMAGES PROCESSED');
+      loadGallery();
+      return;
+    }
+    var fd=new FormData();
+    fd.append('image',state.capturedBlobs[idx],'scan_'+idx+'.jpg');
+    fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
+    fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on')?'true':'false');
+    fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on')?'true':'false');
+    fd.append('effect',state.selectedEffect);
+    fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
+    fetch('/scan/advanced',{method:'POST',body:fd})
+      .then(function(r){return r.json()})
+      .then(function(data){if(!data.error)results.push(data);idx++;processNext()})
+      .catch(function(){idx++;processNext()});
+  })();
+}
+function batchSaveToVault(){
+  var ca=document.getElementById('capture-actions');
+  if(ca)ca.remove();
+  showLoader('SAVING...','SAVING '+state.capturedBlobs.length+' IMAGES');
+  var saved=0,idx=0;
+  (function saveNext(){
+    if(idx>=state.capturedBlobs.length){
+      hideLoader();
+      state.capturedBlobs=[];state.capturedBlob=null;
+      toast('SAVED '+saved+' IMAGES');
+      loadGallery();
+      return;
+    }
+    var fd=new FormData();
+    fd.append('image',state.capturedBlobs[idx],'capture_'+Date.now()+'_'+idx+'.jpg');
+    fd.append('auto_crop','false');fd.append('shadow_removal','false');
+    fd.append('enhance','false');fd.append('effect','none');
+    fetch('/scan/advanced',{method:'POST',body:fd})
+      .then(function(r){return r.json()})
+      .then(function(data){if(!data.error)saved++;idx++;saveNext()})
+      .catch(function(){idx++;saveNext()});
+  })();
+}
+function batchMakePdf(){
+  var ca=document.getElementById('capture-actions');
+  if(ca)ca.remove();
+  showLoader('GENERATING PDF...','CONVERTING '+state.capturedBlobs.length+' IMAGES');
+  var savedPaths=[],idx=0;
+  (function captureAndSave(){
+    if(idx>=state.capturedBlobs.length){
+      if(savedPaths.length){
+        fetch('/pdf/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:savedPaths})})
+          .then(function(r){return r.json()})
+          .then(function(d){hideLoader();if(d.error){toast(d.error,'err');return}toast('PDF: '+d.name);window.open(d.url,'_blank');state.capturedBlobs=[];state.capturedBlob=null;loadGallery()})
+          .catch(function(e){hideLoader();toast('PDF ERROR','err')});
+      }else{hideLoader();toast('NO IMAGES','warn')}
+      return;
+    }
+    var fd=new FormData();
+    fd.append('image',state.capturedBlobs[idx],'capture_'+Date.now()+'_'+idx+'.jpg');
+    fd.append('auto_crop','false');fd.append('shadow_removal','false');
+    fd.append('enhance','false');fd.append('effect','none');
+    fetch('/scan/advanced',{method:'POST',body:fd})
+      .then(function(r){return r.json()})
+      .then(function(data){if(!data.error&&data.path)savedPaths.push(data.path);idx++;captureAndSave()})
+      .catch(function(){idx++;captureAndSave()});
+  })();
 }
 /* ---- WIRELESS CAMERA (MULTI-TAB) ---- */
 var wirelessInterval=null,relayInterval=null;
@@ -1719,7 +1858,7 @@ document.getElementById('btn-scan-bt').addEventListener('click',function(){
     optionalServices: []
   }).then(function(device){
     res.style.display='flex';
-    var isProject = device.name && device.name.toLowerCase().includes('nexus') || (btHostname && device.name === btHostname);
+    var isProject = device.name && (device.name.toLowerCase().includes('nexus') || device.name.toLowerCase().includes('ai scanner') || device.name.toLowerCase().includes('ai_scanner')) || (btHostname && device.name === btHostname);
     var badge = isProject ? '<span style="color:var(--emerald);font-size:0.45rem;margin-left:4px">● THIS PC</span>' : '';
     res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;padding:6px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.06)"><strong>'+device.name+'</strong>'+badge+'<br><span style="color:var(--text-tertiary)">ID: '+device.id+'</span></div>';
     toast('FOUND: '+device.name);
@@ -1909,7 +2048,7 @@ function renderGallery(){
   document.getElementById('merge-n').textContent=state.selectedDocs.length;
   c.innerHTML='<div class="doc-grid">'+docs.map(function(d){
     var s=state.selectedDocs.includes(d.path);
-    return '<div class="doc-card '+(s?'selected':'')+'" onclick="toggleDoc(\''+d.path+'\')">'+
+    return '<div class="doc-card '+(s?'selected':'')+'" onclick="openPreview(\''+d.path+'\')" ondblclick="toggleDoc(\''+d.path+'\')"'+
       '<img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--bg-deep)\\\'>◈</div>\'">'+
       '<div class="doc-overlay"><button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')">⬇</button>'+
       '<button onclick="event.stopPropagation();openPreview(\''+d.path+'\')">👁</button>'+
