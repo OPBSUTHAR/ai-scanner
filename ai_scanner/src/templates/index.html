@@ -2020,6 +2020,7 @@ function cloudAuth(provider){
             if(d2.error)toast(d2.error,'err');else{toast('CONNECTED');loadCloudStatus()}
           }).catch(function(){});
       });
+    }
   }).catch(function(e){toast('AUTH FAILED: '+e.message,'err')});
 }
 function cloudDisconnect(provider){
