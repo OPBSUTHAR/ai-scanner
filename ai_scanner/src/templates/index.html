@@ -749,12 +749,9 @@ body{
 .badge-green{background:rgba(0,245,212,0.08);color:var(--emerald);border:1px solid rgba(0,245,212,0.15)}
 .badge-red{background:rgba(255,0,85,0.08);color:var(--crimson);border:1px solid rgba(255,0,85,0.15)}
 
-/* Wireless panel tabs */
-.wireless-tab.active{background:var(--cyan-dim)!important;color:var(--cyan)!important;box-shadow:0 0 12px var(--cyan-glow)}
-.wtab-content.active{display:flex!important}
-.status-badge{font-family:var(--font-mono)}
-.status-badge.connected{color:var(--emerald)!important;border-color:rgba(0,245,212,0.2)!important;background:rgba(0,245,212,0.06)!important}
-.status-badge.error{color:var(--crimson)!important;border-color:rgba(255,0,85,0.2)!important;background:rgba(255,0,85,0.06)!important}
+/* Capture status */
+#capture-status{animation:hudFadeIn 0.3s ease}
+#btn-done-capture{animation:hudFadeIn 0.3s ease;padding:8px 24px!important}
 
 /* ============================================================
    GALLERY / VAULT LIBRARY
@@ -984,7 +981,8 @@ body{
   .doc-card .doc-overlay{opacity:1!important}
   .shutter-btn{width:56px!important;height:56px!important;bottom:16px!important}
   .shutter-btn::after{width:38px!important;height:38px!important}
-  .wireless-panel .wtab-content{padding:10px!important}
+  #capture-status{bottom:70px!important;font-size:0.5rem!important;padding:4px 12px!important}
+  #btn-done-capture{padding:6px 18px!important;font-size:0.55rem!important}
   .modal{max-width:95vw!important;margin:10px!important;max-height:85vh!important;overflow-y:auto!important}
   #btn-close-cam{top:6px!important;right:6px!important;padding:4px 8px!important;font-size:0.5rem!important}
   .kbd-hint{display:none!important}
@@ -1172,16 +1170,11 @@ body{
                 <p>PNG · JPG · JPEG — MAX 64 MB</p>
                 <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
                   <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();document.getElementById('file-input').click()">SELECT FILE</button>
-                  <button class="btn btn-outline btn-lg" id="btn-open-cam">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                    CAMERA
+                  <button class="btn btn-primary btn-lg" id="btn-open-cam" style="background:var(--gradient-cyan-magenta);border:none;color:#fff;box-shadow:0 0 20px var(--cyan-glow)">
+                    ⟐ OPEN CAMERA
                   </button>
-                  <button class="btn btn-outline btn-lg" id="btn-wireless">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
-                    WIRELESS
-                  </button>
-                  <button class="btn btn-primary btn-lg" id="btn-ai-auto" style="background:var(--gradient-cyan-magenta);border:none;color:#fff;box-shadow:0 0 20px var(--cyan-glow)">
-                    ⟐ AI AUTO
+                  <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();processAllCaptures()" id="btn-process-all" style="display:none;background:var(--gradient-cyan-violet)">
+                    ⚡ PROCESS ALL
                   </button>
                 </div>
               </div>
@@ -1233,96 +1226,12 @@ body{
                 </div>
               </div>
               <button class="btn btn-outline" id="btn-close-cam" style="position:absolute;top:10px;right:10px;z-index:12;display:none;padding:6px 12px;font-size:0.55rem;background:rgba(3,7,18,0.7);backdrop-filter:blur(8px);border-color:rgba(255,255,255,0.12)">✕ CLOSE</button>
-              <div class="wireless-panel" id="wireless-panel" style="display:none;flex-direction:column;flex:1;border-radius:var(--radius-lg);overflow:hidden;position:relative;background:var(--bg-deep)">
-                <div style="display:flex;gap:1px;background:var(--bg-card);padding:4px;flex-shrink:0;border-bottom:1px solid rgba(0,242,254,0.06)" id="wireless-tabs">
-                  <button class="wireless-tab active" data-wtab="phone" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">📱 PHONE</button>
-                  <button class="wireless-tab" data-wtab="network" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">📡 NETWORK</button>
-                  <button class="wireless-tab" data-wtab="bluetooth" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">🔵 BT</button>
-                  <button class="wireless-tab" data-wtab="url" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">🔌 MANUAL</button>
-                </div>
-
-                <!-- PHONE RELAY TAB -->
-                <div class="wtab-content active" data-wtab="phone" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-phone">
-                  <div style="font-size:36px;opacity:0.4">📱</div>
-                  <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">PHONE AS CAMERA</h3>
-                  <p style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary);max-width:320px">Scan the QR code with your phone to use its camera wirelessly.</p>
-                  <div id="phone-ip-display" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);background:var(--cyan-dim);padding:5px 12px;border-radius:var(--radius-sm);display:none"></div>
-                  <img id="phone-qr" style="width:120px;height:120px;border-radius:var(--radius-sm);display:none;background:var(--bg-card);padding:6px">
-                  <div class="status-badge" id="phone-status" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:4px 12px;border-radius:20px;background:var(--bg-card);border:1px solid rgba(0,242,254,0.06)">WAITING FOR PHONE...</div>
-                  <div style="display:flex;gap:8px;margin-top:4px">
-                    <button class="btn btn-primary btn-sm" id="btn-relay-capture" style="display:none" onclick="captureFromRelay()">◉ CAPTURE</button>
-                    <button class="btn btn-outline btn-sm" id="btn-relay-close" style="display:none" onclick="closeRelay()">✕ DISCONNECT</button>
-                  </div>
-                  <img id="relay-preview" style="width:100%;max-height:240px;object-fit:contain;border-radius:var(--radius-sm);display:none;background:#000">
-                </div>
-
-                <!-- NETWORK SCAN TAB -->
-                <div class="wtab-content" data-wtab="network" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-network">
-                  <div style="font-size:36px;opacity:0.4">📡</div>
-                  <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">NETWORK CAMERA</h3>
-                  <p style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary);max-width:320px">Scan your local network for IP Webcam or RTSP cameras.</p>
-                  <button class="btn btn-primary" id="btn-scan-network">🔍 SCAN NETWORK</button>
-                  <div id="scan-results" style="width:100%;max-height:140px;overflow-y:auto;display:none;flex-direction:column;gap:4px"></div>
-                  <div style="display:flex;gap:6px;width:100%;max-width:360px;margin-top:4px">
-                    <input type="text" id="network-url" placeholder="http://192.168.1.x:8080/video" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:7px 10px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.6rem;outline:none">
-                    <button class="btn btn-primary btn-sm" id="btn-network-connect">CONNECT</button>
-                  </div>
-                </div>
-
-                <!-- BLUETOOTH TAB -->
-                <div class="wtab-content" data-wtab="bluetooth" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center" id="wtab-bluetooth">
-                  <div style="font-size:36px;opacity:0.4">🔵</div>
-                  <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">BLUETOOTH</h3>
-                  <div id="bt-project-name" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--cyan);background:var(--cyan-dim);padding:4px 10px;border-radius:var(--radius-sm)">PROJECT: AI SCANNER</div>
-                  <!-- Status Card -->
-                  <div style="width:100%;max-width:360px;background:var(--bg-card);border-radius:var(--radius-md);padding:14px 16px;border:1.5px solid transparent;border-image:var(--gradient-border) 1;backdrop-filter:blur(16px)">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                      <span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px">LAPTOP BLUETOOTH</span>
-                      <span id="bt-status-badge" class="status-badge" style="font-size:0.45rem;padding:2px 8px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);font-family:var(--font-mono);background:rgba(255,255,255,0.03);color:var(--text-tertiary)">LOADING...</span>
-                    </div>
-                    <div id="bt-device-name" style="font-family:var(--font-mono);font-size:0.75rem;font-weight:700;color:var(--text-primary);letter-spacing:0.3px">Loading...</div>
-                    <div style="display:flex;gap:8px;margin-top:10px">
-                      <button class="btn btn-primary btn-sm" id="btn-bt-connect" style="flex:1;font-size:0.5rem!important">🔗 CONNECT</button>
-                      <button class="btn btn-outline btn-sm" id="btn-bt-disconnect" style="flex:1;font-size:0.5rem!important;display:none">✕ DISCONNECT</button>
-                    </div>
-                  </div>
-                  <!-- Paired Device Info -->
-                  <div id="bt-connected-info" style="width:100%;max-width:360px;display:none;background:var(--bg-card);border-radius:var(--radius-md);padding:12px 14px;border:1px solid rgba(0,245,212,0.15);backdrop-filter:blur(16px)">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                      <span style="width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 8px var(--emerald);animation:pulse 1.5s ease-in-out infinite"></span>
-                      <span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--emerald);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">CONNECTED</span>
-                    </div>
-                    <div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-secondary)" id="bt-connected-device">-</div>
-                    <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);margin-top:2px" id="bt-connected-id">-</div>
-                  </div>
-                  <!-- Scan -->
-                  <button class="btn btn-outline btn-sm" id="btn-scan-bt" style="font-size:0.5rem!important">🔍 SCAN NEARBY DEVICES</button>
-                  <div id="bt-results" style="width:100%;max-width:360px;max-height:140px;overflow-y:auto;display:none;flex-direction:column;gap:4px;text-align:left"></div>
-                  <div id="bt-info" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);line-height:1.5;padding:8px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:360px">
-                    <strong style="color:var(--text-secondary)">AI Scanner</strong> uses Bluetooth to detect nearby devices. For camera streaming, the <strong>PHONE</strong> tab (WiFi QR) or <strong>NETWORK</strong> tab is recommended.
-                  </div>
-                </div>
-
-                <!-- MANUAL URL TAB -->
-                <div class="wtab-content" data-wtab="url" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-url">
-                  <div style="font-size:36px;opacity:0.4">🔌</div>
-                  <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">MANUAL CONNECTION</h3>
-                  <p style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary);max-width:320px">Enter the MJPEG stream URL from any IP camera or streaming app.</p>
-                  <div id="manual-ip-display" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);background:var(--cyan-dim);padding:5px 12px;border-radius:var(--radius-sm);display:none"></div>
-                  <div style="display:flex;gap:6px;width:100%;max-width:360px">
-                    <input type="text" id="manual-url" placeholder="http://192.168.1.x:8080/video" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.65rem;outline:none">
-                    <button class="btn btn-primary" id="btn-manual-connect">CONNECT</button>
-                  </div>
-                </div>
-
-                <!-- Shared stream view (for network/manual) -->
-                <div style="display:none;flex-direction:column;flex:1;position:relative" id="wireless-stream">
-                  <img id="wireless-img" style="width:100%;flex:1;object-fit:contain;background:#000">
-                  <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5">
-                    <button class="btn btn-primary btn-lg" id="btn-wireless-capture" style="box-shadow:0 0 20px var(--cyan-glow)">◉ CAPTURE</button>
-                    <button class="btn btn-outline" id="btn-wireless-close">✕ DISCONNECT</button>
-                  </div>
-                </div>
+              <!-- Capture status bar (shown when camera is active) -->
+              <div id="capture-status" style="display:none;position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(3,7,18,0.8);backdrop-filter:blur(12px);padding:6px 16px;border-radius:20px;border:1px solid rgba(0,242,254,0.15);font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);white-space:nowrap">
+                <span id="capture-count-badge">📄 0</span> CAPTURED
+              </div>
+              <div id="done-capturing-bar" style="display:none;position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:10;display:none;gap:8px">
+                <button class="btn btn-primary" id="btn-done-capture" style="background:var(--gradient-cyan-magenta);border:none;box-shadow:0 0 20px var(--cyan-glow)">✓ DONE</button>
               </div>
               <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
               <input type="file" accept="image/*" id="file-input">
@@ -1705,193 +1614,57 @@ document.getElementById('btn-close-cam').addEventListener('click',function(e){
   document.getElementById('shutter-btn').classList.remove('active');
 });
 function captureFromCam(){
+  // Manual capture override for shutter button
   var v=document.getElementById('video'),c=document.getElementById('canvas');
   if(!v.videoWidth)return;
   c.width=v.videoWidth||1280;c.height=v.videoHeight||720;
   c.getContext('2d').drawImage(v,0,0,c.width,c.height);
   c.toBlob(function(b){
-    state.capturedBlob=b;
     state.capturedBlobs.push(b);
+    state.capturedBlob=b;
     var cnt=state.capturedBlobs.length;
-    var badge=document.getElementById('capture-count');
-    if(!badge){
-      badge=document.createElement('div');
-      badge.id='capture-count';
-      badge.style.cssText='position:absolute;top:10px;right:10px;background:var(--gradient-cyan-magenta);color:#fff;font-family:var(--font-mono);font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:20px;z-index:10;box-shadow:0 0 20px var(--cyan-glow)';
-      document.getElementById('cam-view').appendChild(badge);
-    }
-    badge.textContent=cnt+' CAPTURED';
-    var fb=document.getElementById('btn-finish-capture');
-    if(!fb){
-      fb=document.createElement('button');
-      fb.id='btn-finish-capture';
-      fb.textContent='DONE CAPTURING';
-      fb.style.cssText='position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:10;background:var(--bg-card);backdrop-filter:blur(12px);border:1px solid var(--cyan);color:var(--cyan);padding:6px 16px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.55rem;font-weight:600;cursor:pointer';
-      fb.onclick=finishCapture;
-      document.getElementById('cam-view').appendChild(fb);
-    }
-    fb.style.display='';
-    document.getElementById('preview-img').src=URL.createObjectURL(b);
-    document.getElementById('scan-preview').classList.add('active');
+    document.getElementById('capture-count-badge').textContent='📄 '+cnt;
+    toast('⟐ MANUAL #'+cnt);
+  },'image/jpeg',0.85);
+}
+
+/* ---- AI AUTO-CAPTURE (camera opens with AI detection) ---- */
+var autoCaptureTimer=null,autoCaptureActive=false;
+document.getElementById('btn-open-cam').addEventListener('click',function(e){
+  e.stopPropagation();e.preventDefault();
+  if(state.stream){closeCamera();return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    toast('Camera not supported','err');return
+  }
+  var constraints={video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false};
+  navigator.mediaDevices.getUserMedia(constraints).then(function(s){
+    state.stream=s;
+    var v=document.getElementById('video');
+    v.srcObject=s;v.setAttribute('playsinline','');v.setAttribute('autoplay','');v.setAttribute('muted','');
+    v.play().catch(function(){});
+    document.getElementById('cam-view').style.display='flex';
+    document.getElementById('cam-view').style.width='100%';
     document.getElementById('dz-placeholder').style.display='none';
-    document.getElementById('btn-process').disabled=false;
-    toast('CAPTURED #'+cnt);
-  },'image/jpeg',0.95);
-}
-function finishCapture(){
-  if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
-  document.getElementById('cam-view').style.display='none';
-  document.getElementById('btn-close-cam').style.display='none';
-  document.getElementById('vf-overlay').classList.remove('active');
-  document.getElementById('shutter-btn').classList.remove('active');
-  var badge=document.getElementById('capture-count');
-  if(badge)badge.remove();
-  var fb=document.getElementById('btn-finish-capture');
-  if(fb)fb.style.display='none';
-  if(state.capturedBlobs.length===0){resetScanner();return}
-  showCaptureActions();
-}
-function showCaptureActions(){
-  var sp=document.getElementById('scan-preview');
-  sp.classList.add('active');
-  document.getElementById('dz-placeholder').style.display='none';
-  var existing=document.getElementById('capture-actions');
-  if(existing)existing.remove();
-  var div=document.createElement('div');
-  div.id='capture-actions';
-  div.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding:10px;background:var(--bg-card);border-radius:var(--radius-md);border:1.5px solid transparent;border-image:var(--gradient-border) 1;backdrop-filter:blur(16px);justify-content:center';
-  div.innerHTML='<span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);width:100%;text-align:center;margin-bottom:4px">CAPTURED: <strong style="color:var(--cyan)">'+state.capturedBlobs.length+' IMAGES</strong></span>'+
-    '<button class="btn btn-primary btn-sm" onclick="batchProcess()">AI PROCESS ALL</button>'+
-    '<button class="btn btn-outline btn-sm" onclick="batchSaveToVault()">SAVE TO VAULT</button>'+
-    '<button class="btn btn-outline btn-sm" onclick="batchMakePdf()">CONVERT TO PDF</button>'+
-    '<button class="btn btn-outline btn-sm" onclick="captureMore()">ADD MORE</button>'+
-    '<button class="btn btn-danger btn-sm" onclick="clearCaptures()">CLEAR ALL</button>';
-  sp.parentNode.insertBefore(div,sp.nextSibling);
-  document.getElementById('preview-img').src=URL.createObjectURL(state.capturedBlobs[state.capturedBlobs.length-1]);
-}
-function captureMore(){
-  var ca=document.getElementById('capture-actions');
-  if(ca)ca.remove();
-  document.getElementById('scan-preview').classList.remove('active');
-  document.getElementById('btn-open-cam').click();
-}
-function clearCaptures(){
-  state.capturedBlobs=[];
-  state.capturedBlob=null;
-  var ca=document.getElementById('capture-actions');
-  if(ca)ca.remove();
-  resetScanner();
-  toast('CAPTURES CLEARED');
-}
-function batchProcess(){
-  var ca=document.getElementById('capture-actions');
-  if(ca)ca.remove();
-  if(state.capturedBlobs.length===1){
-    document.getElementById('btn-process').click();
-    return;
-  }
-  showLoader('BATCH PROCESSING...','PROCESSING '+state.capturedBlobs.length+' IMAGES');
-  var results=[],idx=0;
-  (function processNext(){
-    if(idx>=state.capturedBlobs.length){
-      hideLoader();
-      state.capturedBlobs=[];state.capturedBlob=null;
-      toast('ALL '+results.length+' IMAGES PROCESSED');
-      loadGallery();
-      return;
-    }
-    var fd=new FormData();
-    fd.append('image',state.capturedBlobs[idx],'scan_'+idx+'.jpg');
-    fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
-    fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on')?'true':'false');
-    fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on')?'true':'false');
-    fd.append('effect',state.selectedEffect);
-    fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
-    fetch('/scan/advanced',{method:'POST',body:fd})
-      .then(function(r){return r.json()})
-      .then(function(data){if(!data.error)results.push(data);idx++;processNext()})
-      .catch(function(){idx++;processNext()});
-  })();
-}
-function batchSaveToVault(){
-  var ca=document.getElementById('capture-actions');
-  if(ca)ca.remove();
-  showLoader('SAVING...','SAVING '+state.capturedBlobs.length+' IMAGES');
-  var saved=0,idx=0;
-  (function saveNext(){
-    if(idx>=state.capturedBlobs.length){
-      hideLoader();
-      state.capturedBlobs=[];state.capturedBlob=null;
-      toast('SAVED '+saved+' IMAGES');
-      loadGallery();
-      return;
-    }
-    var fd=new FormData();
-    fd.append('image',state.capturedBlobs[idx],'capture_'+Date.now()+'_'+idx+'.jpg');
-    fd.append('auto_crop','false');fd.append('shadow_removal','false');
-    fd.append('enhance','false');fd.append('effect','none');
-    fetch('/scan/advanced',{method:'POST',body:fd})
-      .then(function(r){return r.json()})
-      .then(function(data){if(!data.error)saved++;idx++;saveNext()})
-      .catch(function(){idx++;saveNext()});
-  })();
-}
-function batchMakePdf(){
-  var ca=document.getElementById('capture-actions');
-  if(ca)ca.remove();
-  showLoader('GENERATING PDF...','CONVERTING '+state.capturedBlobs.length+' IMAGES');
-  var savedPaths=[],idx=0;
-  (function captureAndSave(){
-    if(idx>=state.capturedBlobs.length){
-      if(savedPaths.length){
-        fetch('/pdf/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:savedPaths})})
-          .then(function(r){return r.json()})
-          .then(function(d){hideLoader();if(d.error){toast(d.error,'err');return}toast('PDF: '+d.name);window.open(d.url,'_blank');state.capturedBlobs=[];state.capturedBlob=null;loadGallery()})
-          .catch(function(e){hideLoader();toast('PDF ERROR','err')});
-      }else{hideLoader();toast('NO IMAGES','warn')}
-      return;
-    }
-    var fd=new FormData();
-    fd.append('image',state.capturedBlobs[idx],'capture_'+Date.now()+'_'+idx+'.jpg');
-    fd.append('auto_crop','false');fd.append('shadow_removal','false');
-    fd.append('enhance','false');fd.append('effect','none');
-    fetch('/scan/advanced',{method:'POST',body:fd})
-      .then(function(r){return r.json()})
-      .then(function(data){if(!data.error&&data.path)savedPaths.push(data.path);idx++;captureAndSave()})
-      .catch(function(){idx++;captureAndSave()});
-  })();
-}
-/* ---- AI AUTO MODE ---- */
-var aiAutoTimer=null,aiAutoActive=false;
-document.getElementById('btn-ai-auto').addEventListener('click',function(){
-  if(aiAutoActive){stopAiAuto();return}
-  // First open camera if not already
-  if(!state.stream){
-    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}}}).then(function(s){
-      state.stream=s;document.getElementById('video').srcObject=s;
-      document.getElementById('cam-view').style.display='flex';
-      document.getElementById('dz-placeholder').style.display='none';
-      document.getElementById('btn-close-cam').style.display='';
-      document.getElementById('vf-overlay').classList.add('active');
-      setTimeout(function(){startAiAuto()},500);
-    }).catch(function(e){toast('CAMERA: '+e.message,'err')});
-  }else{
-    startAiAuto();
-  }
+    document.getElementById('btn-close-cam').style.display='';
+    document.getElementById('vf-overlay').classList.add('active');
+    document.getElementById('capture-status').style.display='';
+    document.getElementById('btn-done-capture').style.display='';
+    document.getElementById('btn-open-cam').textContent='✕ CLOSE CAMERA';
+    document.getElementById('btn-open-cam').style.background='var(--crimson)';
+    // Start auto-detect loop
+    startAutoDetect();
+  }).catch(function(e){
+    toast('CAMERA: '+(e.message||'Access denied'),'err');
+  });
 });
-function startAiAuto(){
-  aiAutoActive=true;
-  var btn=document.getElementById('btn-ai-auto');
-  btn.textContent='⟐ AI SCANNING...';
-  btn.style.background='var(--crimson)';
-  btn.style.boxShadow='0 0 30px rgba(255,0,85,0.4)';
-  toast('AI AUTO MODE ACTIVE - HOLD DOCUMENT IN FRAME');
+function startAutoDetect(){
+  autoCaptureActive=true;
   var v=document.getElementById('video'),c=document.getElementById('canvas'),ctx=c.getContext('2d');
-  var scanCount=0,consecutiveDetects=0;
-  aiAutoTimer=setInterval(function(){
-    if(!v.videoWidth||!aiAutoActive)return;
-    c.width=Math.min(v.videoWidth,640);
-    c.height=Math.min(v.videoHeight,480);
+  var consecutiveDetects=0;
+  autoCaptureTimer=setInterval(function(){
+    if(!v.videoWidth||!autoCaptureActive)return;
+    c.width=Math.min(v.videoWidth,320);
+    c.height=Math.min(v.videoHeight,240);
     ctx.drawImage(v,0,0,c.width,c.height);
     c.toBlob(function(blob){
       var fd=new FormData();
@@ -1899,329 +1672,92 @@ function startAiAuto(){
       fetch('/api/auto-detect',{method:'POST',body:fd})
         .then(function(r){return r.json()})
         .then(function(d){
-          if(!aiAutoActive)return;
-          if(d.document_detected&&d.quality_pass&&d.fill_ratio>0.15){
+          if(!autoCaptureActive)return;
+          if(d.document_detected&&d.quality_pass&&(d.fill_ratio||0)>0.12){
             consecutiveDetects++;
-            // Show detection status
-            var tel=document.getElementById('tel-edge');
-            if(tel)tel.textContent=consecutiveDetects+'/'+2;
+            document.getElementById('tel-edge').textContent='⟐ DETECTED';
             if(consecutiveDetects>=2){
-              // Document detected consistently - capture!
               consecutiveDetects=0;
-              scanCount++;
-              captureFromCam();
-              toast('⟐ AI CAPTURE #'+scanCount);
-              // Auto process after short delay
-              if(scanCount>=1){
-                setTimeout(function(){
-                  if(document.getElementById('btn-process')&&!document.getElementById('btn-process').disabled){
-                    document.getElementById('btn-process').click();
-                    if(scanCount>=3)stopAiAuto();
-                  }
-                },800);
-              }
+              // Auto-capture
+              var cv=document.getElementById('canvas');
+              var bigC=document.createElement('canvas');
+              bigC.width=v.videoWidth;bigC.height=v.videoHeight;
+              bigC.getContext('2d').drawImage(v,0,0);
+              bigC.toBlob(function(bigBlob){
+                state.capturedBlobs.push(bigBlob);
+                state.capturedBlob=bigBlob;
+                var cnt=state.capturedBlobs.length;
+                document.getElementById('capture-count-badge').textContent='📄 '+cnt;
+                toast('⟐ CAPTURED #'+cnt);
+              },'image/jpeg',0.85);
             }
           }else{
             consecutiveDetects=0;
-            var tel=document.getElementById('tel-edge');
-            if(tel)tel.textContent='--';
+            document.getElementById('tel-edge').textContent='--';
           }
         }).catch(function(){});
-    },'image/jpeg',0.6);
-  },400);
+    },'image/jpeg',0.4);
+  },350);
 }
-function stopAiAuto(){
-  aiAutoActive=false;
-  if(aiAutoTimer){clearInterval(aiAutoTimer);aiAutoTimer=null}
-  var btn=document.getElementById('btn-ai-auto');
-  btn.textContent='⟐ AI AUTO';
-  btn.style.background='';
-  btn.style.boxShadow='';
-  toast('AI AUTO MODE STOPPED');
-  var tel=document.getElementById('tel-edge');
-  if(tel)tel.textContent='--';
+function stopAutoDetect(){
+  autoCaptureActive=false;
+  if(autoCaptureTimer){clearInterval(autoCaptureTimer);autoCaptureTimer=null}
+  document.getElementById('tel-edge').textContent='--';
 }
-
-/* ---- WIRELESS CAMERA (MULTI-TAB) ---- */
-var wirelessInterval=null,relayInterval=null;
-var wtabMap={'phone':'wtab-phone','network':'wtab-network','bluetooth':'wtab-bluetooth','url':'wtab-url'};
-
-function showWirelessTab(tab){
-  document.querySelectorAll('.wireless-tab').forEach(function(b){b.classList.toggle('active',b.dataset.wtab===tab)});
-  document.querySelectorAll('.wtab-content').forEach(function(c){c.classList.toggle('active',c.dataset.wtab===tab)});
+function closeCamera(){
+  stopAutoDetect();
+  if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
+  document.getElementById('cam-view').style.display='none';
+  document.getElementById('btn-close-cam').style.display='none';
+  document.getElementById('vf-overlay').classList.remove('active');
+  document.getElementById('capture-status').style.display='none';
+  document.getElementById('btn-done-capture').style.display='none';
+  document.getElementById('btn-open-cam').textContent='⟐ OPEN CAMERA';
+  document.getElementById('btn-open-cam').style.background='';
 }
-
-// Tab switching
-document.querySelectorAll('.wireless-tab').forEach(function(tab){
-  tab.addEventListener('click',function(){
-    showWirelessTab(this.dataset.wtab);
-  });
+document.getElementById('btn-close-cam').addEventListener('click',function(e){
+  e.stopPropagation();closeCamera();
 });
-
-// Open wireless panel
-document.getElementById('btn-wireless').addEventListener('click',function(e){
-  e.stopPropagation();
-  document.getElementById('dz-placeholder').style.display='none';
-  document.getElementById('wireless-panel').style.display='flex';
-  showWirelessTab('phone');
-  document.getElementById('wireless-stream').style.display='none';
-  fetch('/api/ip').then(function(r){return r.json()}).then(function(d){
-    document.getElementById('phone-ip-display').textContent='YOUR IP: '+d.ip+':'+d.port;
-    document.getElementById('phone-ip-display').style.display='';
-    document.getElementById('phone-qr').src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(d.url+'/phone-camera');
-    document.getElementById('phone-qr').style.display='inline';
-  }).catch(function(){});
+document.getElementById('btn-done-capture').addEventListener('click',function(){
+  closeCamera();
+  if(!state.capturedBlobs.length){toast('No captures to process','warn');return}
+  document.getElementById('btn-process-all').style.display='';
+  toast(state.capturedBlobs.length+' pages captured. Click PROCESS ALL');
+  document.getElementById('shutter-btn').classList.remove('active');
 });
-
-/* ========= PHONE RELAY ========= */
-function startRelayCheck(){
-  document.getElementById('phone-status').textContent='◉ WAITING FOR PHONE...';
-  document.getElementById('phone-status').className='status-badge';
-  document.getElementById('btn-relay-capture').style.display='none';
-  document.getElementById('btn-relay-close').style.display='none';
-  document.getElementById('relay-preview').style.display='none';
-  if(relayInterval)clearInterval(relayInterval);
-  relayInterval=setInterval(function(){
-    fetch('/api/relay-latest?_='+Date.now()).then(function(r){
-      if(r.status===204){if(document.getElementById('phone-status').textContent!=='◉ WAITING FOR PHONE...')document.getElementById('phone-status').textContent='◉ WAITING FOR PHONE...';return}
-      return r.blob();
-    }).then(function(b){
-      if(!b)return;
-      document.getElementById('phone-status').textContent='● CONNECTED - Phone Streaming';
-      document.getElementById('phone-status').className='status-badge connected';
-      document.getElementById('btn-relay-capture').style.display='';
-      document.getElementById('btn-relay-close').style.display='';
-      var url=URL.createObjectURL(b);
-      var prev=document.getElementById('relay-preview');
-      prev.src=url;prev.style.display='';
-      state.relayFrame=b;
-    }).catch(function(){});
-  },300);
-}
-function captureFromRelay(){
-  if(!state.relayFrame){toast('NO FRAME FROM PHONE','err');return}
-  state.capturedBlob=state.relayFrame;
-  closeRelay();
-  document.getElementById('preview-img').src=URL.createObjectURL(state.relayFrame);
-  document.getElementById('scan-preview').classList.add('active');
-  document.getElementById('btn-process').disabled=false;
-  toast('CAPTURED FROM PHONE');
-}
-function closeRelay(){
-  if(relayInterval){clearInterval(relayInterval);relayInterval=null}
-  document.getElementById('phone-status').textContent='DISCONNECTED';
-  document.getElementById('phone-status').className='status-badge error';
-  document.getElementById('btn-relay-capture').style.display='none';
-  document.getElementById('btn-relay-close').style.display='none';
-  document.getElementById('relay-preview').style.display='none';
-  document.getElementById('wireless-panel').style.display='none';
-  document.getElementById('dz-placeholder').style.display='';
-  state.relayFrame=null;
-}
-
-/* ========= NETWORK SCAN ========= */
-document.getElementById('btn-scan-network').addEventListener('click',function(){
-  var btn=this,res=document.getElementById('scan-results');
-  btn.disabled=true;btn.textContent='⏳ SCANNING...';
-  res.style.display='flex';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:4px">SCANNING LOCAL NETWORK...</div>';
-  fetch('/api/ip').then(function(r){return r.json()}).then(function(d){
-    var parts=d.ip.split('.');var base=parts[0]+'.'+parts[1]+'.'+parts[2]+'.';
-    var ports=[8080,4747,8081,80];
-    var found=[];
-    var scanPromises=[];
-    for(var i=1;i<=10;i++){
-      ports.forEach(function(port){
-        var url='http://'+base+i+':'+port+'/video';
-        scanPromises.push(
-          fetch(url,{mode:'no-cors'}).then(function(){found.push(url)}).catch(function(){})
-        );
-      });
-    }
-    Promise.all(scanPromises).then(function(){
-      btn.disabled=false;btn.textContent='🔍 SCAN NETWORK';
-      if(found.length){
-        res.innerHTML=found.map(function(u){return '<button class="btn btn-outline btn-xs" onclick="connectNetworkUrl(\''+u+'\')" style="font-size:0.55rem;padding:4px 8px;width:100%;text-align:left;justify-content:flex-start;font-family:var(--font-mono)">📡 '+u+'</button>'}).join('');
-      }else{
-        res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:8px">No cameras found. Enter URL manually below.</div>';
+function processAllCaptures(){
+  if(!state.capturedBlobs.length){toast('No captures','warn');return}
+  showLoader('PROCESSING...','AI ANALYZING '+state.capturedBlobs.length+' PAGES');
+  var results=[],idx=0;
+  (function processNext(){
+    if(idx>=state.capturedBlobs.length){
+      hideLoader();
+      if(results.length){
+        toast('Processed '+results.length+' pages');
+        var last=results[results.length-1];
+        if(last&&last.image_url){
+          document.getElementById('preview-img').src=last.image_url;
+          document.getElementById('scan-preview').classList.add('active');
+        }
       }
-    });
-  }).catch(function(){btn.disabled=false;btn.textContent='🔍 SCAN NETWORK';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--crimson);padding:8px">Network scan failed. Enter URL manually.</div>'});
-});
-function connectNetworkUrl(url){
-  connectStreamUrl(url);
+      document.getElementById('btn-process-all').style.display='none';
+      return;
+    }
+    var fd=new FormData();
+    fd.append('image',state.capturedBlobs[idx],'page_'+idx+'.jpg');
+    fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
+    fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on')?'true':'false');
+    fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on')?'true':'false');
+    fd.append('effect',state.selectedEffect);
+    fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
+    fetch('/scan/advanced',{method:'POST',body:fd})
+      .then(function(r){return r.json()})
+      .then(function(data){
+        if(!data.error)results.push(data);
+        idx++;processNext();
+      }).catch(function(){idx++;processNext()});
+  })();
 }
-document.getElementById('btn-network-connect').addEventListener('click',function(){
-  var url=document.getElementById('network-url').value.trim();
-  if(!url){toast('ENTER A URL','warn');return}
-  connectStreamUrl(url);
-});
-
-/* ========= BLUETOOTH ========= */
-var btHostname='',btDevice=null,btConnected=false;
-var btStatusEl=document.getElementById('bt-status-badge');
-var btNameEl=document.getElementById('bt-device-name');
-
-function setBtStatus(label,cls){
-  btStatusEl.textContent=label;
-  btStatusEl.style.borderColor='rgba(255,255,255,0.06)';
-  btStatusEl.style.background='rgba(255,255,255,0.03)';
-  btStatusEl.style.color='var(--text-tertiary)';
-  if(cls==='connected'){btStatusEl.style.borderColor='rgba(0,245,212,0.2)';btStatusEl.style.background='rgba(0,245,212,0.06)';btStatusEl.style.color='var(--emerald)'}
-  else if(cls==='error'){btStatusEl.style.borderColor='rgba(255,0,85,0.2)';btStatusEl.style.background='rgba(255,0,85,0.06)';btStatusEl.style.color='var(--crimson)'}
-  else if(cls==='scanning'){btStatusEl.style.borderColor='rgba(0,242,254,0.2)';btStatusEl.style.background='rgba(0,242,254,0.06)';btStatusEl.style.color='var(--cyan)'}
-}
-
-fetch('/api/ip').then(function(r){return r.json()}).then(function(d){
-  btHostname=d.hostname;
-  btNameEl.textContent=btHostname;
-  setBtStatus('NOT CONNECTED','');
-}).catch(function(){btNameEl.textContent='UNKNOWN';setBtStatus('ERROR','error')});
-
-// Connect via Web Bluetooth
-document.getElementById('btn-bt-connect').addEventListener('click',function(){
-  if(!navigator.bluetooth){
-    toast('Web Bluetooth not supported. Use Chrome/Edge.','err');
-    return;
-  }
-  setBtStatus('SCANNING...','scanning');
-  navigator.bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: []
-  }).then(function(device){
-    btDevice=device;
-    btConnected=true;
-    setBtStatus('CONNECTED','connected');
-    document.getElementById('btn-bt-connect').style.display='none';
-    document.getElementById('btn-bt-disconnect').style.display='';
-    document.getElementById('bt-connected-info').style.display='';
-    document.getElementById('bt-connected-device').textContent=device.name||'Unknown Device';
-    document.getElementById('bt-connected-id').textContent='ID: '+device.id;
-    toast('BLUETOOTH CONNECTED: '+(device.name||device.id));
-    // Listen for disconnect
-    device.addEventListener('gattserverdisconnected',function(){
-      btConnected=false;
-      setBtStatus('DISCONNECTED','error');
-      document.getElementById('btn-bt-connect').style.display='';
-      document.getElementById('btn-bt-disconnect').style.display='none';
-      document.getElementById('bt-connected-info').style.display='none';
-      toast('BLUETOOTH DISCONNECTED','warn');
-      btDevice=null;
-    });
-    // Actually connect to GATT server to establish the connection
-    device.gatt.connect().then(function(server){
-      toast('GATT CONNECTED');
-    }).catch(function(e){
-      // Even if GATT fails, the device is paired
-      toast('PAIRED WITH '+(device.name||device.id));
-    });
-  }).catch(function(e){
-    setBtStatus('FAILED','error');
-    if(e.message!='User cancelled the requestDevice chooser.')toast('BT ERROR: '+e.message,'err');
-    else setBtStatus('CANCELLED','');
-  });
-});
-
-// Disconnect
-document.getElementById('btn-bt-disconnect').addEventListener('click',function(){
-  if(btDevice){
-    try{
-      if(btDevice.gatt&&btDevice.gatt.connected)btDevice.gatt.disconnect();
-    }catch(e){}
-    btDevice=null;
-  }
-  btConnected=false;
-  setBtStatus('DISCONNECTED','');
-  document.getElementById('btn-bt-connect').style.display='';
-  document.getElementById('btn-bt-disconnect').style.display='none';
-  document.getElementById('bt-connected-info').style.display='none';
-  toast('BLUETOOTH DISCONNECTED');
-});
-
-// Scan for nearby devices (informational)
-document.getElementById('btn-scan-bt').addEventListener('click',function(){
-  var btn=this,res=document.getElementById('bt-results');
-  btn.disabled=true;btn.textContent='⏳ SCANNING...';
-  if(!navigator.bluetooth){
-    res.style.display='flex';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--crimson);padding:6px">Web BT not supported. Use Chrome/Edge.</div>';
-    btn.disabled=false;btn.textContent='🔍 SCAN NEARBY DEVICES';return;
-  }
-  navigator.bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: []
-  }).then(function(device){
-    res.style.display='flex';
-    var isMatch=device.name&&(device.name.toLowerCase().includes('nexus')||device.name.toLowerCase().includes('ai scanner')||device.name.toLowerCase().includes('ai_scanner')||(btHostname&&device.name===btHostname));
-    var badge=isMatch?'<span style="color:var(--emerald);font-size:0.45rem;margin-left:4px">● MATCH</span>':'';
-    var connectBtn=device.id?'<button class="btn btn-primary btn-xs" style="margin-top:4px;font-size:0.45rem!important;padding:3px 10px" onclick="connectBtDevice(\''+device.id+'\')">CONNECT</button>':'';
-    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.5rem;padding:6px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.06)"><strong>'+device.name+'</strong>'+badge+'<br><span style="color:var(--text-tertiary);font-size:0.45rem">ID: '+device.id+'</span>'+connectBtn+'</div>';
-    toast('FOUND: '+device.name);
-    btn.disabled=false;btn.textContent='🔍 SCAN NEARBY DEVICES';
-  }).catch(function(){
-    res.style.display='flex';
-    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);padding:6px">Scan cancelled.</div>';
-    btn.disabled=false;btn.textContent='🔍 SCAN NEARBY DEVICES';
-  });
-});
-
-function connectBtDevice(id){
-  toast('Use the CONNECT button above to pair with a device');
-}
-
-/* ========= MANUAL URL ========= */
-document.getElementById('btn-manual-connect').addEventListener('click',function(){
-  var url=document.getElementById('manual-url').value.trim();
-  if(!url){toast('ENTER A STREAM URL','warn');return}
-  connectStreamUrl(url);
-});
-
-/* ========= SHARED STREAM VIEW ========= */
-function connectStreamUrl(url){
-  var img=document.getElementById('wireless-img');
-  img.src='';
-  img.src=url;
-  img.onload=function(){
-    document.getElementById('wtab-phone').style.display='none';
-    document.getElementById('wtab-network').style.display='none';
-    document.getElementById('wtab-bluetooth').style.display='none';
-    document.getElementById('wtab-url').style.display='none';
-    document.querySelectorAll('.wtab-content').forEach(function(c){c.classList.remove('active')});
-    document.getElementById('wireless-stream').style.display='flex';
-    state.wirelessUrl=url;
-    toast('CAMERA CONNECTED');
-  };
-  img.onerror=function(){toast('CANNOT CONNECT TO '+url,'err')};
-}
-document.getElementById('btn-wireless-close').addEventListener('click',function(){
-  document.getElementById('wireless-img').src='';
-  document.getElementById('wireless-panel').style.display='none';
-  document.getElementById('wireless-stream').style.display='none';
-  document.getElementById('dz-placeholder').style.display='';
-  document.querySelectorAll('.wtab-content').forEach(function(c){c.classList.remove('active')});
-  showWirelessTab('phone');
-  state.wirelessUrl=null;
-  if(wirelessInterval){clearInterval(wirelessInterval);wirelessInterval=null}
-});
-document.getElementById('btn-wireless-capture').addEventListener('click',function(){
-  var img=document.getElementById('wireless-img');
-  if(!img.src||!img.complete||!img.naturalWidth){toast('NO STREAM','err');return}
-  var c=document.getElementById('canvas'),ctx=c.getContext('2d');
-  c.width=img.naturalWidth;c.height=img.naturalHeight;
-  ctx.drawImage(img,0,0);
-  c.toBlob(function(b){
-    state.capturedBlob=b;
-    document.getElementById('wireless-panel').style.display='none';
-    document.getElementById('wireless-stream').style.display='none';
-    document.querySelectorAll('.wtab-content').forEach(function(c){c.classList.remove('active')});
-    document.getElementById('dz-placeholder').style.display='';
-    document.getElementById('preview-img').src=URL.createObjectURL(b);
-    document.getElementById('scan-preview').classList.add('active');
-    document.getElementById('btn-process').disabled=false;
-  },'image/jpeg',0.95);
-});
-// Start relay check on phone tab
-document.querySelector('[data-wtab="phone"]').addEventListener('click',function(){
-  startRelayCheck();
-});
 
 var dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');
 dz.addEventListener('click',function(e){
@@ -2345,11 +1881,12 @@ function renderGallery(){
   document.getElementById('merge-n').textContent=state.selectedDocs.length;
   c.innerHTML='<div class="doc-grid">'+docs.map(function(d){
     var s=state.selectedDocs.includes(d.path);
-    return '<div class="doc-card '+(s?'selected':'')+'" onclick="openPreview(\''+d.path+'\')" ondblclick="toggleDoc(\''+d.path+'\')">'+
+    var sp=JSON.stringify(d.path);
+    return '<div class="doc-card '+(s?'selected':'')+'" onclick="openPreview('+sp+')" ondblclick="toggleDoc('+sp+')">'+
       '<div class="doc-thumb-wrap"><img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--bg-deep)\\\'>◈</div>\'">'+
       '<div class="doc-overlay"><button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')">⬇</button>'+
-      '<button onclick="event.stopPropagation();openPreview(\''+d.path+'\')">🔍</button>'+
-      '<button onclick="event.stopPropagation();deleteDoc(\''+d.path+'\')">🗑</button></div></div>'+
+      '<button onclick="event.stopPropagation();openPreview('+sp+')">🔍</button>'+
+      '<button onclick="event.stopPropagation();deleteDoc('+sp+')">🗑</button></div></div>'+
       '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
   }).join('')+'</div>';
 }
@@ -2365,7 +1902,7 @@ function toggleDoc(p){
   renderGallery();
 }
 function openPreview(p){
-  var d=state.galleryDocs.find(function(x){return x.path===p});
+  var d=state.galleryDocs.find(function(x){return x.path===p||encodeURI(x.path)===p||x.path.replace(/\\/g,'/')===p.replace(/\\/g,'/')});
   if(!d)return;
   document.getElementById('modal-title').textContent=d.name+' // INSPECTOR';
   document.getElementById('modal-body').innerHTML=
@@ -2632,7 +2169,7 @@ document.addEventListener('keydown',function(e){
     if(document.getElementById('modal').classList.contains('show')){closeModal();e.preventDefault()}
     else if(document.getElementById('loader').classList.contains('show')){hideLoader()}
     else if(state.stream){document.getElementById('btn-close-cam').click();e.preventDefault()}
-    else if(document.getElementById('wireless-panel').style.display==='flex'){document.getElementById('btn-wireless-close').click();e.preventDefault()}
+    else if(state.stream){closeCamera();e.preventDefault()}
     else if(document.getElementById('scan-preview').classList.contains('active')){resetScanner();e.preventDefault()}
     else if(state.currentView!=='dashboard'){goBack();e.preventDefault()}
   }

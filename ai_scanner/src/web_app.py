@@ -227,26 +227,6 @@ def api_ip():
     port = request.host.split(":")[1] if ":" in request.host else "80"
     return jsonify({"ip": local_ip, "hostname": hostname, "port": port, "url": f"http://{local_ip}:{port}"})
 
-# ---------------------------------------------------------------------------
-#  Phone Camera Relay
-# ---------------------------------------------------------------------------
-relay_frame_data = {"frame": None}
-
-@app.route("/phone-camera")
-def phone_camera():
-    return render_template("phone_camera.html")
-
-@app.route("/api/relay-frame", methods=["POST"])
-def api_relay_frame():
-    relay_frame_data["frame"] = request.get_data()
-    return "", 200
-
-@app.route("/api/relay-latest")
-def api_relay_latest():
-    if relay_frame_data["frame"]:
-        return Response(relay_frame_data["frame"], mimetype="image/jpeg")
-    return Response(b"", status=204)
-
 @app.route("/")
 def index():
     data = {"stats": {}, "recent": []}
@@ -795,7 +775,6 @@ def main():
     print(f"  Local:   http://localhost:{args.port}")
     print(f"  Network: http://{local_ip}:{args.port}")
     print(f"  {'='*45}")
-    print(f"  Open on phone: scan QR code in Wireless tab")
     print(f"  {'='*45}\n")
     if args.ngrok:
         try:

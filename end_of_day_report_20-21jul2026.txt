@@ -236,6 +236,40 @@ HOW TO ACCESS FROM PHONE
   Option 2 — Anywhere: pip install pyngrok → python -m src.web_app --ngrok
   Option 3 — Free hosting: Deploy to Render.com / PythonAnywhere (free tiers)
 
+28. STRIPPED WIRELESS / NETWORK / BLUETOOTH / PHONE RELAY
+    - Removed entire wireless-panel HTML (phone/network/BT/manual URL tabs)
+    - Removed phone_camera.html template entirely
+    - Removed /phone-camera, /api/relay-frame, /api/relay-latest from web_app.py
+    - Removed all wireless/relay/BT/network scan JavaScript (~450 lines)
+    - Removed WIRELESS button from drop-zone UI
+    - Cleaned up: no more QR code, Bluetooth, network scan, manual URL connection
+    - App is now self-contained — no external device dependencies
+
+29. REDESIGNED AS PURE AUTO-DETECT SCANNER
+    - "⟐ OPEN CAMERA" button opens camera and immediately starts AI auto-detect
+    - When document edges detected consistently (2+ frames), auto-captures at full resolution
+    - Live counter shows captured pages: "📄 N" badge
+    - "● DETECTED" status indicator when document framed
+    - "✓ DONE" button closes camera and enables PROCESS ALL
+    - processAllCaptures() runs full pipeline (crop/enhance/shadow/OCR/classify) on every page
+    - Results shown with compare images, stats, details — all batch-processed
+    - Manual shutter button retained as fallback override for non-auto captures
+
+30. GALLERY PREVIEW FIXED
+    - Doc-card onclick used raw paths with backslashes → broken preview on Windows
+    - Fixed: use JSON.stringify(path) for safe JS string escaping in onclick
+    - openPreview now matches by path with fallback (encoded/backslash variants)
+    - All gallery action buttons (preview, download, delete) now work correctly
+
+─────────────────────────────────────────────────────
+FILES CHANGED (21 Jul — late)
+─────────────────────────────────────────────────────
+  ai_scanner/src/templates/index.html            | ~500   (removed wireless JS, redesigned scanner)
+  ai_scanner/src/templates/phone_camera.html     | -240   (REMOVED)
+  ai_scanner/src/web_app.py                      | -55    (removed relay endpoints + phone route)
+  end_of_day_report_20-21jul2026.txt             | +45    (this update)
+  4 files changed, ~300 lines removed
+
 NEXT UP
 - Azure deployment prep (azd / Docker)
 - Multi-user auth
