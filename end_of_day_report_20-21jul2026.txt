@@ -1,276 +1,42 @@
-END OF DAY REPORT — 20 & 21 Jul 2026
+END OF DAY — 20-21 Jul 2026
 AI Document Scanner (WebEnoid Intern)
 
-REFERENCE: Previous report at end_of_day_report_19jul2026.txt
+BUILT:
+- Key manager (Fernet-encrypted) + /api/keys CRUD
+- Cloud sync: Google Drive, Dropbox, OneDrive with OAuth + usage tracking
+- Persistent config (storage path) + folder browser for custom storage
+- Auto-detect endpoint for real-time edge detection
+- Tesseract/Google Vision OCR with status indicator
 
-─────────────────────────────────────────────────────
-JULY 20 — CHANGES
-─────────────────────────────────────────────────────
+FIXED:
+- Duplicate btn-open-cam listeners (two handlers on same button)
+- Done button hidden by parent div display:none
+- Gallery preview path encoding (backslashes broke onclick on Windows)
+- PDF merge used window.open (blocked on mobile) → location.href
+- Doc selection used dblclick → single-click for mobile
 
-1. API KEY MANAGEMENT WITH ENCRYPTION
-   - New file: src/utils/key_manager.py — Fernet-based encrypted key storage
-   - New file: src/data/.key_enc — encryption key file
-   - Added /api/keys (GET/POST/DELETE) routes in web_app.py
-   - KEY_META config for Google Drive, Dropbox, OneDrive, Google Vision keys
-   - Keys synced to env vars on save/delete for downstream cloud modules
-   - Added requirements.txt (cryptography dependency)
+STRIPPED:
+- Removed entire wireless/network/BT/phone relay system
+- Deleted phone_camera.html and relay API routes
+- Removed 450+ lines of wireless JS. App is self-contained.
 
-2. GENERAL FUNCTIONALITY ENHANCEMENTS
-   - index.html heavily refactored — UI polish, performance tweaks
-   - Various backend improvements across web_app.py
+REWRITTEN CAMERA:
+- Three capture methods: (1) getUserMedia + auto-detect (HTTPS),
+  (2) PHONE CAMERA → getUserMedia first, falls back to <input capture>
+  (Android native camera; iOS opens gallery — browser limit),
+  (3) SELECT FILE for gallery upload
+- Camera device selector with external USB camera support
+- HTTPS warning banner + isSecureContext() check
+- Server auto-detect replaced with client-side pixel stability
+  (80x60 thumbnails, brightness + movement, no network round-trip)
+- Auto-capture when frame steady for 6 consecutive checks
 
-─────────────────────────────────────────────────────
-JULY 21 — CHANGES
-─────────────────────────────────────────────────────
+PHONE ACCESS:
+- Camera requires HTTPS. Use --ngrok for instant HTTPS URL.
+- Without HTTPS, falls back to <input capture>. This is a browser
+  security restriction, not a code bug.
 
-3. WIRELESS CAMERA & IP RETRIEVAL
-   - /api/ip endpoint — returns local IP, hostname, port for LAN access
-   - index.html: wireless camera tab with live IP display + QR code link
-   - Users can scan via browser on phone by visiting the local IP
+FILES: index.html (~2400), web_app.py (~780), phone_camera.html DELETED,
+key_manager.py NEW, cloud_sync.py UPDATED, config/ NEW.
 
-4. MOUSE TRACKING GLOW & KEYBOARD SHORTCUTS
-   - index.html: cursor glow effect that follows mouse movement
-   - Keyboard shortcut hints overlay (Ctrl+S scan, Ctrl+G gallery, etc.)
-   - Back button navigation across all views
-
-5. PHONE CAMERA RELAY — MULTI-TAB WIRELESS STREAMING
-   - New template: phone_camera.html — dedicated mobile camera page
-   - /phone-camera route (serve page), /api/relay-frame POST (receive frame),
-     /api/relay-latest GET (consume latest frame)
-   - index.html: button to open phone camera page, live relay feed in UI
-   - Mobile page uses environment-facing camera, streams JPEG frames at ~5 FPS
-
-6. BLUETOOTH TAB OVERHAUL
-   - Updated project branding in Bluetooth tab
-   - Clearer device scanning messages and status indicators
-   - Connection management UI with connect/disconnect controls
-   - Status indicators (connected/disconnected/scanning)
-
-7. IN-APP CONFIRMATION & PROMPT DIALOGS
-   - Custom modal dialogs for delete confirmations, unsaved changes, etc.
-   - Replaces browser native confirm() for consistent dark theme experience
-
-8. CLOUD AUTH FIX
-   - Fixed cloud authentication connection closure — ensures proper cleanup
-     of HTTP connections after OAuth flow
-
-9. ENHANCED CAPTURE FUNCTIONALITY
-   - Capture button improvements, better visual feedback
-   - .key_enc now tracked in repo
-
-10. DOCUMENT CARD & PREVIEW MODAL
-    - Improved card layout, hover effects, metadata display
-    - Full-screen preview modal for images with zoom/pan
-
-11. BLUETOOTH UI ENHANCEMENTS
-    - Status indicator dots (green/red/yellow) for connection states
-    - Device list with signal strength, last seen timestamps
-    - Connect/disconnect workflow polished
-
-─────────────────────────────────────────────────────
-JULY 21 (CONTINUED) — UI/UX FIXES & FEATURES
-─────────────────────────────────────────────────────
-
-12. PHONE CAMERA PAGE REDESIGN
-    - Full redesign of phone_camera.html for proper mobile experience
-    - Full-screen camera view with cyberpunk HUD theme
-    - Large circular capture button (center bottom) with visual feedback
-    - Front/rear camera flip button
-    - Flash/torch toggle button
-    - Close button in top bar to stop stream & return
-    - Toast notifications for captures
-    - Smooth animations & touch-friendly sizing
-
-13. MOBILE RESPONSIVENESS FIXED
-    - Added comprehensive CSS media queries for mobile (max-width: 860px)
-    - Sidebar collapses off-screen with hamburger menu toggle
-    - Sidebar overlay backdrop for mobile navigation
-    - Scanner view now stacks properly on small screens
-    - All buttons, inputs, and controls sized for touch
-    - Gallery grid, stats grid, and filter bar wrap correctly
-    - Viewfinder telemetry hidden on mobile to save space
-    - Shutter button, modals, and control panel resized for mobile
-
-14. DUPLICATE CAPTURE BUTTON REMOVED
-    - Removed redundant text "CAPTURE" button from cam-bar
-    - Only round shutter button remains for camera capture
-    - Close button moved to floating position in viewfinder overlay
-    - Cleaner, more intuitive camera UI
-
-15. CUSTOM STORAGE LOCATION
-    - Settings now shows editable storage path with text input + SET button
-    - Backend: GET/POST /api/storage/path — reads/writes config/app_config.json
-    - Path is persisted across server restarts
-    - Auto-creates uploads/documents directories at new path
-    - Storage path loaded from config on startup
-
-16. CLOUD STORAGE USAGE DISPLAY
-    - New endpoint: GET /api/cloud/usage — queries each connected provider
-    - Google Drive: lists AI_Scanner folder files, sums sizes via Drive API
-    - Dropbox: lists /AI_Scanner folder, sums file sizes via Dropbox API
-    - OneDrive: lists AI_Scanner folder via Graph API, sums sizes
-    - UI: "CHECK CLOUD USAGE" button in Cloud Sync section
-    - Results shown as toast: "☁ DRIVE: 1.2 MB | 📦 DROPBOX: 0 KB"
-    - Usage also displayed inline per provider in cloud status list
-
-17. NEW CONFIG SYSTEM
-    - config/app_config.json — persistent app configuration
-    - _load_app_config() / _save_app_config() helpers in web_app.py
-    - Currently stores: storage_path
-    - Extensible for future settings
-
-─────────────────────────────────────────────────────
-JULY 21 (LATER) — MOBILE BUGFIXES & CROSS-PLATFORM
-─────────────────────────────────────────────────────
-
-18. SIDEBAR TOGGLE FIXED
-    - Added id="sidebar" to nav element (was missing — toggle returned null)
-    - Added closeSidebar() function + auto-close on nav item click
-    - Sidebar overlay backdrop for mobile tap-to-close
-
-19. MOBILE PERFORMANCE & UX OVERHAUL
-    - body/html overflow:auto on mobile so content scrolls properly
-    - All content areas set to overflow:auto for touch scrolling
-    - Mouse glow tracking completely disabled on touch devices
-    - Real-time polling reduced from 8s to 30s on mobile (less battery/lag)
-    - Gallery polling reduced from 12s to 40s on mobile
-    - Added isTouchDevice detection at script top (not after usage)
-    - Keyboard shortcut hints hidden on mobile
-    - Telemetry items hidden on mobile to save space
-    - Bottom padding (80px) on content for mobile browser chrome
-    - Modal overflow:auto for scrollable dialogs on small screens
-    - Touch hover effects removed (stat-card, doc-card, effect-btn, ctrl-group)
-    - All buttons have min-height:40px+ for touch targets
-    - Safe area padding for notched phones via env(safe-area-inset-*)
-
-20. PHONE CAMERA BACKGROUND STREAMING
-    - phone_camera.html now continuously streams low-res frames (640x480, 0.5s interval) to relay
-    - Capture button still takes high-quality photo (1280x720, 0.92 quality)
-    - Background streaming stops when page is hidden (visibilitychange)
-    - Stream resumes when page comes back to foreground
-    - Clean shutdown on close (stops stream + timer)
-
-21. CROSS-PLATFORM ACCESS
-    - main() startup now prints local IP + network URL prominently
-    - Added --ngrok flag for automatic public URL via pyngrok
-    - startup.sh updated with connection instructions
-    - requirements.txt has commented pyngrok entry for optional install
-    - Phone camera page auto-redirects to main page if window.close() fails
-    - For GitHub Pages: not applicable (Python backend). Use LAN or ngrok.
-
-─────────────────────────────────────────────────────
-JULY 21 (FINAL) — AI AUTO MODE & BUGFIXES
-─────────────────────────────────────────────────────
-
-22. STORAGE LOCATION: BROWSE BUTTON
-    - Replaced manual text input with proper folder browser
-    - Uses showDirectoryPicker() API (Chrome/Edge) or webkitdirectory fallback
-    - Picked path shown as display text, saved to backend automatically
-    - No more typos in path entry
-
-23. API KEY CANCEL FIXED
-    - Cancel button now properly re-shows the "ADD KEY" button
-    - Previously the ADD KEY button stayed hidden until page refresh
-
-24. OCR API OPTIONS ADDED
-    - New key options in Settings: OCR.space (free), OCR API, Azure Vision
-    - Both backend (web_app.py KEY_META) and frontend (KEY_META_UI) updated
-    - Users can add OCR API keys alongside cloud keys
-
-25. AI AUTO MODE — FULLY AUTOMATIC DOCUMENT SCANNING
-    - New "⟐ AI AUTO" button in scanner drop-zone (glowing cyan-magenta)
-    - Opens camera and continuously analyzes frames via /api/auto-detect endpoint
-    - AI auto-detects document edges, quality, and fill ratio in real-time
-    - Auto-captures when document is well-framed (detected 2+ consecutive frames)
-    - Shows detection status in viewfinder telemetry
-    - Auto-processes captured document through full pipeline (OCR → classify → save)
-    - Stops after 3 auto-scans or user can stop manually
-    - Button turns red with "⟐ AI SCANNING..." while active
-
-26. PHONE CAMERA FIXED
-    - Camera button uses simplified constraints on mobile (640x480)
-    - Added playsinline/autoplay/muted attributes for iOS compatibility
-    - Fallback to basic {video:true} if facingMode fails on some devices
-    - Better error handling with specific error messages
-    - cam-view video set to min-height:200px for proper display
-
-27. AUTO-DETECT BACKEND ENDPOINT
-    - New POST /api/auto-detect — takes image, runs edge detection + quality check
-    - Returns: document_detected, quality_pass, blur_score, brightness, fill_ratio
-    - Used by AI AUTO mode for real-time document detection
-    - Lightweight processing (640x480 max) for fast response
-
-─────────────────────────────────────────────────────
-FILES CHANGED (20-21 Jul)
-─────────────────────────────────────────────────────
-  ai_scanner/requirements.txt               |  +5    (+comment for pyngrok)
-  ai_scanner/src/data/.key_enc              |  +1    (encryption key file)
-  ai_scanner/src/utils/key_manager.py       |  +87   (NEW — encrypted key store)
-  ai_scanner/src/templates/phone_camera.html | ~240  (streaming + capture redesign)
-  ai_scanner/src/templates/index.html       | ~3400  (AI auto mode + mobile fixes)
-  ai_scanner/src/web_app.py                 | ~210   (auto-detect + OCR keys + config)
-  ai_scanner/src/storage/cloud_sync.py      | +90   (storage usage tracking)
-  ai_scanner/config/app_config.json         |  +2    (NEW — persistent config)
-  ai_scanner/startup.sh                     |  +12   (updated with instructions)
-  9 files changed, ~3100 insertions, ~850 deletions
-
-─────────────────────────────────────────────────────
-CURRENT STATE
-─────────────────────────────────────────────────────
-- Run: cd ai_scanner && python -m src.web_app
-- AI AUTO mode: click "⟐ AI AUTO" → auto detects, captures, processes documents
-- OCR API keys: OCR.space, Azure Vision, Google Vision, etc.
-- Storage: Browse button picks folder (no manual typing)
-- API Keys: Cancel button works correctly (re-shows ADD KEY)
-- Phone camera: Works on mobile with proper constraints + error fallback
-- Phone camera relay: Real-time background streaming + capture
-- Mobile responsive: Sidebar hamburger, scrolling, touch-friendly layout
-- Only one capture button (round shutter) — duplicate removed
-- Cloud storage usage check per provider
-- All cloud providers wired: Google Drive, Dropbox, OneDrive
-- Persistent config in config/app_config.json
-- Cross-platform: LAN (built-in), ngrok (optional), free hosting (Render/PythonAnywhere)
-
-HOW TO ACCESS FROM PHONE
-  Option 1 — Same WiFi: Run server → open Wireless tab → scan QR code
-  Option 2 — Anywhere: pip install pyngrok → python -m src.web_app --ngrok
-  Option 3 — Free hosting: Deploy to Render.com / PythonAnywhere (free tiers)
-
-28. STRIPPED WIRELESS / NETWORK / BLUETOOTH / PHONE RELAY
-    - Removed entire wireless-panel HTML (phone/network/BT/manual URL tabs)
-    - Removed phone_camera.html template entirely
-    - Removed /phone-camera, /api/relay-frame, /api/relay-latest from web_app.py
-    - Removed all wireless/relay/BT/network scan JavaScript (~450 lines)
-    - Removed WIRELESS button from drop-zone UI
-    - Cleaned up: no more QR code, Bluetooth, network scan, manual URL connection
-    - App is now self-contained — no external device dependencies
-
-29. REDESIGNED AS PURE AUTO-DETECT SCANNER
-    - "⟐ OPEN CAMERA" button opens camera and immediately starts AI auto-detect
-    - When document edges detected consistently (2+ frames), auto-captures at full resolution
-    - Live counter shows captured pages: "📄 N" badge
-    - "● DETECTED" status indicator when document framed
-    - "✓ DONE" button closes camera and enables PROCESS ALL
-    - processAllCaptures() runs full pipeline (crop/enhance/shadow/OCR/classify) on every page
-    - Results shown with compare images, stats, details — all batch-processed
-    - Manual shutter button retained as fallback override for non-auto captures
-
-30. GALLERY PREVIEW FIXED
-    - Doc-card onclick used raw paths with backslashes → broken preview on Windows
-    - Fixed: use JSON.stringify(path) for safe JS string escaping in onclick
-    - openPreview now matches by path with fallback (encoded/backslash variants)
-    - All gallery action buttons (preview, download, delete) now work correctly
-
-─────────────────────────────────────────────────────
-FILES CHANGED (21 Jul — late)
-─────────────────────────────────────────────────────
-  ai_scanner/src/templates/index.html            | ~500   (removed wireless JS, redesigned scanner)
-  ai_scanner/src/templates/phone_camera.html     | -240   (REMOVED)
-  ai_scanner/src/web_app.py                      | -55    (removed relay endpoints + phone route)
-  end_of_day_report_20-21jul2026.txt             | +45    (this update)
-  4 files changed, ~300 lines removed
-
-NEXT UP
-- Azure deployment prep (azd / Docker)
-- Multi-user auth
-- Performance optimization for large galleries
+RUN: cd ai_scanner && python -m src.web_app [--ngrok]

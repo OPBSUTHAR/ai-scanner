@@ -1180,7 +1180,7 @@ body{
                   <button class="btn btn-primary btn-lg" id="btn-open-cam" style="background:var(--gradient-cyan-magenta);border:none;color:#fff;box-shadow:0 0 20px var(--cyan-glow)">
                     ⟐ OPEN CAMERA
                   </button>
-                  <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();document.getElementById('native-capture').click()" style="background:linear-gradient(135deg,#a855f7,#6366f1);border:none;color:#fff">
+                  <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();phoneCameraCapture()" style="background:linear-gradient(135deg,#a855f7,#6366f1);border:none;color:#fff">
                     📷 PHONE CAMERA
                   </button>
                   <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();processAllCaptures()" id="btn-process-all" style="display:none;background:var(--gradient-cyan-violet)">
@@ -1770,6 +1770,26 @@ document.getElementById('cam-device-select').addEventListener('change',function(
   }
   setTimeout(function(){startCamera(document.getElementById('cam-device-select').value)},300);
 });
+
+/* ---- PHONE CAMERA BUTTON (tries getUserMedia first, falls back to native input) ---- */
+function phoneCameraCapture(){
+  if(state.stream){closeCamera();return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    // No API at all — fall back to native capture input immediately
+    document.getElementById('native-capture').click();
+    return;
+  }
+  // Try getUserMedia first (opens actual camera on supported browsers)
+  navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){
+    // Success — use the stream (same as OPEN CAMERA)
+    showCameraUI(s);
+    toast('📷 CAMERA READY');
+  }).catch(function(){
+    // Failed (HTTP, permission, etc.) — fall back to native capture input
+    document.getElementById('native-capture').click();
+  });
+}
+
 function startAutoDetect(){
   autoCaptureActive=true;
   var v=document.getElementById('video'),c=document.getElementById('canvas'),ctx=c.getContext('2d');
