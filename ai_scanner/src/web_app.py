@@ -227,6 +227,17 @@ def api_ip():
     port = request.host.split(":")[1] if ":" in request.host else "80"
     return jsonify({"ip": local_ip, "hostname": hostname, "port": port, "url": f"http://{local_ip}:{port}"})
 
+@app.route("/api/ocr/status")
+def api_ocr_status():
+    has_tesseract = scanner.ocr.tesseract_available
+    has_google_vision = bool(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or
+                             os.environ.get("GOOGLE_VISION_API_KEY"))
+    return jsonify({
+        "tesseract": has_tesseract,
+        "google_vision": has_google_vision,
+        "engine": "tesseract" if has_tesseract else ("google_vision" if has_google_vision else "none"),
+    })
+
 @app.route("/")
 def index():
     data = {"stats": {}, "recent": []}

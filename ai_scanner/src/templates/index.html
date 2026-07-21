@@ -1230,7 +1230,7 @@ body{
               <div id="capture-status" style="display:none;position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(3,7,18,0.8);backdrop-filter:blur(12px);padding:6px 16px;border-radius:20px;border:1px solid rgba(0,242,254,0.15);font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);white-space:nowrap">
                 <span id="capture-count-badge">📄 0</span> CAPTURED
               </div>
-              <div id="done-capturing-bar" style="display:none;position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:10;display:none;gap:8px">
+              <div id="done-capturing-bar" style="display:none;position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:10;gap:8px">
                 <button class="btn btn-primary" id="btn-done-capture" style="background:var(--gradient-cyan-magenta);border:none;box-shadow:0 0 20px var(--cyan-glow)">✓ DONE</button>
               </div>
               <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
@@ -1267,6 +1267,10 @@ body{
             <div class="toggle-row"><span>SHADOW REMOVAL</span><div class="toggle on" id="tog-shadow" onclick="this.classList.toggle('on')"></div></div>
             <div class="toggle-row"><span>ENHANCE</span><div class="toggle on" id="tog-enhance" onclick="this.classList.toggle('on')"></div></div>
             <div class="toggle-row"><span>GOOGLE VISION</span><div class="toggle" id="tog-vision" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row" style="border-top:1px solid rgba(0,242,254,0.06);margin-top:4px;padding-top:6px">
+              <span style="font-size:0.5rem">OCR ENGINE</span>
+              <span id="ocr-status-badge" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary)">CHECKING...</span>
+            </div>
           </div>
           <div class="ctrl-group">
             <h4>⟐ EFFECTS</h4>
@@ -1562,56 +1566,9 @@ document.querySelectorAll('.effect-btn').forEach(function(b){
     if(state.capturedBlob)updatePreview();
   });
 });
-document.getElementById('btn-open-cam').addEventListener('click',function(e){
-  e.stopPropagation();
-  e.preventDefault();
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    toast('Camera not supported on this device','err');return
-  }
-  var constraints={video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false};
-  // On mobile, use simpler constraints for better compatibility
-  if(isTouchDevice){
-    constraints={video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false};
-  }
-  navigator.mediaDevices.getUserMedia(constraints).then(function(s){
-    state.stream=s;
-    var v=document.getElementById('video');
-    v.srcObject=s;
-    v.setAttribute('playsinline','');
-    v.setAttribute('autoplay','');
-    v.setAttribute('muted','');
-    v.play().catch(function(){});
-    document.getElementById('cam-view').style.display='flex';
-    document.getElementById('cam-view').style.width='100%';
-    document.getElementById('cam-view').style.height='100%';
-    document.getElementById('dz-placeholder').style.display='none';
-    document.getElementById('btn-close-cam').style.display='';
-    document.getElementById('vf-overlay').classList.add('active');
-    document.getElementById('shutter-btn').classList.add('active');
-  }).catch(function(e){
-    var msg=e.message||'Camera access denied';
-    toast('CAMERA: '+msg,'err');
-    // Try without facingMode as fallback
-    if(msg.includes('facingMode')||msg.includes('constraint')){
-      navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){
-        state.stream=s;document.getElementById('video').srcObject=s;
-        document.getElementById('cam-view').style.display='flex';
-        document.getElementById('dz-placeholder').style.display='none';
-        document.getElementById('btn-close-cam').style.display='';
-        document.getElementById('vf-overlay').classList.add('active');
-        document.getElementById('shutter-btn').classList.add('active');
-      }).catch(function(e2){toast('CAMERA: '+e2.message,'err')});
-    }
-  });
-});
 document.getElementById('btn-close-cam').addEventListener('click',function(e){
-  e.stopPropagation();
-  if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
-  document.getElementById('cam-view').style.display='none';
+  e.stopPropagation();closeCamera();
   document.getElementById('dz-placeholder').style.display='';
-  document.getElementById('btn-close-cam').style.display='none';
-  document.getElementById('vf-overlay').classList.remove('active');
-  document.getElementById('shutter-btn').classList.remove('active');
 });
 function captureFromCam(){
   // Manual capture override for shutter button
@@ -1648,7 +1605,8 @@ document.getElementById('btn-open-cam').addEventListener('click',function(e){
     document.getElementById('btn-close-cam').style.display='';
     document.getElementById('vf-overlay').classList.add('active');
     document.getElementById('capture-status').style.display='';
-    document.getElementById('btn-done-capture').style.display='';
+    document.getElementById('done-capturing-bar').style.display='flex';
+    document.getElementById('shutter-btn').classList.add('active');
     document.getElementById('btn-open-cam').textContent='✕ CLOSE CAMERA';
     document.getElementById('btn-open-cam').style.background='var(--crimson)';
     // Start auto-detect loop
@@ -1663,8 +1621,8 @@ function startAutoDetect(){
   var consecutiveDetects=0;
   autoCaptureTimer=setInterval(function(){
     if(!v.videoWidth||!autoCaptureActive)return;
-    c.width=Math.min(v.videoWidth,320);
-    c.height=Math.min(v.videoHeight,240);
+    c.width=Math.min(v.videoWidth,480);
+    c.height=Math.min(v.videoHeight,360);
     ctx.drawImage(v,0,0,c.width,c.height);
     c.toBlob(function(blob){
       var fd=new FormData();
@@ -1673,13 +1631,11 @@ function startAutoDetect(){
         .then(function(r){return r.json()})
         .then(function(d){
           if(!autoCaptureActive)return;
-          if(d.document_detected&&d.quality_pass&&(d.fill_ratio||0)>0.12){
+          if(d.document_detected&&(d.fill_ratio||0)>0.06){
             consecutiveDetects++;
             document.getElementById('tel-edge').textContent='⟐ DETECTED';
             if(consecutiveDetects>=2){
               consecutiveDetects=0;
-              // Auto-capture
-              var cv=document.getElementById('canvas');
               var bigC=document.createElement('canvas');
               bigC.width=v.videoWidth;bigC.height=v.videoHeight;
               bigC.getContext('2d').drawImage(v,0,0);
@@ -1696,7 +1652,7 @@ function startAutoDetect(){
             document.getElementById('tel-edge').textContent='--';
           }
         }).catch(function(){});
-    },'image/jpeg',0.4);
+    },'image/jpeg',0.6);
   },350);
 }
 function stopAutoDetect(){
@@ -1711,7 +1667,8 @@ function closeCamera(){
   document.getElementById('btn-close-cam').style.display='none';
   document.getElementById('vf-overlay').classList.remove('active');
   document.getElementById('capture-status').style.display='none';
-  document.getElementById('btn-done-capture').style.display='none';
+  document.getElementById('done-capturing-bar').style.display='none';
+  document.getElementById('shutter-btn').classList.remove('active');
   document.getElementById('btn-open-cam').textContent='⟐ OPEN CAMERA';
   document.getElementById('btn-open-cam').style.background='';
 }
@@ -1721,6 +1678,12 @@ document.getElementById('btn-close-cam').addEventListener('click',function(e){
 document.getElementById('btn-done-capture').addEventListener('click',function(){
   closeCamera();
   if(!state.capturedBlobs.length){toast('No captures to process','warn');return}
+  var last=state.capturedBlobs[state.capturedBlobs.length-1];
+  if(last){
+    state.capturedBlob=last;
+    document.getElementById('preview-img').src=URL.createObjectURL(last);
+    document.getElementById('scan-preview').classList.add('active');
+  }
   document.getElementById('btn-process-all').style.display='';
   toast(state.capturedBlobs.length+' pages captured. Click PROCESS ALL');
   document.getElementById('shutter-btn').classList.remove('active');
@@ -1856,6 +1819,8 @@ function resetScanner(){
   document.getElementById('scanner-grid').classList.remove('full');
   document.getElementById('scan-preview').classList.remove('active');
   document.getElementById('dz-placeholder').style.display='';
+  document.getElementById('btn-process-all').style.display='none';
+  state.capturedBlobs=[];
   state.capturedBlob=null;state.currentResult=null;
   fi.value='';document.getElementById('btn-process').disabled=true;
 }
@@ -2147,6 +2112,18 @@ function esc(s){var d=document.createElement('div');d.textContent=s;return d.inn
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('show')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show')}
 
+/* ---- OCR STATUS ---- */
+function loadOcrStatus(){
+  fetch('/api/ocr/status').then(function(r){return r.json()}).then(function(s){
+    var badge=document.getElementById('ocr-status-badge');
+    if(s.tesseract) badge.innerHTML='<span style="color:var(--emerald)">● TESSERACT</span>';
+    else if(s.google_vision) badge.innerHTML='<span style="color:var(--cyan)">● GOOGLE VISION</span>';
+    else badge.innerHTML='<span style="color:var(--crimson)">● NOT AVAILABLE</span>';
+  }).catch(function(){
+    document.getElementById('ocr-status-badge').innerHTML='<span style="color:var(--crimson)">● ERROR</span>';
+  });
+}
+
 /* ---- REAL-TIME POLLING (reduced on mobile) ---- */
 var realtimeIntervals=[];
 var isTouchDevice='ontouchstart' in window||navigator.maxTouchPoints>0;
@@ -2203,6 +2180,7 @@ setTimeout(function(){
 /* ---- INIT ---- */
 restoreState();
 loadDashboard();loadActivity();
+loadOcrStatus();
 </script>
 </body>
 </html>
