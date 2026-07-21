@@ -586,7 +586,7 @@ body{
   display:none;flex-direction:column;flex:1;
   background:#000;border-radius:var(--radius-lg);overflow:hidden;position:relative;
 }
-.cam-view video{width:100%;display:block;flex:1;object-fit:contain;background:#000}
+.cam-view video{width:100%;display:block;flex:1;object-fit:contain;background:#000;min-height:200px}
 
 /* Holographic Viewfinder Overlay */
 .vf-overlay{
@@ -941,36 +941,43 @@ body{
    ============================================================ */
 .mobile-menu-btn{display:none;background:none;border:none;color:var(--text-primary);font-size:1.2rem;cursor:pointer;padding:4px 8px}
 @media(max-width:860px){
-  .app{flex-direction:column}
-  .sidebar{position:fixed;left:-260px;top:0;bottom:0;width:240px;z-index:100;transition:left 0.3s ease;border-right:1.5px solid rgba(0,242,254,0.12)}
+  body{overflow:auto!important;height:auto!important}
+  html{overflow:auto!important;height:auto!important}
+  .app{flex-direction:column;height:auto!important;min-height:100vh;overflow:auto!important}
+  .sidebar{position:fixed;left:-260px;top:0;bottom:0;width:240px;z-index:100;transition:left 0.25s ease;border-right:1.5px solid rgba(0,242,254,0.12)}
   .sidebar.open{left:0}
-  .sidebar-overlay{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,0.5)}
+  .sidebar-overlay{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,0.6)}
   .sidebar-overlay.show{display:block}
-  .main{margin-left:0!important;width:100%}
-  .mobile-menu-btn{display:inline-flex;align-items:center;gap:6px}
-  .hud-topbar{padding:8px 12px!important;gap:8px!important}
+  .main{margin-left:0!important;width:100%;overflow:auto!important;height:auto!important}
+  .content{overflow:auto!important;height:auto!important;padding:10px!important;padding-bottom:80px!important}
+  .mobile-menu-btn{display:inline-flex;align-items:center;gap:6px;font-size:1.4rem}
+  .hud-topbar{padding:8px 12px!important;gap:8px!important;flex-shrink:0}
   .hud-topbar .hud-tabs{display:none}
   .hud-topbar .brand-tag{font-size:0.6rem!important}
   .hud-topbar #search-input{width:100px!important;font-size:0.5rem!important}
-  .hud-telemetry{gap:6px!important}
-  .hud-tel-item .label-text{font-size:0.45rem!important}
-  .content{padding:10px!important}
+  .hud-telemetry{gap:4px!important}
+  .hud-tel-item .label-text{font-size:0.45rem!important;display:none}
+  .hud-tel-item .dot{display:none!important}
+  .hud-clock{font-size:0.55rem!important}
   .scanner-grid{grid-template-columns:1fr!important}
   .scanner-grid.full .ctrl-panel{display:none}
+  .vf-container{min-height:260px!important;max-height:60vh!important}
+  .cam-view{flex:1!important;width:100%!important;min-height:260px!important}
+  .cam-view video{width:100%!important;height:100%!important;object-fit:cover!important;max-height:60vh!important;min-height:260px!important}
   .vf-tel-left,.vf-tel-right{display:none!important}
   .stat-grid{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}
-  .stat-card{padding:12px!important}
-  .stat-card .stat-value{font-size:1.2rem!important}
+  .stat-card{padding:10px!important}
+  .stat-card .stat-value{font-size:1rem!important}
   .dash-bottom{grid-template-columns:1fr!important}
   .doc-grid{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}
   .gallery-bar{flex-wrap:wrap;gap:4px}
-  .filter-group{overflow-x:auto;flex-wrap:nowrap;width:100%}
+  .filter-group{overflow-x:auto;flex-wrap:nowrap;width:100%;-webkit-overflow-scrolling:touch}
   .filter-group button{padding:4px 8px;font-size:0.5rem;white-space:nowrap}
-  .page-title h1{font-size:0.85rem!important}
-  .page-title p{font-size:0.55rem!important}
+  .page-title h1{font-size:0.8rem!important}
+  .page-title p{font-size:0.5rem!important}
   .result-compare{flex-direction:column}
   .ctrl-group{padding:8px 10px!important}
-  .toggle-row{font-size:0.65rem!important}
+  .toggle-row{font-size:0.6rem!important}
   .effect-grid{grid-template-columns:repeat(3,1fr)!important}
   .effect-btn{font-size:0.5rem!important;padding:4px!important}
   .preview-grid{grid-template-columns:1fr!important}
@@ -978,20 +985,36 @@ body{
   .shutter-btn{width:56px!important;height:56px!important;bottom:16px!important}
   .shutter-btn::after{width:38px!important;height:38px!important}
   .wireless-panel .wtab-content{padding:10px!important}
-  .modal{max-width:95vw!important;margin:10px!important}
+  .modal{max-width:95vw!important;margin:10px!important;max-height:85vh!important;overflow-y:auto!important}
   #btn-close-cam{top:6px!important;right:6px!important;padding:4px 8px!important;font-size:0.5rem!important}
   .kbd-hint{display:none!important}
-  .btn{min-height:40px;padding:8px 16px;font-size:0.65rem!important}
+  .btn{min-height:40px;padding:8px 16px;font-size:0.6rem!important}
   .btn-lg{padding:10px 20px!important}
+  .btn-sm{padding:6px 12px!important;font-size:0.55rem!important}
+  .btn-xs{padding:4px 8px!important;font-size:0.5rem!important}
+  .mouse-glow{display:none!important}
+  .preview-image img{max-height:50vh!important}
+  .card-body{max-height:none!important;overflow:visible!important}
+  #capture-count{font-size:0.55rem!important;padding:3px 8px!important;top:4px!important;right:4px!important}
+  #btn-finish-capture{font-size:0.5rem!important;padding:4px 10px!important;bottom:60px!important}
+  .pipeline-flow{gap:2px;flex-wrap:wrap}.pipe-step{padding:4px 6px;font-size:0.45rem}.pipe-step .step-num{display:none}
+  #cloud-status-list .toggle-row{flex-wrap:wrap;gap:4px}
+  .feed-card{max-height:200px!important}
+  #phone-qr{width:80px!important;height:80px!important}
+  .preview-actions{gap:4px!important}.preview-actions .btn{font-size:0.5rem!important;padding:4px 8px!important}
 }
 @media(max-width:480px){
   .stat-grid{grid-template-columns:1fr 1fr!important}
-  .doc-grid{grid-template-columns:1fr 1fr!important}
+  .doc-grid{grid-template-columns:1fr 1fr!important;gap:4px!important}
   .btn-back .back-label{display:none}
+  .page-title h1{font-size:0.7rem!important}
+  .page-title p{font-size:0.45rem!important}
 }
 /* Touch device optimizations */
 @media(hover:none) and (pointer:coarse){
-  .btn{padding:12px 24px;min-height:44px;font-size:0.7rem!important}
+  body{overflow:auto!important;height:auto!important;-webkit-overflow-scrolling:touch}
+  .app{height:auto!important;overflow:auto!important}
+  .btn{padding:10px 18px;min-height:44px;font-size:0.65rem!important}
   .nav-item{padding:12px 10px}
   .sidebar .nav-item .nav-label{display:block!important}
   .sidebar-footer .info{display:block!important}
@@ -1001,6 +1024,9 @@ body{
   .doc-card:hover{transform:none}
   .effect-btn:hover{border-color:rgba(0,242,254,0.06);color:var(--text-tertiary)}
   .ctrl-group:hover{box-shadow:none}
+  .btn:hover{box-shadow:none;transform:none}
+  .mouse-glow{display:none!important}
+  *{cursor:default!important}
 }
 </style>
 </head>
@@ -1021,7 +1047,7 @@ body{
 <div class="app">
 
 <!-- ===== SIDEBAR ===== -->
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
   <div class="sidebar-brand">
     <div class="logo">NX</div>
     <div class="brand-text">
@@ -1153,6 +1179,9 @@ body{
                   <button class="btn btn-outline btn-lg" id="btn-wireless">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
                     WIRELESS
+                  </button>
+                  <button class="btn btn-primary btn-lg" id="btn-ai-auto" style="background:var(--gradient-cyan-magenta);border:none;color:#fff;box-shadow:0 0 20px var(--cyan-glow)">
+                    ⟐ AI AUTO
                   </button>
                 </div>
               </div>
@@ -1377,7 +1406,8 @@ body{
       <div style="max-width:560px">
         <div class="ctrl-group" style="margin-bottom:10px">
           <h4>💾 STORAGE</h4>
-          <div class="toggle-row"><span>LOCATION</span><div style="display:flex;gap:4px;align-items:center;flex:1;max-width:280px"><input type="text" id="storage-path" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:4px 8px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.55rem;outline:none"><button class="btn btn-primary btn-xs" onclick="saveStoragePath()">SET</button></div></div>
+          <div class="toggle-row"><span>LOCATION</span><div style="display:flex;gap:4px;align-items:center;flex:1;max-width:280px"><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="storage-path-display">data/documents/</span><button class="btn btn-primary btn-xs" onclick="browseStorageFolder()">BROWSE</button></div></div>
+          <input type="file" id="folder-picker" webkitdirectory style="display:none" onchange="handleFolderPick(this)">
           <div class="toggle-row"><span>DOCUMENTS</span><span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary)" id="set-count">--</span></div>
           <div class="toggle-row"><span>STORAGE USED</span><span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary)" id="set-size">--</span></div>
         </div>
@@ -1395,7 +1425,7 @@ body{
             <input type="password" id="ak-value" placeholder="PASTE API KEY" style="width:100%;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.08);background:var(--bg-card);color:var(--text-primary);font-family:var(--font-mono);font-size:0.6rem;margin-bottom:6px;outline:none">
             <div style="display:flex;gap:6px">
               <button class="btn btn-primary btn-sm" onclick="saveApiKey()">💾 SAVE</button>
-              <button class="btn btn-outline btn-sm" onclick="document.getElementById('api-key-form').style.display='none'">CANCEL</button>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('api-key-form').style.display='none';document.getElementById('btn-add-key').style.display=''">CANCEL</button>
             </div>
           </div>
           <button class="btn btn-primary btn-sm" id="btn-add-key" onclick="showAddKeyForm()" style="margin-top:4px">➕ ADD KEY</button>
@@ -1540,6 +1570,7 @@ function switchView(v){
   var t={dashboard:'DASHBOARD',scanner:'SCANNER',gallery:'VAULT',settings:'CONFIG'};
   var tag=document.querySelector('.brand-tag');
   if(tag)tag.innerHTML='<strong>AI SCANNER</strong> // '+(t[v]||'NEXUS-OS');
+  closeSidebar();
   clearTimeout(navTimer);
   navTimer=setTimeout(function(){
     if(v==='gallery')loadGallery();
@@ -1624,14 +1655,45 @@ document.querySelectorAll('.effect-btn').forEach(function(b){
 });
 document.getElementById('btn-open-cam').addEventListener('click',function(e){
   e.stopPropagation();
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(s){
-    state.stream=s;document.getElementById('video').srcObject=s;
+  e.preventDefault();
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    toast('Camera not supported on this device','err');return
+  }
+  var constraints={video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false};
+  // On mobile, use simpler constraints for better compatibility
+  if(isTouchDevice){
+    constraints={video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false};
+  }
+  navigator.mediaDevices.getUserMedia(constraints).then(function(s){
+    state.stream=s;
+    var v=document.getElementById('video');
+    v.srcObject=s;
+    v.setAttribute('playsinline','');
+    v.setAttribute('autoplay','');
+    v.setAttribute('muted','');
+    v.play().catch(function(){});
     document.getElementById('cam-view').style.display='flex';
+    document.getElementById('cam-view').style.width='100%';
+    document.getElementById('cam-view').style.height='100%';
     document.getElementById('dz-placeholder').style.display='none';
     document.getElementById('btn-close-cam').style.display='';
     document.getElementById('vf-overlay').classList.add('active');
     document.getElementById('shutter-btn').classList.add('active');
-  }).catch(function(e){toast('CAMERA: '+e.message,'err')});
+  }).catch(function(e){
+    var msg=e.message||'Camera access denied';
+    toast('CAMERA: '+msg,'err');
+    // Try without facingMode as fallback
+    if(msg.includes('facingMode')||msg.includes('constraint')){
+      navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){
+        state.stream=s;document.getElementById('video').srcObject=s;
+        document.getElementById('cam-view').style.display='flex';
+        document.getElementById('dz-placeholder').style.display='none';
+        document.getElementById('btn-close-cam').style.display='';
+        document.getElementById('vf-overlay').classList.add('active');
+        document.getElementById('shutter-btn').classList.add('active');
+      }).catch(function(e2){toast('CAMERA: '+e2.message,'err')});
+    }
+  });
 });
 document.getElementById('btn-close-cam').addEventListener('click',function(e){
   e.stopPropagation();
@@ -1799,6 +1861,87 @@ function batchMakePdf(){
       .catch(function(){idx++;captureAndSave()});
   })();
 }
+/* ---- AI AUTO MODE ---- */
+var aiAutoTimer=null,aiAutoActive=false;
+document.getElementById('btn-ai-auto').addEventListener('click',function(){
+  if(aiAutoActive){stopAiAuto();return}
+  // First open camera if not already
+  if(!state.stream){
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}}}).then(function(s){
+      state.stream=s;document.getElementById('video').srcObject=s;
+      document.getElementById('cam-view').style.display='flex';
+      document.getElementById('dz-placeholder').style.display='none';
+      document.getElementById('btn-close-cam').style.display='';
+      document.getElementById('vf-overlay').classList.add('active');
+      setTimeout(function(){startAiAuto()},500);
+    }).catch(function(e){toast('CAMERA: '+e.message,'err')});
+  }else{
+    startAiAuto();
+  }
+});
+function startAiAuto(){
+  aiAutoActive=true;
+  var btn=document.getElementById('btn-ai-auto');
+  btn.textContent='⟐ AI SCANNING...';
+  btn.style.background='var(--crimson)';
+  btn.style.boxShadow='0 0 30px rgba(255,0,85,0.4)';
+  toast('AI AUTO MODE ACTIVE - HOLD DOCUMENT IN FRAME');
+  var v=document.getElementById('video'),c=document.getElementById('canvas'),ctx=c.getContext('2d');
+  var scanCount=0,consecutiveDetects=0;
+  aiAutoTimer=setInterval(function(){
+    if(!v.videoWidth||!aiAutoActive)return;
+    c.width=Math.min(v.videoWidth,640);
+    c.height=Math.min(v.videoHeight,480);
+    ctx.drawImage(v,0,0,c.width,c.height);
+    c.toBlob(function(blob){
+      var fd=new FormData();
+      fd.append('image',blob,'frame.jpg');
+      fetch('/api/auto-detect',{method:'POST',body:fd})
+        .then(function(r){return r.json()})
+        .then(function(d){
+          if(!aiAutoActive)return;
+          if(d.document_detected&&d.quality_pass&&d.fill_ratio>0.15){
+            consecutiveDetects++;
+            // Show detection status
+            var tel=document.getElementById('tel-edge');
+            if(tel)tel.textContent=consecutiveDetects+'/'+2;
+            if(consecutiveDetects>=2){
+              // Document detected consistently - capture!
+              consecutiveDetects=0;
+              scanCount++;
+              captureFromCam();
+              toast('⟐ AI CAPTURE #'+scanCount);
+              // Auto process after short delay
+              if(scanCount>=1){
+                setTimeout(function(){
+                  if(document.getElementById('btn-process')&&!document.getElementById('btn-process').disabled){
+                    document.getElementById('btn-process').click();
+                    if(scanCount>=3)stopAiAuto();
+                  }
+                },800);
+              }
+            }
+          }else{
+            consecutiveDetects=0;
+            var tel=document.getElementById('tel-edge');
+            if(tel)tel.textContent='--';
+          }
+        }).catch(function(){});
+    },'image/jpeg',0.6);
+  },400);
+}
+function stopAiAuto(){
+  aiAutoActive=false;
+  if(aiAutoTimer){clearInterval(aiAutoTimer);aiAutoTimer=null}
+  var btn=document.getElementById('btn-ai-auto');
+  btn.textContent='⟐ AI AUTO';
+  btn.style.background='';
+  btn.style.boxShadow='';
+  toast('AI AUTO MODE STOPPED');
+  var tel=document.getElementById('tel-edge');
+  if(tel)tel.textContent='--';
+}
+
 /* ---- WIRELESS CAMERA (MULTI-TAB) ---- */
 var wirelessInterval=null,relayInterval=null;
 var wtabMap={'phone':'wtab-phone','network':'wtab-network','bluetooth':'wtab-bluetooth','url':'wtab-url'};
@@ -2362,6 +2505,10 @@ var KEY_META_UI={
   onedrive_tenant_id:{label:'ONEDRIVE TENANT ID',icon:'🪟'},
   google_vision_api_key:{label:'GOOGLE VISION KEY',icon:'👁'},
   google_application_credentials:{label:'GOOGLE SERVICE ACCOUNT',icon:'👁'},
+  ocr_space_api_key:{label:'OCR.SPACE API KEY (FREE)',icon:'📝'},
+  ocr_api_key:{label:'OCR API KEY (ocr-api.com)',icon:'📝'},
+  azure_vision_key:{label:'AZURE VISION KEY',icon:'📝'},
+  azure_vision_endpoint:{label:'AZURE VISION ENDPOINT',icon:'📝'},
 };
 function loadApiKeys(){
   fetch('/api/keys').then(function(r){return r.json()}).then(function(keys){
@@ -2414,16 +2561,43 @@ function loadSettings(){
     document.getElementById('set-size').textContent=s.total_size;
   }).catch(function(){});
   fetch('/api/storage/path').then(function(r){return r.json()}).then(function(d){
-    document.getElementById('storage-path').value=d.path||'data/documents/';
+    document.getElementById('storage-path-display').textContent=d.path||'data/documents/';
   }).catch(function(){});
   loadCloudStatus();loadApiKeys();
 }
-function saveStoragePath(){
-  var path=document.getElementById('storage-path').value.trim();
-  if(!path){toast('Enter a valid path','warn');return}
+function browseStorageFolder(){
+  // Try modern File System Access API first
+  if('showDirectoryPicker' in window){
+    window.showDirectoryPicker().then(function(dir){
+      var path=dir.name;
+      document.getElementById('storage-path-display').textContent=path;
+      saveStoragePathToBackend(path);
+    }).catch(function(err){
+      if(err.name!='AbortError') fallbackFolderPicker();
+    });
+  }else{
+    fallbackFolderPicker();
+  }
+}
+function fallbackFolderPicker(){
+  document.getElementById('folder-picker').click();
+}
+function handleFolderPick(input){
+  if(input.files&&input.files.length){
+    var path=input.files[0].webkitRelativePath.split('/')[0];
+    var fullPath=input.files[0].path || input.files[0].webkitRelativePath;
+    // Try to extract a reasonable parent path
+    var idx=fullPath.indexOf(path);
+    var parentPath=idx>=0?fullPath.substring(0,idx)+path:path;
+    document.getElementById('storage-path-display').textContent=parentPath||path;
+    saveStoragePathToBackend(parentPath||path);
+  }
+  input.value='';
+}
+function saveStoragePathToBackend(path){
   fetch('/api/storage/path',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path})})
     .then(function(r){return r.json()}).then(function(d){
-      if(d.saved){toast('Storage path updated');loadSettings()}
+      if(d.saved){toast('Storage path: '+path);loadSettings()}
       else toast('Failed to save path','err');
     }).catch(function(){toast('Error saving path','err')});
 }
@@ -2434,19 +2608,22 @@ document.getElementById('search-input').addEventListener('keydown',function(e){i
 /* ---- UTILS ---- */
 function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('show')}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show')}
 
-/* ---- REAL-TIME POLLING ---- */
+/* ---- REAL-TIME POLLING (reduced on mobile) ---- */
 var realtimeIntervals=[];
+var isTouchDevice='ontouchstart' in window||navigator.maxTouchPoints>0;
+var pollInterval=isTouchDevice?30000:8000;
 realtimeIntervals.push(setInterval(function(){
   if(document.getElementById('view-dashboard').classList.contains('active')){
     loadDashboard();loadActivity();
   }
-}, 8000));
+}, pollInterval));
 realtimeIntervals.push(setInterval(function(){
   if(document.getElementById('view-gallery').classList.contains('active')){
     loadGallery();
   }
-}, 12000));
+}, isTouchDevice?40000:12000));
 
 /* ---- KEYBOARD SHORTCUTS ---- */
 document.addEventListener('keydown',function(e){
@@ -2469,14 +2646,16 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-/* ---- MOUSE TRACKING ---- */
+/* ---- MOUSE TRACKING (disabled on touch) ---- */
 var mg=document.getElementById('mouse-glow'),mgTimer;
-document.addEventListener('mousemove',function(e){
-  mg.style.left=e.clientX+'px';mg.style.top=e.clientY+'px';
-  mg.classList.add('show');
-  clearTimeout(mgTimer);
-  mgTimer=setTimeout(function(){mg.classList.remove('show')},3000);
-});
+if(!isTouchDevice){
+  document.addEventListener('mousemove',function(e){
+    mg.style.left=e.clientX+'px';mg.style.top=e.clientY+'px';
+    mg.classList.add('show');
+    clearTimeout(mgTimer);
+    mgTimer=setTimeout(function(){mg.classList.remove('show')},3000);
+  });
+}else{mg.style.display='none'}
 
 /* ---- KEYBOARD HINT AUTO-HIDE ---- */
 setTimeout(function(){

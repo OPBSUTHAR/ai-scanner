@@ -138,6 +138,10 @@ KEY_META = {
     "onedrive_tenant_id": {"label": "OneDrive Tenant ID", "service": "onedrive", "secret": True},
     "google_vision_api_key": {"label": "Google Vision API Key", "service": "google_vision", "secret": True},
     "google_application_credentials": {"label": "Google Service Account JSON (full path or raw JSON)", "service": "google_vision", "secret": True},
+    "ocr_space_api_key": {"label": "OCR.space API Key (free)", "service": "ocr", "secret": True},
+    "ocr_api_key": {"label": "OCR API Key (ocr-api.com)", "service": "ocr", "secret": True},
+    "azure_vision_key": {"label": "Azure Vision API Key", "service": "ocr", "secret": True},
+    "azure_vision_endpoint": {"label": "Azure Vision Endpoint", "service": "ocr"},
 }
 
 
@@ -468,6 +472,42 @@ def effects_preview():
     return Response(buf.tobytes(), mimetype=f"image/{ext}")
 
 
+# ---------------------------------------------------------------------------
+#  AI Auto-Detect (for AI auto-capture mode)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/auto-detect", methods=["POST"])
+def api_auto_detect():
+    file = request.files.get("image")
+    if not file:
+        return jsonify({"error": "No image"}), 400
+    img_array = np.frombuffer(file.read(), np.uint8)
+    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    if img is None:
+        return jsonify({"error": "Invalid image"}), 400
+
+    h, w = img.shape[:2]
+    corners = scanner.edges.find_document_contour(img)
+    quality = scanner.enhancer.quality_assessment(img)
+
+    result = {
+        "document_detected": corners is not None,
+        "quality_pass": bool(quality.get("quality_pass", False)),
+        "blur_score": round(float(quality.get("blur_score", 0)), 2),
+        "brightness": round(float(quality.get("brightness", 0)), 2),
+        "good_lighting": bool(quality.get("good_lighting", False)),
+        "width": w,
+        "height": h,
+    }
+
+    if corners is not None:
+        area = cv2.contourArea(corners)
+        frame_area = w * h
+        result["fill_ratio"] = round(float(area / frame_area), 3)
+
+    return jsonify(result)
+
+
 @app.route("/history")
 def history():
     docs = []
@@ -741,13 +781,31 @@ def cloud_upload(subpath):
 # ---------------------------------------------------------------------------
 
 def main():
-    import argparse
+    import argparse, socket as _socket
     parser = argparse.ArgumentParser(description="AI Scanner Web Server")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 5000)))
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--ngrok", action="store_true", help="Expose via ngrok (requires ngrok installed)")
     args = parser.parse_args()
-    print(f"  AI Scanner — http://{args.host}:{args.port}")
+    local_ip = _socket.gethostbyname(_socket.gethostname())
+    print(f"\n  {'='*45}")
+    print(f"  ◈ AI SCANNER // NEXUS-OS v3.0")
+    print(f"  {'='*45}")
+    print(f"  Local:   http://localhost:{args.port}")
+    print(f"  Network: http://{local_ip}:{args.port}")
+    print(f"  {'='*45}")
+    print(f"  Open on phone: scan QR code in Wireless tab")
+    print(f"  {'='*45}\n")
+    if args.ngrok:
+        try:
+            from pyngrok import ngrok as _ngrok
+            public_url = _ngrok.connect(args.port).public_url
+            print(f"  🌐 ngrok URL: {public_url}")
+            print(f"  Share this URL to access from anywhere\n")
+        except ImportError:
+            print(f"  ⚠ ngrok requested but pyngrok not installed.")
+            print(f"  Install: pip install pyngrok\n")
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 if __name__ == "__main__":

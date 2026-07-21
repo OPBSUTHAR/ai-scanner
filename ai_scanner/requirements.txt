@@ -39,6 +39,9 @@ gunicorn>=21.2.0
 # Encryption for API key storage
 cryptography>=41.0.0
 
+# Optional: Expose server publicly via ngrok (pip install pyngrok)
+# pyngrok>=7.0.0
+
 # Utilities
 python-dotenv>=1.0.0
 tqdm>=4.65.0
