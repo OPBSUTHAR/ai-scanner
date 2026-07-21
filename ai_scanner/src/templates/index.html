@@ -730,6 +730,13 @@ body{
 .badge-green{background:rgba(0,245,212,0.08);color:var(--emerald);border:1px solid rgba(0,245,212,0.15)}
 .badge-red{background:rgba(255,0,85,0.08);color:var(--crimson);border:1px solid rgba(255,0,85,0.15)}
 
+/* Wireless panel tabs */
+.wireless-tab.active{background:var(--cyan-dim)!important;color:var(--cyan)!important;box-shadow:0 0 12px var(--cyan-glow)}
+.wtab-content.active{display:flex!important}
+.status-badge{font-family:var(--font-mono)}
+.status-badge.connected{color:var(--emerald)!important;border-color:rgba(0,245,212,0.2)!important;background:rgba(0,245,212,0.06)!important}
+.status-badge.error{color:var(--crimson)!important;border-color:rgba(255,0,85,0.2)!important;background:rgba(255,0,85,0.06)!important}
+
 /* ============================================================
    GALLERY / VAULT LIBRARY
    ============================================================ */
@@ -1132,21 +1139,65 @@ body{
                 <button class="btn btn-primary" id="btn-capture">◉ CAPTURE</button>
                 <button class="btn btn-outline" id="btn-close-cam">✕ CLOSE</button>
               </div>
-              <div class="wireless-panel" id="wireless-panel" style="display:none;flex-direction:column;flex:1;background:#000;border-radius:var(--radius-lg);overflow:hidden;position:relative">
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:20px;gap:10px;text-align:center" id="wireless-connect">
-                  <div style="font-size:32px;opacity:0.3;font-family:var(--font-mono)">📡</div>
-                  <h3 style="font-family:var(--font-display);font-size:0.85rem;font-weight:600">CONNECT WIRELESS CAMERA</h3>
-                  <p style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-tertiary);max-width:360px">Install <strong>IP Webcam</strong> on your phone, start the server, then enter the URL below.</p>
-                  <div id="wireless-ip-display" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);background:var(--cyan-dim);padding:6px 14px;border-radius:var(--radius-sm)"></div>
-                  <div style="display:flex;gap:6px;width:100%;max-width:360px">
-                    <input type="text" id="wireless-url" placeholder="http://192.168.1.x:8080/video" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.65rem;outline:none">
-                    <button class="btn btn-primary" id="btn-wireless-connect">CONNECT</button>
+              <div class="wireless-panel" id="wireless-panel" style="display:none;flex-direction:column;flex:1;border-radius:var(--radius-lg);overflow:hidden;position:relative;background:var(--bg-deep)">
+                <div style="display:flex;gap:1px;background:var(--bg-card);padding:4px;flex-shrink:0;border-bottom:1px solid rgba(0,242,254,0.06)" id="wireless-tabs">
+                  <button class="wireless-tab active" data-wtab="phone" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">📱 PHONE</button>
+                  <button class="wireless-tab" data-wtab="network" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">📡 NETWORK</button>
+                  <button class="wireless-tab" data-wtab="bluetooth" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">🔵 BT</button>
+                  <button class="wireless-tab" data-wtab="url" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">🔌 MANUAL</button>
+                </div>
+
+                <!-- PHONE RELAY TAB -->
+                <div class="wtab-content active" data-wtab="phone" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-phone">
+                  <div style="font-size:36px;opacity:0.4">📱</div>
+                  <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">PHONE AS CAMERA</h3>
+                  <p style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary);max-width:320px">Scan the QR code with your phone to use its camera wirelessly.</p>
+                  <div id="phone-ip-display" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);background:var(--cyan-dim);padding:5px 12px;border-radius:var(--radius-sm);display:none"></div>
+                  <img id="phone-qr" style="width:120px;height:120px;border-radius:var(--radius-sm);display:none;background:var(--bg-card);padding:6px">
+                  <div class="status-badge" id="phone-status" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:4px 12px;border-radius:20px;background:var(--bg-card);border:1px solid rgba(0,242,254,0.06)">WAITING FOR PHONE...</div>
+                  <div style="display:flex;gap:8px;margin-top:4px">
+                    <button class="btn btn-primary btn-sm" id="btn-relay-capture" style="display:none" onclick="captureFromRelay()">◉ CAPTURE</button>
+                    <button class="btn btn-outline btn-sm" id="btn-relay-close" style="display:none" onclick="closeRelay()">✕ DISCONNECT</button>
                   </div>
-                  <div style="margin-top:4px;display:flex;align-items:center;gap:8px">
-                    <img id="wireless-qr" style="width:80px;height:80px;border-radius:var(--radius-sm);display:none">
-                    <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">Scan QR to open on phone</span>
+                  <img id="relay-preview" style="width:100%;max-height:240px;object-fit:contain;border-radius:var(--radius-sm);display:none;background:#000">
+                </div>
+
+                <!-- NETWORK SCAN TAB -->
+                <div class="wtab-content" data-wtab="network" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-network">
+                  <div style="font-size:36px;opacity:0.4">📡</div>
+                  <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">NETWORK CAMERA</h3>
+                  <p style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary);max-width:320px">Scan your local network for IP Webcam or RTSP cameras.</p>
+                  <button class="btn btn-primary" id="btn-scan-network">🔍 SCAN NETWORK</button>
+                  <div id="scan-results" style="width:100%;max-height:140px;overflow-y:auto;display:none;flex-direction:column;gap:4px"></div>
+                  <div style="display:flex;gap:6px;width:100%;max-width:360px;margin-top:4px">
+                    <input type="text" id="network-url" placeholder="http://192.168.1.x:8080/video" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:7px 10px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.6rem;outline:none">
+                    <button class="btn btn-primary btn-sm" id="btn-network-connect">CONNECT</button>
                   </div>
                 </div>
+
+                <!-- BLUETOOTH TAB -->
+                <div class="wtab-content" data-wtab="bluetooth" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-bluetooth">
+                  <div style="font-size:36px;opacity:0.4">🔵</div>
+                  <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">BLUETOOTH</h3>
+                  <p style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary);max-width:320px">Discover nearby Bluetooth devices. Note: Most phone cameras require WiFi or USB for video streaming.</p>
+                  <button class="btn btn-primary" id="btn-scan-bt">🔍 SCAN FOR DEVICES</button>
+                  <div id="bt-results" style="width:100%;max-height:140px;overflow-y:auto;display:none;flex-direction:column;gap:4px"></div>
+                  <div id="bt-info" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:8px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:320px">For camera streaming, use the <strong>PHONE</strong> or <strong>NETWORK</strong> tab instead.</div>
+                </div>
+
+                <!-- MANUAL URL TAB -->
+                <div class="wtab-content" data-wtab="url" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-url">
+                  <div style="font-size:36px;opacity:0.4">🔌</div>
+                  <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">MANUAL CONNECTION</h3>
+                  <p style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary);max-width:320px">Enter the MJPEG stream URL from any IP camera or streaming app.</p>
+                  <div id="manual-ip-display" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);background:var(--cyan-dim);padding:5px 12px;border-radius:var(--radius-sm);display:none"></div>
+                  <div style="display:flex;gap:6px;width:100%;max-width:360px">
+                    <input type="text" id="manual-url" placeholder="http://192.168.1.x:8080/video" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.65rem;outline:none">
+                    <button class="btn btn-primary" id="btn-manual-connect">CONNECT</button>
+                  </div>
+                </div>
+
+                <!-- Shared stream view (for network/manual) -->
                 <div style="display:none;flex-direction:column;flex:1;position:relative" id="wireless-stream">
                   <img id="wireless-img" style="width:100%;flex:1;object-fit:contain;background:#000">
                   <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5">
@@ -1476,40 +1527,172 @@ function captureFromCam(){
     document.getElementById('btn-process').disabled=false;
   },'image/jpeg',0.95);
 }
-/* ---- WIRELESS CAMERA ---- */
-var wirelessInterval=null;
+/* ---- WIRELESS CAMERA (MULTI-TAB) ---- */
+var wirelessInterval=null,relayInterval=null;
+var wtabMap={'phone':'wtab-phone','network':'wtab-network','bluetooth':'wtab-bluetooth','url':'wtab-url'};
+
+function showWirelessTab(tab){
+  document.querySelectorAll('.wireless-tab').forEach(function(b){b.classList.toggle('active',b.dataset.wtab===tab)});
+  document.querySelectorAll('.wtab-content').forEach(function(c){c.classList.toggle('active',c.dataset.wtab===tab)});
+}
+
+// Tab switching
+document.querySelectorAll('.wireless-tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    showWirelessTab(this.dataset.wtab);
+  });
+});
+
+// Open wireless panel
 document.getElementById('btn-wireless').addEventListener('click',function(e){
   e.stopPropagation();
   document.getElementById('dz-placeholder').style.display='none';
   document.getElementById('wireless-panel').style.display='flex';
-  document.getElementById('wireless-connect').style.display='flex';
+  showWirelessTab('phone');
   document.getElementById('wireless-stream').style.display='none';
   fetch('/api/ip').then(function(r){return r.json()}).then(function(d){
-    var ipText='YOUR IP: '+d.ip+':'+d.port;
-    document.getElementById('wireless-ip-display').textContent=ipText;
-    document.getElementById('wireless-qr').src='https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(d.url);
-    document.getElementById('wireless-qr').style.display='inline';
+    document.getElementById('phone-ip-display').textContent='YOUR IP: '+d.ip+':'+d.port;
+    document.getElementById('phone-ip-display').style.display='';
+    document.getElementById('phone-qr').src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(d.url+'/phone-camera');
+    document.getElementById('phone-qr').style.display='inline';
   }).catch(function(){});
 });
-document.getElementById('btn-wireless-connect').addEventListener('click',function(){
-  var url=document.getElementById('wireless-url').value.trim();
+
+/* ========= PHONE RELAY ========= */
+function startRelayCheck(){
+  document.getElementById('phone-status').textContent='◉ WAITING FOR PHONE...';
+  document.getElementById('phone-status').className='status-badge';
+  document.getElementById('btn-relay-capture').style.display='none';
+  document.getElementById('btn-relay-close').style.display='none';
+  document.getElementById('relay-preview').style.display='none';
+  if(relayInterval)clearInterval(relayInterval);
+  relayInterval=setInterval(function(){
+    fetch('/api/relay-latest?_='+Date.now()).then(function(r){
+      if(r.status===204){if(document.getElementById('phone-status').textContent!=='◉ WAITING FOR PHONE...')document.getElementById('phone-status').textContent='◉ WAITING FOR PHONE...';return}
+      return r.blob();
+    }).then(function(b){
+      if(!b)return;
+      document.getElementById('phone-status').textContent='● CONNECTED - Phone Streaming';
+      document.getElementById('phone-status').className='status-badge connected';
+      document.getElementById('btn-relay-capture').style.display='';
+      document.getElementById('btn-relay-close').style.display='';
+      var url=URL.createObjectURL(b);
+      var prev=document.getElementById('relay-preview');
+      prev.src=url;prev.style.display='';
+      state.relayFrame=b;
+    }).catch(function(){});
+  },300);
+}
+function captureFromRelay(){
+  if(!state.relayFrame){toast('NO FRAME FROM PHONE','err');return}
+  state.capturedBlob=state.relayFrame;
+  closeRelay();
+  document.getElementById('preview-img').src=URL.createObjectURL(state.relayFrame);
+  document.getElementById('scan-preview').classList.add('active');
+  document.getElementById('btn-process').disabled=false;
+  toast('CAPTURED FROM PHONE');
+}
+function closeRelay(){
+  if(relayInterval){clearInterval(relayInterval);relayInterval=null}
+  document.getElementById('phone-status').textContent='DISCONNECTED';
+  document.getElementById('phone-status').className='status-badge error';
+  document.getElementById('btn-relay-capture').style.display='none';
+  document.getElementById('btn-relay-close').style.display='none';
+  document.getElementById('relay-preview').style.display='none';
+  document.getElementById('wireless-panel').style.display='none';
+  document.getElementById('dz-placeholder').style.display='';
+  state.relayFrame=null;
+}
+
+/* ========= NETWORK SCAN ========= */
+document.getElementById('btn-scan-network').addEventListener('click',function(){
+  var btn=this,res=document.getElementById('scan-results');
+  btn.disabled=true;btn.textContent='⏳ SCANNING...';
+  res.style.display='flex';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:4px">SCANNING LOCAL NETWORK...</div>';
+  fetch('/api/ip').then(function(r){return r.json()}).then(function(d){
+    var parts=d.ip.split('.');var base=parts[0]+'.'+parts[1]+'.'+parts[2]+'.';
+    var ports=[8080,4747,8081,80];
+    var found=[];
+    var scanPromises=[];
+    for(var i=1;i<=10;i++){
+      ports.forEach(function(port){
+        var url='http://'+base+i+':'+port+'/video';
+        scanPromises.push(
+          fetch(url,{mode:'no-cors'}).then(function(){found.push(url)}).catch(function(){})
+        );
+      });
+    }
+    Promise.all(scanPromises).then(function(){
+      btn.disabled=false;btn.textContent='🔍 SCAN NETWORK';
+      if(found.length){
+        res.innerHTML=found.map(function(u){return '<button class="btn btn-outline btn-xs" onclick="connectNetworkUrl(\''+u+'\')" style="font-size:0.55rem;padding:4px 8px;width:100%;text-align:left;justify-content:flex-start;font-family:var(--font-mono)">📡 '+u+'</button>'}).join('');
+      }else{
+        res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:8px">No cameras found. Enter URL manually below.</div>';
+      }
+    });
+  }).catch(function(){btn.disabled=false;btn.textContent='🔍 SCAN NETWORK';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--crimson);padding:8px">Network scan failed. Enter URL manually.</div>'});
+});
+function connectNetworkUrl(url){
+  connectStreamUrl(url);
+}
+document.getElementById('btn-network-connect').addEventListener('click',function(){
+  var url=document.getElementById('network-url').value.trim();
+  if(!url){toast('ENTER A URL','warn');return}
+  connectStreamUrl(url);
+});
+
+/* ========= BLUETOOTH ========= */
+document.getElementById('btn-scan-bt').addEventListener('click',function(){
+  var btn=this,res=document.getElementById('bt-results');
+  btn.disabled=true;btn.textContent='⏳ SCANNING...';
+  if(!navigator.bluetooth){
+    res.style.display='flex';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--crimson);padding:8px">Web Bluetooth not supported. Use Chrome/Edge on desktop or Android.</div>';
+    btn.disabled=false;btn.textContent='🔍 SCAN FOR DEVICES';
+    return;
+  }
+  navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[]}).then(function(device){
+    res.style.display='flex';
+    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;padding:6px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.06)"><strong>'+device.name+'</strong><br><span style="color:var(--text-tertiary)">ID: '+device.id+'</span></div>';
+    toast('FOUND: '+device.name);
+    btn.disabled=false;btn.textContent='🔍 SCAN FOR DEVICES';
+  }).catch(function(e){
+    res.style.display='flex';
+    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:8px">Scan cancelled or failed. For camera streaming, use PHONE tab.</div>';
+    btn.disabled=false;btn.textContent='🔍 SCAN FOR DEVICES';
+  });
+});
+
+/* ========= MANUAL URL ========= */
+document.getElementById('btn-manual-connect').addEventListener('click',function(){
+  var url=document.getElementById('manual-url').value.trim();
   if(!url){toast('ENTER A STREAM URL','warn');return}
+  connectStreamUrl(url);
+});
+
+/* ========= SHARED STREAM VIEW ========= */
+function connectStreamUrl(url){
   var img=document.getElementById('wireless-img');
+  img.src='';
   img.src=url;
   img.onload=function(){
-    document.getElementById('wireless-connect').style.display='none';
+    document.getElementById('wtab-phone').style.display='none';
+    document.getElementById('wtab-network').style.display='none';
+    document.getElementById('wtab-bluetooth').style.display='none';
+    document.getElementById('wtab-url').style.display='none';
+    document.querySelectorAll('.wtab-content').forEach(function(c){c.classList.remove('active')});
     document.getElementById('wireless-stream').style.display='flex';
     state.wirelessUrl=url;
-    toast('WIRELESS CAMERA CONNECTED');
+    toast('CAMERA CONNECTED');
   };
-  img.onerror=function(){
-    toast('CANNOT CONNECT TO '+url,'err');
-  };
-});
+  img.onerror=function(){toast('CANNOT CONNECT TO '+url,'err')};
+}
 document.getElementById('btn-wireless-close').addEventListener('click',function(){
   document.getElementById('wireless-img').src='';
   document.getElementById('wireless-panel').style.display='none';
+  document.getElementById('wireless-stream').style.display='none';
   document.getElementById('dz-placeholder').style.display='';
+  document.querySelectorAll('.wtab-content').forEach(function(c){c.classList.remove('active')});
+  showWirelessTab('phone');
   state.wirelessUrl=null;
   if(wirelessInterval){clearInterval(wirelessInterval);wirelessInterval=null}
 });
@@ -1522,10 +1705,17 @@ document.getElementById('btn-wireless-capture').addEventListener('click',functio
   c.toBlob(function(b){
     state.capturedBlob=b;
     document.getElementById('wireless-panel').style.display='none';
+    document.getElementById('wireless-stream').style.display='none';
+    document.querySelectorAll('.wtab-content').forEach(function(c){c.classList.remove('active')});
+    document.getElementById('dz-placeholder').style.display='';
     document.getElementById('preview-img').src=URL.createObjectURL(b);
     document.getElementById('scan-preview').classList.add('active');
     document.getElementById('btn-process').disabled=false;
   },'image/jpeg',0.95);
+});
+// Start relay check on phone tab
+document.querySelector('[data-wtab="phone"]').addEventListener('click',function(){
+  startRelayCheck();
 });
 
 var dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');

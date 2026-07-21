@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI SCANNER // PHONE CAMERA</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#000;overflow:hidden;font-family:system-ui,-apple-system,sans-serif}
+video{width:100%;height:100%;object-fit:cover;position:fixed;inset:0;z-index:0}
+.status-bar{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:linear-gradient(180deg,rgba(0,0,0,0.7),transparent);
+  color:#fff;font-size:13px;font-weight:500;
+}
+.status-bar .dot{
+  width:8px;height:8px;border-radius:50%;background:#00F5D4;
+  box-shadow:0 0 10px #00F5D4;animation:pulse 1.5s infinite;
+  display:inline-block;margin-right:6px;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.controls{
+  position:fixed;bottom:30px;left:0;right:0;z-index:10;
+  display:flex;justify-content:center;gap:16px;padding:0 20px;
+}
+.btn{
+  padding:14px 28px;border-radius:12px;border:none;font-size:15px;
+  font-weight:600;cursor:pointer;transition:0.2s;
+  background:rgba(255,255,255,0.15);backdrop-filter:blur(16px);
+  color:#fff;border:1px solid rgba(255,255,255,0.1);
+}
+.btn-primary{background:#00F2FE;color:#000;box-shadow:0 0 30px rgba(0,242,254,0.3)}
+.btn:active{transform:scale(0.95)}
+.frame-count{position:fixed;bottom:100px;left:0;right:0;text-align:center;z-index:10;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace}
+</style>
+</head>
+<body>
+<video id="video" autoplay playsinline muted></video>
+<div class="status-bar">
+  <span><span class="dot"></span> STREAMING TO LAPTOP</span>
+  <span id="fps-display">0 FPS</span>
+</div>
+<div class="frame-count" id="frame-count">CONNECTING...</div>
+<div class="controls">
+  <button class="btn btn-primary" id="btn-stop" onclick="stopStream()">■ STOP</button>
+</div>
+
+<canvas id="canvas" style="display:none"></canvas>
+<script>
+var stream=null,intv=null,frameCount=0,fps=0,fpsTimer=0;
+var quality=0.6,intervalMs=200;
+
+var baseUrl=window.location.origin;
+
+function startCam(){
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}}).then(function(s){
+    stream=s;
+    var v=document.getElementById('video');
+    v.srcObject=s;
+    v.play();
+    document.getElementById('frame-count').textContent='STARTING STREAM...';
+    setTimeout(startStreaming,500);
+  }).catch(function(e){
+    document.getElementById('frame-count').textContent='CAMERA ERROR: '+e.message;
+  });
+}
+
+function startStreaming(){
+  if(!stream)return;
+  var v=document.getElementById('video'),c=document.getElementById('canvas'),ctx=c.getContext('2d');
+  fpsTimer=Date.now();
+  intv=setInterval(function(){
+    if(!v.videoWidth)return;
+    c.width=v.videoWidth;c.height=v.videoHeight;
+    ctx.drawImage(v,0,0);
+    c.toBlob(function(blob){
+      fetch(baseUrl+'/api/relay-frame',{method:'POST',body:blob}).catch(function(){});
+      frameCount++;
+      var now=Date.now();
+      if(now-fpsTimer>=1000){
+        fps=frameCount;
+        frameCount=0;
+        fpsTimer=now;
+        document.getElementById('fps-display').textContent=fps+' FPS';
+      }
+    },'image/jpeg',quality);
+  },intervalMs);
+  document.getElementById('frame-count').textContent='◉ STREAMING';
+}
+
+function stopStream(){
+  if(intv)clearInterval(intv);
+  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
+  document.getElementById('frame-count').textContent='STOPPED';
+  document.getElementById('btn-stop').textContent='✕ CLOSE';
+  document.getElementById('btn-stop').onclick=function(){window.close()};
+  setTimeout(function(){window.close()},2000);
+}
+
+startCam();
+</script>
+</body>
+</html>
