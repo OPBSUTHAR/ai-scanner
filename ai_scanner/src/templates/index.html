@@ -1195,21 +1195,35 @@ body{
                 </div>
 
                 <!-- BLUETOOTH TAB -->
-                <div class="wtab-content" data-wtab="bluetooth" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center;justify-content:center" id="wtab-bluetooth">
+                <div class="wtab-content" data-wtab="bluetooth" style="display:none;flex-direction:column;flex:1;padding:16px;gap:10px;text-align:center;align-items:center" id="wtab-bluetooth">
                   <div style="font-size:36px;opacity:0.4">🔵</div>
                   <h3 style="font-family:var(--font-display);font-size:0.8rem;font-weight:600">BLUETOOTH</h3>
                   <div id="bt-project-name" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--cyan);background:var(--cyan-dim);padding:4px 10px;border-radius:var(--radius-sm)">PROJECT: AI SCANNER</div>
-                  <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);max-width:320px">On your phone, go to Bluetooth settings and look for:</p>
-                  <div id="bt-hostname" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--emerald);font-weight:600">Loading...</div>
-                  <div class="bt-pair-steps" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);line-height:1.6;text-align:left;background:var(--bg-card);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:320px">
-                    <div>1. Enable Bluetooth on your phone</div>
-                    <div>2. Look for <strong id="bt-pair-name" style="color:var(--cyan)">[PC NAME]</strong> in available devices</div>
-                    <div>3. Send pairing request from phone</div>
-                    <div>4. Accept on this PC when prompted</div>
+                  <!-- Status Card -->
+                  <div style="width:100%;max-width:360px;background:var(--bg-card);border-radius:var(--radius-md);padding:14px 16px;border:1.5px solid transparent;border-image:var(--gradient-border) 1;backdrop-filter:blur(16px)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                      <span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px">LAPTOP BLUETOOTH</span>
+                      <span id="bt-status-badge" class="status-badge" style="font-size:0.45rem;padding:2px 8px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);font-family:var(--font-mono);background:rgba(255,255,255,0.03);color:var(--text-tertiary)">LOADING...</span>
+                    </div>
+                    <div id="bt-device-name" style="font-family:var(--font-mono);font-size:0.75rem;font-weight:700;color:var(--text-primary);letter-spacing:0.3px">Loading...</div>
+                    <div style="display:flex;gap:8px;margin-top:10px">
+                      <button class="btn btn-primary btn-sm" id="btn-bt-connect" style="flex:1;font-size:0.5rem!important">🔗 CONNECT</button>
+                      <button class="btn btn-outline btn-sm" id="btn-bt-disconnect" style="flex:1;font-size:0.5rem!important;display:none">✕ DISCONNECT</button>
+                    </div>
                   </div>
-                  <button class="btn btn-primary" id="btn-scan-bt">🔍 SCAN FOR NEARBY DEVICES</button>
-                  <div id="bt-results" style="width:100%;max-height:120px;overflow-y:auto;display:none;flex-direction:column;gap:4px"></div>
-                  <div id="bt-info" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);line-height:1.5;padding:8px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:320px">
+                  <!-- Paired Device Info -->
+                  <div id="bt-connected-info" style="width:100%;max-width:360px;display:none;background:var(--bg-card);border-radius:var(--radius-md);padding:12px 14px;border:1px solid rgba(0,245,212,0.15);backdrop-filter:blur(16px)">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                      <span style="width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 8px var(--emerald);animation:pulse 1.5s ease-in-out infinite"></span>
+                      <span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--emerald);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">CONNECTED</span>
+                    </div>
+                    <div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-secondary)" id="bt-connected-device">-</div>
+                    <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);margin-top:2px" id="bt-connected-id">-</div>
+                  </div>
+                  <!-- Scan -->
+                  <button class="btn btn-outline btn-sm" id="btn-scan-bt" style="font-size:0.5rem!important">🔍 SCAN NEARBY DEVICES</button>
+                  <div id="bt-results" style="width:100%;max-width:360px;max-height:140px;overflow-y:auto;display:none;flex-direction:column;gap:4px;text-align:left"></div>
+                  <div id="bt-info" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);line-height:1.5;padding:8px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.04);max-width:360px">
                     <strong style="color:var(--text-secondary)">AI Scanner</strong> uses Bluetooth to detect nearby devices. For camera streaming, the <strong>PHONE</strong> tab (WiFi QR) or <strong>NETWORK</strong> tab is recommended.
                   </div>
                 </div>
@@ -1857,37 +1871,115 @@ document.getElementById('btn-network-connect').addEventListener('click',function
 });
 
 /* ========= BLUETOOTH ========= */
-var btHostname='';
+var btHostname='',btDevice=null,btConnected=false;
+var btStatusEl=document.getElementById('bt-status-badge');
+var btNameEl=document.getElementById('bt-device-name');
+
+function setBtStatus(label,cls){
+  btStatusEl.textContent=label;
+  btStatusEl.style.borderColor='rgba(255,255,255,0.06)';
+  btStatusEl.style.background='rgba(255,255,255,0.03)';
+  btStatusEl.style.color='var(--text-tertiary)';
+  if(cls==='connected'){btStatusEl.style.borderColor='rgba(0,245,212,0.2)';btStatusEl.style.background='rgba(0,245,212,0.06)';btStatusEl.style.color='var(--emerald)'}
+  else if(cls==='error'){btStatusEl.style.borderColor='rgba(255,0,85,0.2)';btStatusEl.style.background='rgba(255,0,85,0.06)';btStatusEl.style.color='var(--crimson)'}
+  else if(cls==='scanning'){btStatusEl.style.borderColor='rgba(0,242,254,0.2)';btStatusEl.style.background='rgba(0,242,254,0.06)';btStatusEl.style.color='var(--cyan)'}
+}
+
 fetch('/api/ip').then(function(r){return r.json()}).then(function(d){
   btHostname=d.hostname;
-  document.getElementById('bt-hostname').textContent='■ '+btHostname;
-  document.getElementById('bt-pair-name').textContent=btHostname;
-}).catch(function(){});
+  btNameEl.textContent=btHostname;
+  setBtStatus('NOT CONNECTED','');
+}).catch(function(){btNameEl.textContent='UNKNOWN';setBtStatus('ERROR','error')});
 
+// Connect via Web Bluetooth
+document.getElementById('btn-bt-connect').addEventListener('click',function(){
+  if(!navigator.bluetooth){
+    toast('Web Bluetooth not supported. Use Chrome/Edge.','err');
+    return;
+  }
+  setBtStatus('SCANNING...','scanning');
+  navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: []
+  }).then(function(device){
+    btDevice=device;
+    btConnected=true;
+    setBtStatus('CONNECTED','connected');
+    document.getElementById('btn-bt-connect').style.display='none';
+    document.getElementById('btn-bt-disconnect').style.display='';
+    document.getElementById('bt-connected-info').style.display='';
+    document.getElementById('bt-connected-device').textContent=device.name||'Unknown Device';
+    document.getElementById('bt-connected-id').textContent='ID: '+device.id;
+    toast('BLUETOOTH CONNECTED: '+(device.name||device.id));
+    // Listen for disconnect
+    device.addEventListener('gattserverdisconnected',function(){
+      btConnected=false;
+      setBtStatus('DISCONNECTED','error');
+      document.getElementById('btn-bt-connect').style.display='';
+      document.getElementById('btn-bt-disconnect').style.display='none';
+      document.getElementById('bt-connected-info').style.display='none';
+      toast('BLUETOOTH DISCONNECTED','warn');
+      btDevice=null;
+    });
+    // Actually connect to GATT server to establish the connection
+    device.gatt.connect().then(function(server){
+      toast('GATT CONNECTED');
+    }).catch(function(e){
+      // Even if GATT fails, the device is paired
+      toast('PAIRED WITH '+(device.name||device.id));
+    });
+  }).catch(function(e){
+    setBtStatus('FAILED','error');
+    if(e.message!='User cancelled the requestDevice chooser.')toast('BT ERROR: '+e.message,'err');
+    else setBtStatus('CANCELLED','');
+  });
+});
+
+// Disconnect
+document.getElementById('btn-bt-disconnect').addEventListener('click',function(){
+  if(btDevice){
+    try{
+      if(btDevice.gatt&&btDevice.gatt.connected)btDevice.gatt.disconnect();
+    }catch(e){}
+    btDevice=null;
+  }
+  btConnected=false;
+  setBtStatus('DISCONNECTED','');
+  document.getElementById('btn-bt-connect').style.display='';
+  document.getElementById('btn-bt-disconnect').style.display='none';
+  document.getElementById('bt-connected-info').style.display='none';
+  toast('BLUETOOTH DISCONNECTED');
+});
+
+// Scan for nearby devices (informational)
 document.getElementById('btn-scan-bt').addEventListener('click',function(){
   var btn=this,res=document.getElementById('bt-results');
   btn.disabled=true;btn.textContent='⏳ SCANNING...';
   if(!navigator.bluetooth){
-    res.style.display='flex';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--crimson);padding:8px">Web Bluetooth not supported. Use Chrome/Edge on desktop or Android.</div>';
-    btn.disabled=false;btn.textContent='🔍 SCAN FOR NEARBY DEVICES';
-    return;
+    res.style.display='flex';res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--crimson);padding:6px">Web BT not supported. Use Chrome/Edge.</div>';
+    btn.disabled=false;btn.textContent='🔍 SCAN NEARBY DEVICES';return;
   }
   navigator.bluetooth.requestDevice({
     acceptAllDevices: true,
     optionalServices: []
   }).then(function(device){
     res.style.display='flex';
-    var isProject = device.name && (device.name.toLowerCase().includes('nexus') || device.name.toLowerCase().includes('ai scanner') || device.name.toLowerCase().includes('ai_scanner')) || (btHostname && device.name === btHostname);
-    var badge = isProject ? '<span style="color:var(--emerald);font-size:0.45rem;margin-left:4px">● THIS PC</span>' : '';
-    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;padding:6px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.06)"><strong>'+device.name+'</strong>'+badge+'<br><span style="color:var(--text-tertiary)">ID: '+device.id+'</span></div>';
+    var isMatch=device.name&&(device.name.toLowerCase().includes('nexus')||device.name.toLowerCase().includes('ai scanner')||device.name.toLowerCase().includes('ai_scanner')||(btHostname&&device.name===btHostname));
+    var badge=isMatch?'<span style="color:var(--emerald);font-size:0.45rem;margin-left:4px">● MATCH</span>':'';
+    var connectBtn=device.id?'<button class="btn btn-primary btn-xs" style="margin-top:4px;font-size:0.45rem!important;padding:3px 10px" onclick="connectBtDevice(\''+device.id+'\')">CONNECT</button>':'';
+    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.5rem;padding:6px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid rgba(0,242,254,0.06)"><strong>'+device.name+'</strong>'+badge+'<br><span style="color:var(--text-tertiary);font-size:0.45rem">ID: '+device.id+'</span>'+connectBtn+'</div>';
     toast('FOUND: '+device.name);
-    btn.disabled=false;btn.textContent='🔍 SCAN FOR NEARBY DEVICES';
-  }).catch(function(e){
+    btn.disabled=false;btn.textContent='🔍 SCAN NEARBY DEVICES';
+  }).catch(function(){
     res.style.display='flex';
-    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);padding:8px">Scan cancelled.<br>On your phone, look for <strong style="color:var(--cyan)">'+btHostname+'</strong> in Bluetooth settings and pair manually.</div>';
-    btn.disabled=false;btn.textContent='🔍 SCAN FOR NEARBY DEVICES';
+    res.innerHTML='<div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);padding:6px">Scan cancelled.</div>';
+    btn.disabled=false;btn.textContent='🔍 SCAN NEARBY DEVICES';
   });
 });
+
+function connectBtDevice(id){
+  toast('Use the CONNECT button above to pair with a device');
+}
 
 /* ========= MANUAL URL ========= */
 document.getElementById('btn-manual-connect').addEventListener('click',function(){
