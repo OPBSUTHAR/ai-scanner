@@ -498,41 +498,60 @@ body{
 
 .recent-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .recent-head h3{font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-tertiary)}
-.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
 
-/* Doc Card */
+/* Doc Card - Image Gallery Style */
 .doc-card{
-  background:var(--bg-card);border-radius:var(--radius-md);
-  overflow:hidden;cursor:pointer;transition:var(--transition);
+  background:var(--bg-card);border-radius:var(--radius-lg);
+  overflow:hidden;cursor:pointer;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);
   border:1.5px solid transparent;border-image:var(--gradient-border) 1;
-  backdrop-filter:blur(8px);
-  transform-style:preserve-3d;perspective:1000px;
+  position:relative;backdrop-filter:blur(8px);
 }
-.doc-card:hover{transform:translateY(-6px) rotateX(2deg);box-shadow:0 16px 40px rgba(0,0,0,0.5)}
+.doc-card:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 20px 60px rgba(0,0,0,0.6);border-image:var(--gradient-border-hover) 1}
 .doc-card .doc-thumb{
-  width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--bg-deep);
-  display:block;transition:0.5s cubic-bezier(0.16,1,0.3,1);
+  width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--bg-deep);
+  display:block;transition:0.6s cubic-bezier(0.16,1,0.3,1);
 }
-.doc-card:hover .doc-thumb{transform:scale(1.06)}
+.doc-card:hover .doc-thumb{transform:scale(1.08)}
 .doc-card .doc-overlay{
   position:absolute;inset:0;
-  background:linear-gradient(to top,rgba(3,7,18,0.85),transparent 50%);
-  opacity:0;transition:var(--transition);
-  display:flex;align-items:flex-end;justify-content:center;gap:4px;padding:10px;
+  background:linear-gradient(to top,rgba(3,7,18,0.9) 0%,rgba(3,7,18,0.3) 50%,transparent 70%);
+  opacity:0;transition:0.35s ease;
+  display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:16px;
 }
 .doc-card:hover .doc-overlay{opacity:1}
 .doc-card .doc-overlay button{
-  width:28px;height:28px;border-radius:6px;
-  border:1px solid rgba(255,255,255,0.08);
-  background:rgba(255,255,255,0.05);backdrop-filter:blur(8px);
-  color:#fff;cursor:pointer;font-size:11px;transition:var(--transition);
+  width:32px;height:32px;border-radius:8px;
+  border:1px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.08);backdrop-filter:blur(12px);
+  color:#fff;cursor:pointer;font-size:13px;transition:0.25s ease;
   display:flex;align-items:center;justify-content:center;
 }
-.doc-card .doc-overlay button:hover{background:rgba(255,255,255,0.15);border-color:var(--cyan)}
-.doc-card .doc-meta{padding:8px 10px}
-.doc-card .doc-meta .doc-name{font-size:0.68rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.doc-card .doc-meta .doc-sub{font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);margin-top:2px;display:flex;justify-content:space-between}
-.doc-card.selected{border-image:var(--gradient-cyan-magenta) 1;box-shadow:0 0 25px var(--cyan-glow)}
+.doc-card .doc-overlay button:hover{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 15px var(--cyan-glow)}
+.doc-card .doc-meta{padding:10px 12px 12px}
+.doc-card .doc-meta .doc-name{font-size:0.7rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-card .doc-meta .doc-sub{font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);margin-top:3px;display:flex;justify-content:space-between;text-transform:uppercase;letter-spacing:0.3px}
+.doc-card.selected{border-image:var(--gradient-cyan-magenta) 1;box-shadow:0 0 25px var(--cyan-glow),0 0 60px rgba(0,242,254,0.15)}
+.doc-card.selected::after{content:'';position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan-glow);animation:pulse 1.5s ease-in-out infinite}
+
+/* Preview Modal - Image Viewer */
+.preview-grid{display:grid;grid-template-columns:1fr 280px;gap:0;max-height:calc(90vh - 110px)}
+.preview-image{position:relative;background:var(--bg-deep);display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:300px}
+.preview-image img{max-width:100%;max-height:calc(90vh - 140px);object-fit:contain;display:block;border-radius:0}
+.preview-side{padding:16px 18px;overflow-y:auto;border-left:1px solid rgba(0,242,254,0.06);background:rgba(3,7,18,0.3)}
+.preview-side h4{font-family:var(--font-mono);font-size:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-tertiary);margin-bottom:10px}
+.preview-prop{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(0,242,254,0.03);font-size:0.65rem}
+.preview-prop:last-child{border:none}
+.preview-prop .label{color:var(--text-tertiary);font-family:var(--font-mono);font-size:0.5rem;text-transform:uppercase;letter-spacing:0.3px;flex-shrink:0}
+.preview-prop .value{color:var(--text-secondary);font-weight:500;text-align:right;font-size:0.6rem;word-break:break-all;max-width:55%}
+.preview-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,242,254,0.06)}
+.preview-actions .btn{font-size:0.5rem!important;padding:5px 10px!important}
+@media(max-width:640px){
+  .preview-grid{grid-template-columns:1fr}
+  .preview-side{border-left:none;border-top:1px solid rgba(0,242,254,0.06)}
+  .preview-image{min-height:200px}
+  .preview-image img{max-height:50vh}
+}
 
 /* ============================================================
    SCANNER VIEW – SPATIAL VIEWFINDER
@@ -2048,11 +2067,11 @@ function renderGallery(){
   document.getElementById('merge-n').textContent=state.selectedDocs.length;
   c.innerHTML='<div class="doc-grid">'+docs.map(function(d){
     var s=state.selectedDocs.includes(d.path);
-    return '<div class="doc-card '+(s?'selected':'')+'" onclick="openPreview(\''+d.path+'\')" ondblclick="toggleDoc(\''+d.path+'\')"'+
-      '<img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--bg-deep)\\\'>◈</div>\'">'+
+    return '<div class="doc-card '+(s?'selected':'')+'" onclick="openPreview(\''+d.path+'\')" ondblclick="toggleDoc(\''+d.path+'\')">'+
+      '<div class="doc-thumb-wrap"><img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--bg-deep)\\\'>◈</div>\'">'+
       '<div class="doc-overlay"><button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')">⬇</button>'+
-      '<button onclick="event.stopPropagation();openPreview(\''+d.path+'\')">👁</button>'+
-      '<button onclick="event.stopPropagation();deleteDoc(\''+d.path+'\')">🗑</button></div>'+
+      '<button onclick="event.stopPropagation();openPreview(\''+d.path+'\')">🔍</button>'+
+      '<button onclick="event.stopPropagation();deleteDoc(\''+d.path+'\')">🗑</button></div></div>'+
       '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
   }).join('')+'</div>';
 }
@@ -2070,25 +2089,28 @@ function toggleDoc(p){
 function openPreview(p){
   var d=state.galleryDocs.find(function(x){return x.path===p});
   if(!d)return;
-  document.getElementById('modal-title').textContent=d.name;
+  document.getElementById('modal-title').textContent=d.name+' // INSPECTOR';
   document.getElementById('modal-body').innerHTML=
-    '<img class="viewer-img" src="'+d.image_url+'" alt="'+d.name+'">'+
-    '<div class="ctrl-group" style="margin-top:12px"><h4>DOCUMENT DATA</h4>'+
-    '<div class="toggle-row"><span>FILENAME</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+d.name+'</span></div>'+
-    '<div class="toggle-row"><span>CATEGORY</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+d.folder+'</span></div>'+
-    '<div class="toggle-row"><span>SIZE</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+d.size+'</span></div>'+
-    '<div class="toggle-row"><span>DATE</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+d.date+'</span></div></div>'+
-    '<div style="margin-top:10px" class="ctrl-group"><h4>RENAME</h4>'+
-    '<div style="display:flex;gap:6px;margin-top:6px"><input type="text" id="rn-input" value="'+d.name+'">'+
-    '<button class="btn btn-primary btn-sm" onclick="renameDoc(\''+d.path+'\')">SAVE</button></div></div>'+
-    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+    '<div class="preview-grid">'+
+    '<div class="preview-image"><img src="'+d.image_url+'" alt="'+d.name+'"></div>'+
+    '<div class="preview-side">'+
+    '<h4>PROPERTIES</h4>'+
+    '<div class="preview-prop"><span class="label">FILENAME</span><span class="value">'+d.name+'</span></div>'+
+    '<div class="preview-prop"><span class="label">CATEGORY</span><span class="value">'+d.folder+'</span></div>'+
+    '<div class="preview-prop"><span class="label">SIZE</span><span class="value">'+d.size+'</span></div>'+
+    '<div class="preview-prop"><span class="label">DATE</span><span class="value">'+d.date+'</span></div>'+
+    '<div class="preview-prop"><span class="label">PATH</span><span class="value" style="font-size:0.5rem">'+d.path+'</span></div>'+
+    '<h4 style="margin-top:14px">RENAME</h4>'+
+    '<div style="display:flex;gap:6px"><input type="text" id="rn-input" value="'+d.name+'" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.55rem;outline:none">'+
+    '<button class="btn btn-primary btn-sm" onclick="renameDoc(\''+d.path+'\')">SAVE</button></div>'+
+    '<div class="preview-actions">'+
     '<button class="btn btn-primary" onclick="window.open(\''+d.image_url+'\',\'_blank\')">⬇ DOWNLOAD</button>'+
     '<button class="btn btn-outline" onclick="navigator.clipboard.writeText(window.location.origin+\''+d.image_url+'\');toast(\'LINK COPIED\')">🔗 SHARE</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'google_drive\')">☁ DRIVE</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'dropbox\')">☁ DROPBOX</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'onedrive\')">☁ ONEDRIVE</button>'+
     '<button class="btn btn-danger" onclick="deleteDoc(\''+d.path+'\');closeModal()">🗑 DELETE</button>'+
-    '<button class="btn btn-outline" onclick="closeModal()">CLOSE</button></div>';
+    '<button class="btn btn-outline" onclick="closeModal()">✕ CLOSE</button></div></div></div>';
   document.getElementById('modal').classList.add('show');
 }
 function closeModal(){document.getElementById('modal').classList.remove('show')}
