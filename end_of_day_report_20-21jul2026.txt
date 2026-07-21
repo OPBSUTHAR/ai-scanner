@@ -68,26 +68,85 @@ JULY 21 — CHANGES
     - Connect/disconnect workflow polished
 
 ─────────────────────────────────────────────────────
+JULY 21 (CONTINUED) — UI/UX FIXES & FEATURES
+─────────────────────────────────────────────────────
+
+12. PHONE CAMERA PAGE REDESIGN
+    - Full redesign of phone_camera.html for proper mobile experience
+    - Full-screen camera view with cyberpunk HUD theme
+    - Large circular capture button (center bottom) with visual feedback
+    - Front/rear camera flip button
+    - Flash/torch toggle button
+    - Close button in top bar to stop stream & return
+    - Toast notifications for captures
+    - Smooth animations & touch-friendly sizing
+
+13. MOBILE RESPONSIVENESS FIXED
+    - Added comprehensive CSS media queries for mobile (max-width: 860px)
+    - Sidebar collapses off-screen with hamburger menu toggle
+    - Sidebar overlay backdrop for mobile navigation
+    - Scanner view now stacks properly on small screens
+    - All buttons, inputs, and controls sized for touch
+    - Gallery grid, stats grid, and filter bar wrap correctly
+    - Viewfinder telemetry hidden on mobile to save space
+    - Shutter button, modals, and control panel resized for mobile
+
+14. DUPLICATE CAPTURE BUTTON REMOVED
+    - Removed redundant text "CAPTURE" button from cam-bar
+    - Only round shutter button remains for camera capture
+    - Close button moved to floating position in viewfinder overlay
+    - Cleaner, more intuitive camera UI
+
+15. CUSTOM STORAGE LOCATION
+    - Settings now shows editable storage path with text input + SET button
+    - Backend: GET/POST /api/storage/path — reads/writes config/app_config.json
+    - Path is persisted across server restarts
+    - Auto-creates uploads/documents directories at new path
+    - Storage path loaded from config on startup
+
+16. CLOUD STORAGE USAGE DISPLAY
+    - New endpoint: GET /api/cloud/usage — queries each connected provider
+    - Google Drive: lists AI_Scanner folder files, sums sizes via Drive API
+    - Dropbox: lists /AI_Scanner folder, sums file sizes via Dropbox API
+    - OneDrive: lists AI_Scanner folder via Graph API, sums sizes
+    - UI: "CHECK CLOUD USAGE" button in Cloud Sync section
+    - Results shown as toast: "☁ DRIVE: 1.2 MB | 📦 DROPBOX: 0 KB"
+    - Usage also displayed inline per provider in cloud status list
+
+17. NEW CONFIG SYSTEM
+    - config/app_config.json — persistent app configuration
+    - _load_app_config() / _save_app_config() helpers in web_app.py
+    - Currently stores: storage_path
+    - Extensible for future settings
+
+─────────────────────────────────────────────────────
 FILES CHANGED (20-21 Jul)
 ─────────────────────────────────────────────────────
   ai_scanner/requirements.txt               |  +3    (new dep: cryptography)
   ai_scanner/src/data/.key_enc              |  +1    (encryption key file)
   ai_scanner/src/utils/key_manager.py       |  +87   (NEW — encrypted key store)
-  ai_scanner/src/templates/phone_camera.html | +104  (NEW — mobile relay page)
-  ai_scanner/src/templates/index.html       | ~3000  (major rewrite)
-  ai_scanner/src/web_app.py                 | ~101   (new routes + fixes)
-  6 files changed, 2454 insertions, 843 deletions
+  ai_scanner/src/templates/phone_camera.html | +202  (COMPLETE REDESIGN)
+  ai_scanner/src/templates/index.html       | ~3100  (major rewrite + mobile CSS)
+  ai_scanner/src/web_app.py                 | ~150   (new routes + config system)
+  ai_scanner/src/storage/cloud_sync.py      | +90   (storage usage tracking)
+  ai_scanner/config/app_config.json         |  +2    (NEW — persistent config)
+  8 files changed, ~2700 insertions, ~850 deletions
 
 ─────────────────────────────────────────────────────
 CURRENT STATE
 ─────────────────────────────────────────────────────
 - Run: cd ai_scanner && python -m src.web_app
-- API keys can now be managed via Settings UI (encrypted at rest)
-- Phone camera relay works over LAN — open /phone-camera on mobile
-- Wireless Camera tab shows IP + QR for easy LAN access
-- Bluetooth tab fully functional with live status
+- API keys managed via Settings UI (encrypted at rest)
+- Phone camera relay: redesigned mobile page with capture button, flash, flip
+- Mobile responsive: sidebar hamburger menu, touch-friendly layout
+- Only one capture button (round shutter) — duplicate removed
+- Custom storage path in Settings — browse/change anytime
+- Cloud storage usage check — see space used per provider
+- Wireless Camera tab with IP + QR for LAN access
+- Bluetooth tab with live status indicators
 - All cloud providers wired: Google Drive, Dropbox, OneDrive
 - Google Vision OCR option available (key required)
+- Persistent config stored in config/app_config.json
 
 NEXT UP
 - Azure deployment prep (azd / Docker)

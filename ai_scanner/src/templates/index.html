@@ -937,23 +937,70 @@ body{
 .btn-back.show{display:inline-flex}
 
 /* ============================================================
-   PORTABLE TOUCH OPTIMIZATIONS
+   MOBILE SIDEBAR TOGGLE
    ============================================================ */
-@media(hover:none){
-  .btn{padding:12px 24px;min-height:44px}
+.mobile-menu-btn{display:none;background:none;border:none;color:var(--text-primary);font-size:1.2rem;cursor:pointer;padding:4px 8px}
+@media(max-width:860px){
+  .app{flex-direction:column}
+  .sidebar{position:fixed;left:-260px;top:0;bottom:0;width:240px;z-index:100;transition:left 0.3s ease;border-right:1.5px solid rgba(0,242,254,0.12)}
+  .sidebar.open{left:0}
+  .sidebar-overlay{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,0.5)}
+  .sidebar-overlay.show{display:block}
+  .main{margin-left:0!important;width:100%}
+  .mobile-menu-btn{display:inline-flex;align-items:center;gap:6px}
+  .hud-topbar{padding:8px 12px!important;gap:8px!important}
+  .hud-topbar .hud-tabs{display:none}
+  .hud-topbar .brand-tag{font-size:0.6rem!important}
+  .hud-topbar #search-input{width:100px!important;font-size:0.5rem!important}
+  .hud-telemetry{gap:6px!important}
+  .hud-tel-item .label-text{font-size:0.45rem!important}
+  .content{padding:10px!important}
+  .scanner-grid{grid-template-columns:1fr!important}
+  .scanner-grid.full .ctrl-panel{display:none}
+  .vf-tel-left,.vf-tel-right{display:none!important}
+  .stat-grid{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}
+  .stat-card{padding:12px!important}
+  .stat-card .stat-value{font-size:1.2rem!important}
+  .dash-bottom{grid-template-columns:1fr!important}
+  .doc-grid{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}
+  .gallery-bar{flex-wrap:wrap;gap:4px}
+  .filter-group{overflow-x:auto;flex-wrap:nowrap;width:100%}
+  .filter-group button{padding:4px 8px;font-size:0.5rem;white-space:nowrap}
+  .page-title h1{font-size:0.85rem!important}
+  .page-title p{font-size:0.55rem!important}
+  .result-compare{flex-direction:column}
+  .ctrl-group{padding:8px 10px!important}
+  .toggle-row{font-size:0.65rem!important}
+  .effect-grid{grid-template-columns:repeat(3,1fr)!important}
+  .effect-btn{font-size:0.5rem!important;padding:4px!important}
+  .preview-grid{grid-template-columns:1fr!important}
+  .doc-card .doc-overlay{opacity:1!important}
+  .shutter-btn{width:56px!important;height:56px!important;bottom:16px!important}
+  .shutter-btn::after{width:38px!important;height:38px!important}
+  .wireless-panel .wtab-content{padding:10px!important}
+  .modal{max-width:95vw!important;margin:10px!important}
+  #btn-close-cam{top:6px!important;right:6px!important;padding:4px 8px!important;font-size:0.5rem!important}
+  .kbd-hint{display:none!important}
+  .btn{min-height:40px;padding:8px 16px;font-size:0.65rem!important}
+  .btn-lg{padding:10px 20px!important}
+}
+@media(max-width:480px){
+  .stat-grid{grid-template-columns:1fr 1fr!important}
+  .doc-grid{grid-template-columns:1fr 1fr!important}
+  .btn-back .back-label{display:none}
+}
+/* Touch device optimizations */
+@media(hover:none) and (pointer:coarse){
+  .btn{padding:12px 24px;min-height:44px;font-size:0.7rem!important}
   .nav-item{padding:12px 10px}
   .sidebar .nav-item .nav-label{display:block!important}
   .sidebar-footer .info{display:block!important}
-  .hud-topbar .brand-tag{display:block!important}
   .doc-card .doc-overlay{opacity:1!important;background:linear-gradient(to top,rgba(3,7,18,0.7),transparent 40%)}
   .feed-item{padding:10px 12px}
   .stat-card:hover{transform:none}
   .doc-card:hover{transform:none}
-}
-@media(max-width:480px){
-  .btn-back .back-label{display:none}
-  .hud-topbar .hud-tabs{overflow-x:auto;gap:0}
-  .hud-tab{padding:6px 8px;font-size:0.5rem}
+  .effect-btn:hover{border-color:rgba(0,242,254,0.06);color:var(--text-tertiary)}
+  .ctrl-group:hover{box-shadow:none}
 }
 </style>
 </head>
@@ -1016,12 +1063,14 @@ body{
     <button class="s-btn" onclick="switchView('settings')" title="Config">⚙</button>
   </div>
 </nav>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <!-- ===== MAIN ===== -->
 <div class="main">
 
   <!-- HUD Top Bar -->
   <div class="hud-topbar">
+    <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
     <button class="btn-back" id="btn-back" onclick="goBack()"><span>←</span><span class="back-label">BACK</span></button>
     <div class="brand-tag"><strong>AI SCANNER</strong> // NEXUS-OS</div>
     <div class="hud-tabs">
@@ -1154,10 +1203,7 @@ body{
                   <div class="shutter-btn" id="shutter-btn"><div class="btn btn-primary btn-icon" style="width:52px;height:52px;border-radius:50%;padding:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" onclick="captureFromCam()">◉</div></div>
                 </div>
               </div>
-              <div class="cam-bar" id="cam-bar" style="display:none;gap:8px;padding:10px;justify-content:center;flex-shrink:0">
-                <button class="btn btn-primary" id="btn-capture">◉ CAPTURE</button>
-                <button class="btn btn-outline" id="btn-close-cam">✕ CLOSE</button>
-              </div>
+              <button class="btn btn-outline" id="btn-close-cam" style="position:absolute;top:10px;right:10px;z-index:12;display:none;padding:6px 12px;font-size:0.55rem;background:rgba(3,7,18,0.7);backdrop-filter:blur(8px);border-color:rgba(255,255,255,0.12)">✕ CLOSE</button>
               <div class="wireless-panel" id="wireless-panel" style="display:none;flex-direction:column;flex:1;border-radius:var(--radius-lg);overflow:hidden;position:relative;background:var(--bg-deep)">
                 <div style="display:flex;gap:1px;background:var(--bg-card);padding:4px;flex-shrink:0;border-bottom:1px solid rgba(0,242,254,0.06)" id="wireless-tabs">
                   <button class="wireless-tab active" data-wtab="phone" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font-mono);font-size:0.55rem;font-weight:600;border-radius:var(--radius-sm);transition:var(--transition);text-align:center;letter-spacing:0.3px">📱 PHONE</button>
@@ -1331,7 +1377,7 @@ body{
       <div style="max-width:560px">
         <div class="ctrl-group" style="margin-bottom:10px">
           <h4>💾 STORAGE</h4>
-          <div class="toggle-row"><span>LOCATION</span><span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary)">data/documents/</span></div>
+          <div class="toggle-row"><span>LOCATION</span><div style="display:flex;gap:4px;align-items:center;flex:1;max-width:280px"><input type="text" id="storage-path" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:4px 8px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.55rem;outline:none"><button class="btn btn-primary btn-xs" onclick="saveStoragePath()">SET</button></div></div>
           <div class="toggle-row"><span>DOCUMENTS</span><span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary)" id="set-count">--</span></div>
           <div class="toggle-row"><span>STORAGE USED</span><span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-tertiary)" id="set-size">--</span></div>
         </div>
@@ -1582,7 +1628,7 @@ document.getElementById('btn-open-cam').addEventListener('click',function(e){
     state.stream=s;document.getElementById('video').srcObject=s;
     document.getElementById('cam-view').style.display='flex';
     document.getElementById('dz-placeholder').style.display='none';
-    document.getElementById('cam-bar').style.display='flex';
+    document.getElementById('btn-close-cam').style.display='';
     document.getElementById('vf-overlay').classList.add('active');
     document.getElementById('shutter-btn').classList.add('active');
   }).catch(function(e){toast('CAMERA: '+e.message,'err')});
@@ -1592,12 +1638,9 @@ document.getElementById('btn-close-cam').addEventListener('click',function(e){
   if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
   document.getElementById('cam-view').style.display='none';
   document.getElementById('dz-placeholder').style.display='';
-  document.getElementById('cam-bar').style.display='none';
+  document.getElementById('btn-close-cam').style.display='none';
   document.getElementById('vf-overlay').classList.remove('active');
   document.getElementById('shutter-btn').classList.remove('active');
-});
-document.getElementById('btn-capture').addEventListener('click',function(e){
-  e.stopPropagation();captureFromCam();
 });
 function captureFromCam(){
   var v=document.getElementById('video'),c=document.getElementById('canvas');
@@ -1636,7 +1679,7 @@ function captureFromCam(){
 function finishCapture(){
   if(state.stream){state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null}
   document.getElementById('cam-view').style.display='none';
-  document.getElementById('cam-bar').style.display='none';
+  document.getElementById('btn-close-cam').style.display='none';
   document.getElementById('vf-overlay').classList.remove('active');
   document.getElementById('shutter-btn').classList.remove('active');
   var badge=document.getElementById('capture-count');
@@ -2254,13 +2297,30 @@ function loadCloudStatus(){
     var icons={google_drive:'☁',dropbox:'📦',onedrive:'🪟'};
     list.innerHTML=Object.entries(d.providers).map(function(x){
       var k=x[0],v=x[1];
+      var usageHtml='';
+      if(v.usage) usageHtml='<span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary)">'+v.usage+'</span>';
       return '<div class="toggle-row"><span>'+icons[k]+' '+labels[k]+'</span>'+
-        '<div style="display:flex;gap:6px;align-items:center">'+
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+
+        usageHtml+
         (v.connected?'<span class="cloud-badge ok">CONNECTED</span><button class="btn btn-outline btn-xs" onclick="cloudDisconnect(\''+k+'\')">DISCONNECT</button>'
         :v.configured?'<span class="cloud-badge no">OFFLINE</span><button class="btn btn-primary btn-xs" onclick="cloudAuth(\''+k+'\')">CONNECT</button>'
         :'<span class="cloud-badge no">UNCONFIGURED</span>')+'</div></div>';
     }).join('');
+    list.innerHTML+='<div style="margin-top:6px;text-align:center"><button class="btn btn-outline btn-xs" onclick="checkCloudUsage()" style="font-size:0.5rem">📊 CHECK CLOUD USAGE</button></div>';
   }).catch(function(){});
+}
+function checkCloudUsage(){
+  showLoader('CHECKING...','QUERYING CLOUD STORAGE');
+  fetch('/api/cloud/usage').then(function(r){return r.json()}).then(function(d){
+    hideLoader();
+    var lines=[];
+    if(d.google_drive) lines.push('☁ DRIVE: '+d.google_drive);
+    if(d.dropbox) lines.push('📦 DROPBOX: '+d.dropbox);
+    if(d.onedrive) lines.push('🪟 ONEDRIVE: '+d.onedrive);
+    if(lines.length) toast(lines.join(' | '));
+    else toast('No connected cloud services');
+    loadCloudStatus();
+  }).catch(function(){hideLoader();toast('Failed to check usage','err')});
 }
 function cloudAuth(provider){
   fetch('/cloud/auth/'+provider).then(function(r){return r.json()}).then(function(d){
@@ -2353,7 +2413,19 @@ function loadSettings(){
     document.getElementById('set-count').textContent=s.total+' DOCUMENTS';
     document.getElementById('set-size').textContent=s.total_size;
   }).catch(function(){});
+  fetch('/api/storage/path').then(function(r){return r.json()}).then(function(d){
+    document.getElementById('storage-path').value=d.path||'data/documents/';
+  }).catch(function(){});
   loadCloudStatus();loadApiKeys();
+}
+function saveStoragePath(){
+  var path=document.getElementById('storage-path').value.trim();
+  if(!path){toast('Enter a valid path','warn');return}
+  fetch('/api/storage/path',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path})})
+    .then(function(r){return r.json()}).then(function(d){
+      if(d.saved){toast('Storage path updated');loadSettings()}
+      else toast('Failed to save path','err');
+    }).catch(function(){toast('Error saving path','err')});
 }
 
 /* ---- SEARCH INPUT ---- */
@@ -2361,6 +2433,7 @@ document.getElementById('search-input').addEventListener('keydown',function(e){i
 
 /* ---- UTILS ---- */
 function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('show')}
 
 /* ---- REAL-TIME POLLING ---- */
 var realtimeIntervals=[];

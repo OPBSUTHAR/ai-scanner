@@ -299,6 +299,78 @@ class CloudSync:
 
     # ---- Multi ----
 
+    def get_usage_stats(self) -> dict:
+        usage = {}
+        usage["google_drive"] = self._get_drive_usage()
+        usage["dropbox"] = self._get_dropbox_usage()
+        usage["onedrive"] = self._get_onedrive_usage()
+        return usage
+
+    def _get_drive_usage(self) -> Optional[str]:
+        if not self.drive_service:
+            return None
+        try:
+            total = 0
+            page_token = None
+            while True:
+                resp = self.drive_service.files().list(
+                    q="name='AI_Scanner' and mimeType='application/vnd.google-apps.folder'",
+                    fields="files(id)", pageToken=page_token
+                ).execute()
+                folders = resp.get("files", [])
+                for folder in folders:
+                    child_resp = self.drive_service.files().list(
+                        q=f"'{folder['id']}' in parents",
+                        fields="files(size,name)", pageToken=page_token
+                    ).execute()
+                    for f in child_resp.get("files", []):
+                        total += int(f.get("size", 0))
+                page_token = resp.get("nextPageToken")
+                if not page_token:
+                    break
+            if total > 1048576:
+                return f"{total/1048576:.1f} MB"
+            return f"{total/1024:.1f} KB"
+        except Exception:
+            return None
+
+    def _get_dropbox_usage(self) -> Optional[str]:
+        if not self.dropbox_client:
+            return None
+        try:
+            total = 0
+            resp = self.dropbox_client.files_list_folder("/AI_Scanner")
+            for entry in resp.entries:
+                total += entry.size if hasattr(entry, "size") else 0
+            while resp.has_more:
+                resp = self.dropbox_client.files_list_folder_continue(resp.cursor)
+                for entry in resp.entries:
+                    total += entry.size if hasattr(entry, "size") else 0
+            if total > 1048576:
+                return f"{total/1048576:.1f} MB"
+            return f"{total/1024:.1f} KB"
+        except Exception:
+            return None
+
+    def _get_onedrive_usage(self) -> Optional[str]:
+        if not self.onedrive_token:
+            return None
+        try:
+            import requests
+            headers = {"Authorization": f"Bearer {self.onedrive_token}"}
+            resp = requests.get(
+                "https://graph.microsoft.com/v1.0/me/drive/root:/AI_Scanner:/children",
+                headers=headers,
+            )
+            if resp.status_code != 200:
+                return None
+            total = sum(item.get("size", 0) for item in resp.json().get("value", []))
+            if total > 1048576:
+                return f"{total/1048576:.1f} MB"
+            return f"{total/1024:.1f} KB"
+        except Exception:
+            return None
+
     def upload_to_all(self, filepath: str, filename: str = None) -> dict:
         results = {}
         link = self.upload_to_drive(filepath, filename)

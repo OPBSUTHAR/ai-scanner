@@ -18,12 +18,35 @@ from src.storage.local_storage import LocalStorage
 from src.utils.search import DocumentSearch
 from src.utils.key_manager import KeyManager
 
+CONFIG_FILE = Path(__file__).resolve().parent.parent / "config" / "app_config.json"
+
+def _load_app_config():
+    if CONFIG_FILE.exists():
+        try:
+            return json.loads(CONFIG_FILE.read_text())
+        except Exception:
+            return {}
+    return {}
+
+def _save_app_config(data):
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_FILE.write_text(json.dumps(data, indent=2))
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024
 
 scanner = AIScanner()
 searcher = DocumentSearch()
 key_manager = KeyManager()
+
+# Load saved storage path
+_app_config = _load_app_config()
+_saved_storage = _app_config.get("storage_path", "")
+if _saved_storage:
+    p = Path(_saved_storage).resolve()
+    scanner.storage.base_dir = p
+    scanner.storage._ensure_dirs()
+
 UPLOAD_FOLDER = scanner.storage.base_dir / "uploads"
 DOCUMENTS_FOLDER = scanner.storage.base_dir / "documents"
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -160,6 +183,38 @@ def api_delete_key(name):
 # ---------------------------------------------------------------------------
 #  Routes
 # ---------------------------------------------------------------------------
+
+@app.route("/api/storage/path", methods=["GET", "POST"])
+def api_storage_path():
+    if request.method == "POST":
+        data = request.json or {}
+        path = data.get("path", "").strip()
+        if not path:
+            return jsonify({"error": "Path required"}), 400
+        path_obj = Path(path).resolve()
+        config = _load_app_config()
+        config["storage_path"] = str(path_obj)
+        _save_app_config(config)
+        scanner.storage.base_dir = path_obj
+        scanner.storage._ensure_dirs()
+        global UPLOAD_FOLDER, DOCUMENTS_FOLDER
+        UPLOAD_FOLDER = path_obj / "uploads"
+        DOCUMENTS_FOLDER = path_obj / "documents"
+        UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+        return jsonify({"saved": True, "path": str(path_obj)})
+    config = _load_app_config()
+    saved = config.get("storage_path", "")
+    if saved:
+        return jsonify({"path": saved, "current": str(scanner.storage.base_dir / "documents")})
+    return jsonify({"path": str(scanner.storage.base_dir / "documents"), "default": True})
+
+
+@app.route("/api/cloud/usage")
+def api_cloud_usage():
+    usage = scanner.cloud.get_usage_stats()
+    cleaned = {k: v for k, v in usage.items() if v is not None}
+    return jsonify(cleaned)
+
 
 @app.route("/api/ip")
 def api_ip():
