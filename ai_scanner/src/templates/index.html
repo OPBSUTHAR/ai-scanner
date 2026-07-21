@@ -1113,6 +1113,13 @@ body{
     </div>
   </div>
 
+  <!-- HTTPS warning for camera access from phone via LAN -->
+  <div id="https-warning" style="display:none;background:rgba(255,0,85,0.12);border:1px solid rgba(255,0,85,0.3);border-radius:8px;padding:8px 14px;margin:8px 12px 0;font-family:var(--font-mono);font-size:0.55rem;color:var(--crimson);align-items:center;gap:8px">
+    <span>⚠</span>
+    <span id="https-warning-text">CAMERA requires HTTPS on mobile. Use <strong>--ngrok</strong> flag or deploy with HTTPS.</span>
+    <button onclick="this.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:0.6rem">✕</button>
+  </div>
+
   <div class="content">
 
     <!-- ===== DASHBOARD ===== -->
@@ -1230,8 +1237,11 @@ body{
               <div id="capture-status" style="display:none;position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(3,7,18,0.8);backdrop-filter:blur(12px);padding:6px 16px;border-radius:20px;border:1px solid rgba(0,242,254,0.15);font-family:var(--font-mono);font-size:0.6rem;color:var(--cyan);white-space:nowrap">
                 <span id="capture-count-badge">📄 0</span> CAPTURED
               </div>
-              <div id="done-capturing-bar" style="display:none;position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:10;gap:8px">
+              <div id="done-capturing-bar" style="display:none;position:absolute;bottom:18px;right:16px;z-index:10;gap:8px">
                 <button class="btn btn-primary" id="btn-done-capture" style="background:var(--gradient-cyan-magenta);border:none;box-shadow:0 0 20px var(--cyan-glow)">✓ DONE</button>
+              </div>
+              <div id="cam-selector-wrap" style="display:none;position:absolute;top:44px;left:10px;z-index:12">
+                <select id="cam-device-select" style="background:rgba(3,7,18,0.85);backdrop-filter:blur(8px);border:1px solid rgba(0,242,254,0.15);border-radius:6px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.5rem;padding:3px 6px;max-width:160px;outline:none"></select>
               </div>
               <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
               <input type="file" accept="image/*" id="file-input">
@@ -1585,35 +1595,167 @@ function captureFromCam(){
   },'image/jpeg',0.85);
 }
 
-/* ---- AI AUTO-CAPTURE (camera opens with AI detection) ---- */
+/* ---- CAMERA SYSTEM ---- */
+var cameraDevices=[];
 var autoCaptureTimer=null,autoCaptureActive=false;
+var cameraPermissionPending=false;
+
+function isSecureContext(){
+  return window.isSecureContext||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+}
+
+function requestCameraPermission(callback){
+  if(cameraPermissionPending)return;
+  cameraPermissionPending=true;
+  toast('REQUESTING CAMERA PERMISSION...');
+  navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(stream){
+    stream.getTracks().forEach(function(t){t.stop()});
+    cameraPermissionPending=false;
+    toast('CAMERA PERMISSION GRANTED');
+    if(callback)callback();
+  }).catch(function(e){
+    cameraPermissionPending=false;
+    var msg=e.message||'';
+    if(msg.includes('NotAllowed')||msg.includes('Permission')||msg.includes('permission')){
+      toast('CAMERA BLOCKED — allow camera access in browser settings, or use HTTPS','err');
+    }else if(msg.includes('NotFound')||msg.includes('No device')){
+      toast('NO CAMERA FOUND on this device','err');
+    }else{
+      toast('CAMERA: '+msg,'err');
+    }
+    if(callback)callback();
+  });
+}
+
+function refreshCameraList(callback){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices)return;
+  navigator.mediaDevices.enumerateDevices().then(function(devices){
+    cameraDevices=devices.filter(function(x){return x.kind==='videoinput'});
+    var sel=document.getElementById('cam-device-select');
+    sel.innerHTML=cameraDevices.map(function(d,i){
+      return '<option value="'+d.deviceId+'">'+(d.label||'CAM '+(i+1))+'</option>';
+    }).join('');
+    if(!cameraDevices.length){
+      sel.innerHTML='<option value="">— NO CAMERAS —</option>';
+    }
+    if(callback)callback();
+  }).catch(function(){});
+}
+
+function showCameraUI(s){
+  var v=document.getElementById('video');
+  state.stream=s;
+  v.srcObject=s;v.setAttribute('playsinline','');v.setAttribute('autoplay','');v.setAttribute('muted','');
+  v.play().catch(function(){});
+  document.getElementById('cam-view').style.display='flex';
+  document.getElementById('cam-view').style.width='100%';
+  document.getElementById('dz-placeholder').style.display='none';
+  document.getElementById('btn-close-cam').style.display='';
+  document.getElementById('vf-overlay').classList.add('active');
+  document.getElementById('capture-status').style.display='';
+  document.getElementById('done-capturing-bar').style.display='flex';
+  document.getElementById('cam-selector-wrap').style.display='';
+  document.getElementById('shutter-btn').classList.add('active');
+  document.getElementById('btn-open-cam').textContent='✕ CLOSE CAMERA';
+  document.getElementById('btn-open-cam').style.background='var(--crimson)';
+  refreshCameraList();
+  if(!isSecureContext()){
+    var w=document.getElementById('https-warning');
+    if(w)w.style.display='flex';
+  }
+  startAutoDetect();
+}
+
+function tryCamera(method,callback){
+  // Method 1: rear camera with constraints
+  // Method 2: basic video fallback
+  var constraints;
+  if(method===1){
+    constraints={video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false};
+  }else{
+    constraints={video:true,audio:false};
+  }
+  navigator.mediaDevices.getUserMedia(constraints).then(function(s){
+    showCameraUI(s);
+    if(callback)callback(true);
+  }).catch(function(e){
+    if(callback)callback(false,e);
+  });
+}
+
+function startCamera(deviceId){
+  // If a specific deviceId is given, use it directly
+  if(deviceId&&deviceId!=='__any__'){
+    var constraints={video:{deviceId:{exact:deviceId},width:{ideal:640},height:{ideal:480}},audio:false};
+    navigator.mediaDevices.getUserMedia(constraints).then(function(s){
+      showCameraUI(s);
+    }).catch(function(e){
+      var msg=e.message||'';
+      if(msg.includes('NotFound')||msg.includes('deviceId')){
+        refreshCameraList(function(){
+          if(cameraDevices.length){toast('SWITCHED');startCamera(cameraDevices[0].deviceId)}
+          else toast('NO CAMERA','err');
+        });
+      }else if(msg.includes('NotAllowed')||msg.includes('Permission')){
+        toast('⛔ CAMERA BLOCKED — use HTTPS or allow camera access','err');
+      }else{
+        toast('CAMERA: '+msg,'err');
+      }
+    });
+    return;
+  }
+
+  // No deviceId — try Method 1 (rear camera), fallback to Method 2 (basic)
+  tryCamera(1,function(ok,err){
+    if(!ok){
+      var msg=err&&err.message||'';
+      if(msg.includes('facingMode')||msg.includes('Overconstrained')||msg.includes('constraint')){
+        toast('REAR CAMERA UNAVAILABLE — TRYING DEFAULT');
+        tryCamera(2,function(ok2,err2){
+          if(!ok2){
+            var msg2=err2&&err2.message||'';
+            if(msg2.includes('NotAllowed')||msg2.includes('Permission')){
+              toast('⛔ CAMERA BLOCKED — use HTTPS or allow camera access','err');
+            }else{
+              toast('CAMERA: '+msg2,'err');
+            }
+          }
+        });
+      }else if(msg.includes('NotAllowed')||msg.includes('Permission')){
+        toast('⛔ CAMERA BLOCKED — use HTTPS or allow camera access','err');
+      }else{
+        toast('CAMERA: '+msg,'err');
+      }
+    }
+  });
+}
+
 document.getElementById('btn-open-cam').addEventListener('click',function(e){
   e.stopPropagation();e.preventDefault();
   if(state.stream){closeCamera();return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    toast('Camera not supported','err');return
+    toast('Camera API not available in this browser','err');return
   }
-  var constraints={video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false};
-  navigator.mediaDevices.getUserMedia(constraints).then(function(s){
-    state.stream=s;
-    var v=document.getElementById('video');
-    v.srcObject=s;v.setAttribute('playsinline','');v.setAttribute('autoplay','');v.setAttribute('muted','');
-    v.play().catch(function(){});
-    document.getElementById('cam-view').style.display='flex';
-    document.getElementById('cam-view').style.width='100%';
-    document.getElementById('dz-placeholder').style.display='none';
-    document.getElementById('btn-close-cam').style.display='';
-    document.getElementById('vf-overlay').classList.add('active');
-    document.getElementById('capture-status').style.display='';
-    document.getElementById('done-capturing-bar').style.display='flex';
-    document.getElementById('shutter-btn').classList.add('active');
-    document.getElementById('btn-open-cam').textContent='✕ CLOSE CAMERA';
-    document.getElementById('btn-open-cam').style.background='var(--crimson)';
-    // Start auto-detect loop
-    startAutoDetect();
-  }).catch(function(e){
-    toast('CAMERA: '+(e.message||'Access denied'),'err');
+  if(!isSecureContext()){
+    toast('⚠ CAMERA REQUIRES HTTPS — use https:// or localhost','err');
+    return;
+  }
+
+  // Step 1: try to get permission silently (grants enumerateDevices labels)
+  requestCameraPermission(function(){
+    // Step 2: refresh the device list now that we have permission
+    refreshCameraList(function(){
+      // Step 3: try method 1 (rear camera) first; if fails, method 2 (basic)
+      startCamera(null);
+    });
   });
+});
+
+document.getElementById('cam-device-select').addEventListener('change',function(){
+  if(state.stream){
+    state.stream.getTracks().forEach(function(t){t.stop()});state.stream=null;
+  }
+  setTimeout(function(){startCamera(document.getElementById('cam-device-select').value)},300);
 });
 function startAutoDetect(){
   autoCaptureActive=true;
@@ -1668,13 +1810,11 @@ function closeCamera(){
   document.getElementById('vf-overlay').classList.remove('active');
   document.getElementById('capture-status').style.display='none';
   document.getElementById('done-capturing-bar').style.display='none';
+  document.getElementById('cam-selector-wrap').style.display='none';
   document.getElementById('shutter-btn').classList.remove('active');
   document.getElementById('btn-open-cam').textContent='⟐ OPEN CAMERA';
   document.getElementById('btn-open-cam').style.background='';
 }
-document.getElementById('btn-close-cam').addEventListener('click',function(e){
-  e.stopPropagation();closeCamera();
-});
 document.getElementById('btn-done-capture').addEventListener('click',function(){
   closeCamera();
   if(!state.capturedBlobs.length){toast('No captures to process','warn');return}
@@ -1847,10 +1987,10 @@ function renderGallery(){
   c.innerHTML='<div class="doc-grid">'+docs.map(function(d){
     var s=state.selectedDocs.includes(d.path);
     var sp=JSON.stringify(d.path);
-    return '<div class="doc-card '+(s?'selected':'')+'" onclick="openPreview('+sp+')" ondblclick="toggleDoc('+sp+')">'+
+    return '<div class="doc-card '+(s?'selected':'')+'" onclick="toggleDoc('+sp+')">'+
       '<div class="doc-thumb-wrap"><img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--bg-deep)\\\'>◈</div>\'">'+
-      '<div class="doc-overlay"><button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')">⬇</button>'+
-      '<button onclick="event.stopPropagation();openPreview('+sp+')">🔍</button>'+
+      '<div class="doc-overlay"><button onclick="event.stopPropagation();openPreview('+sp+')">🔍</button>'+
+      '<button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')">⬇</button>'+
       '<button onclick="event.stopPropagation();deleteDoc('+sp+')">🗑</button></div></div>'+
       '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
   }).join('')+'</div>';
@@ -1884,8 +2024,8 @@ function openPreview(p){
     '<div style="display:flex;gap:6px"><input type="text" id="rn-input" value="'+d.name+'" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.55rem;outline:none">'+
     '<button class="btn btn-primary btn-sm" onclick="renameDoc(\''+d.path+'\')">SAVE</button></div>'+
     '<div class="preview-actions">'+
-    '<button class="btn btn-primary" onclick="window.open(\''+d.image_url+'\',\'_blank\')">⬇ DOWNLOAD</button>'+
-    '<button class="btn btn-outline" onclick="navigator.clipboard.writeText(window.location.origin+\''+d.image_url+'\');toast(\'LINK COPIED\')">🔗 SHARE</button>'+
+    '<button class="btn btn-primary" onclick="window.location.href=\''+d.image_url+'\'">⬇ DOWNLOAD</button>'+
+    '<button class="btn btn-outline" onclick="var c=window.location.origin+\''+d.image_url+'\';navigator.clipboard.writeText(c).catch(function(){prompt(\'COPY:\',c)});toast(\'LINK COPIED\')">🔗 SHARE</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'google_drive\')">☁ DRIVE</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'dropbox\')">☁ DROPBOX</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'onedrive\')">☁ ONEDRIVE</button>'+
@@ -1917,7 +2057,7 @@ function mergeToPdf(){
   showLoader('GENERATING PDF...','MERGING DOCUMENTS');
   fetch('/pdf/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:state.selectedDocs})})
     .then(function(r){return r.json()})
-    .then(function(d){hideLoader();if(d.error){toast(d.error,'err');return}toast('PDF: '+d.name);window.open(d.url,'_blank');state.selectedDocs=[];loadGallery()})
+    .then(function(d){hideLoader();if(d.error){toast(d.error,'err');return}toast('PDF: '+d.name);window.location.href=d.url;state.selectedDocs=[];loadGallery()})
     .catch(function(e){hideLoader();toast('PDF MERGE FAILED','err')});
 }
 
@@ -2181,6 +2321,8 @@ setTimeout(function(){
 restoreState();
 loadDashboard();loadActivity();
 loadOcrStatus();
+// Try to discover cameras without permission (works on some browsers)
+refreshCameraList();
 </script>
 </body>
 </html>

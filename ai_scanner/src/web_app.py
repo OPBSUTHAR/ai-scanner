@@ -785,6 +785,7 @@ def main():
     print(f"  {'='*45}")
     print(f"  Local:   http://localhost:{args.port}")
     print(f"  Network: http://{local_ip}:{args.port}")
+    print(f"  Phone:   Use --ngrok for HTTPS (camera requires HTTPS on mobile)")
     print(f"  {'='*45}")
     print(f"  {'='*45}\n")
     if args.ngrok:
