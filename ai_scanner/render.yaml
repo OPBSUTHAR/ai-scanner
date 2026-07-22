@@ -2,7 +2,7 @@ services:
   - type: web
     name: ai-scanner
     runtime: docker
-    repo: https://github.com/YOUR_USERNAME/your-repo-name
+    repo: https://github.com/OPBSUTHAR/ai-scanner
     region: oregon
     plan: free
     dockerfilePath: ./Dockerfile
