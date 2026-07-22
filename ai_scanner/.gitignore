@@ -42,3 +42,6 @@ diary_log.txt
 venv/
 .venv/
 env/
+
+# Tokens (from cloud auth)
+tokens/
