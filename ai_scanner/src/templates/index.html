@@ -816,8 +816,28 @@ body{
 .badge-green{background:rgba(45,74,59,0.08);color:var(--emerald);border-color:rgba(45,74,59,0.12)}
 .badge-red{background:rgba(168,50,50,0.08);color:var(--crimson);border-color:rgba(168,50,50,0.12)}
 
-#capture-status{animation:pageFadeIn 0.3s ease}
-#btn-done-capture{animation:pageFadeIn 0.3s ease;padding:6px 20px!important}
+#capture-filmstrip{animation:pageFadeIn 0.3s ease}
+.filmstrip-thumb{
+  width:52px;height:68px;border-radius:4px;overflow:hidden;flex-shrink:0;
+  position:relative;cursor:default;border:1px solid rgba(201,169,110,0.15);
+  background:var(--paper);transition:var(--transition);
+}
+.filmstrip-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.filmstrip-thumb .thumb-num{
+  position:absolute;bottom:1px;right:1px;
+  background:rgba(26,15,10,0.7);color:var(--cream);
+  font-family:var(--font-mono);font-size:0.4rem;padding:1px 4px;
+  border-radius:2px;line-height:1;
+}
+.filmstrip-thumb .thumb-del{
+  position:absolute;top:1px;right:1px;
+  width:14px;height:14px;border-radius:50%;border:none;
+  background:rgba(168,50,50,0.85);color:#fff;
+  font-size:8px;line-height:14px;text-align:center;
+  cursor:pointer;display:none;padding:0;
+}
+.filmstrip-thumb:hover .thumb-del{display:block}
+.filmstrip-thumb .thumb-del:hover{background:var(--crimson)}
 
 /* ============================================================
    GALLERY / VAULT
@@ -1043,8 +1063,7 @@ body{
   .doc-card .doc-overlay{opacity:1!important}
   .shutter-btn{width:50px!important;height:50px!important;bottom:14px!important}
   .shutter-btn::after{width:36px!important;height:36px!important}
-  #capture-status{bottom:60px!important;font-size:0.45rem!important;padding:3px 10px!important}
-  #btn-done-capture{padding:5px 16px!important;font-size:0.5rem!important}
+
   .modal{max-width:95vw!important;margin:8px!important;max-height:85vh!important}
   #btn-close-cam{top:5px!important;right:5px!important;padding:3px 6px!important;font-size:0.45rem!important}
   .kbd-hint{display:none!important}
@@ -1055,8 +1074,7 @@ body{
   .mouse-glow{display:none!important}
   .preview-image img{max-height:45vh!important}
   .card-body{max-height:none!important;overflow:visible!important}
-  #capture-count{font-size:0.5rem!important;padding:2px 6px!important;top:3px!important;right:3px!important}
-  #btn-finish-capture{font-size:0.45rem!important;padding:3px 8px!important;bottom:50px!important}
+
   .pipeline-flow{gap:2px;flex-wrap:wrap}.pipe-step{padding:3px 5px;font-size:0.4rem}.pipe-step .step-num{display:none}
   #cloud-status-list .toggle-row{flex-wrap:wrap;gap:3px}
   .feed-card{max-height:180px!important}
@@ -1131,7 +1149,7 @@ body{
       <span class="badge" id="gallery-count">0</span>
     </button>
     <div class="nav-section">Tools</div>
-    <button class="nav-item" onclick="mergeToPdf()">
+    <button class="nav-item" onclick="switchView('gallery');setTimeout(function(){if(state.selectedDocs.length)mergeToPdf();else toast('SELECT DOCUMENTS IN VAULT FIRST','warn')},100)">
       <span class="icon">⊞</span>
       <span class="nav-label">Merge PDF</span>
     </button>
@@ -1298,12 +1316,13 @@ body{
                 </div>
               </div>
               <button class="btn btn-outline" id="btn-close-cam" style="position:absolute;top:8px;right:8px;z-index:12;display:none;padding:4px 10px;font-size:0.5rem;background:rgba(245,230,200,0.85);border-color:var(--gold)">✕ Close</button>
-              <!-- Capture status bar (shown when camera is active) -->
-              <div id="capture-status" style="display:none;position:absolute;bottom:72px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(245,230,200,0.9);backdrop-filter:blur(6px);padding:5px 14px;border-radius:12px;border:1px solid rgba(201,169,110,0.15);font-family:var(--font-mono);font-size:0.55rem;color:var(--ink);white-space:nowrap">
-                <span id="capture-count-badge">📄 0</span> captured
-              </div>
-              <div id="done-capturing-bar" style="display:none;position:absolute;bottom:14px;right:14px;z-index:10;gap:6px">
-                <button class="btn btn-primary" id="btn-done-capture">✓ Done</button>
+              <!-- Filmstrip gallery – replaces capture status and Done button -->
+              <div id="capture-filmstrip" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:10;background:rgba(245,230,200,0.92);backdrop-filter:blur(6px);border-top:1px solid rgba(201,169,110,0.15);padding:6px 10px;gap:4px">
+                <div id="filmstrip-thumbs" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;min-height:56px;align-items:center;scrollbar-width:thin"></div>
+                <div style="display:flex;gap:6px;justify-content:center;margin-top:4px">
+                  <button class="btn btn-primary btn-xs" id="btn-process-captures" disabled onclick="processAllCaptures()">▶ Process All (<span id="capture-count-badge">0</span>)</button>
+                  <button class="btn btn-outline btn-xs" onclick="closeCamera()">✕ Close</button>
+                </div>
               </div>
               <div id="cam-selector-wrap" style="display:none;position:absolute;top:40px;left:8px;z-index:12">
                 <select id="cam-device-select" style="background:rgba(245,230,200,0.9);backdrop-filter:blur(4px);border:1px solid rgba(201,169,110,0.15);border-radius:4px;color:var(--ink);font-family:var(--font-mono);font-size:0.45rem;padding:2px 5px;max-width:140px;outline:none"></select>
@@ -1653,21 +1672,81 @@ document.getElementById('btn-close-cam').addEventListener('click',function(e){
   e.stopPropagation();closeCamera();
   document.getElementById('dz-placeholder').style.display='';
 });
+function shutterSound(){
+  try{
+    var actx=new(window.AudioContext||window.webkitAudioContext)();
+    var g=actx.createGain();g.connect(actx.destination);g.gain.value=0.15;
+    // Noise burst for shutter click
+    var bf=actx.createBuffer(1,actx.sampleRate*0.06,actx.sampleRate);
+    var d=bf.getChannelData(0);
+    for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,4);
+    var src=actx.createBufferSource();src.buffer=bf;src.connect(g);
+    src.start(0);
+    // Sine blip for metallic ring
+    var osc=actx.createOscillator();osc.type='sine';osc.frequency.value=1800;
+    var g2=actx.createGain();g2.gain.setValueAtTime(0.08,actx.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+0.06);
+    osc.connect(g2);g2.connect(actx.destination);
+    osc.start(0);osc.stop(actx.currentTime+0.06);
+  }catch(e){}
+}
 function captureFromCam(){
-  // Manual capture override for shutter button
   var v=document.getElementById('video'),c=document.getElementById('canvas');
   if(!v.videoWidth)return;
-  c.width=v.videoWidth||1280;c.height=v.videoHeight||720;
+  shutterSound();
+  // Flash brackets on manual capture
+  ['vb-tl','vb-tr','vb-bl','vb-br'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){el.style.borderColor='var(--emerald)';el.style.boxShadow='0 0 20px rgba(45,74,59,0.6)'}
+  });
+  setTimeout(function(){
+    ['vb-tl','vb-tr','vb-bl','vb-br'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el){el.style.borderColor='var(--gold)';el.style.boxShadow=''}
+    });
+  },300);
+  c.width=v.videoWidth;c.height=v.videoHeight;
   c.getContext('2d').drawImage(v,0,0,c.width,c.height);
   c.toBlob(function(b){
     state.capturedBlobs.push(b);
     state.capturedBlob=b;
-    var cnt=state.capturedBlobs.length;
-    document.getElementById('capture-count-badge').textContent='📄 '+cnt;
-    toast('⟐ MANUAL #'+cnt);
+    addFilmstripThumb(b,state.capturedBlobs.length);
   },'image/jpeg',0.85);
 }
 
+function addFilmstripThumb(blob,idx){
+  var cnt=state.capturedBlobs.length;
+  document.getElementById('capture-count-badge').textContent=cnt;
+  document.getElementById('btn-process-captures').disabled=false;
+  document.getElementById('btn-process').disabled=false;
+  var wrap=document.getElementById('filmstrip-thumbs');
+  var div=document.createElement('div');div.className='filmstrip-thumb';
+  div.dataset.idx=idx-1;
+  var img=document.createElement('img');img.src=URL.createObjectURL(blob);
+  var num=document.createElement('span');num.className='thumb-num';num.textContent='#'+cnt;
+  var del=document.createElement('button');del.className='thumb-del';del.textContent='✕';
+  del.onclick=function(e){e.stopPropagation();
+    var i=parseInt(div.dataset.idx);
+    state.capturedBlobs.splice(i,1);
+    div.remove();
+    // renumber remaining
+    var thumbs=wrap.querySelectorAll('.filmstrip-thumb');
+    thumbs.forEach(function(t,n){
+      t.dataset.idx=n;
+      t.querySelector('.thumb-num').textContent='#'+(n+1);
+    });
+    var remaining=state.capturedBlobs.length;
+    document.getElementById('capture-count-badge').textContent=remaining;
+    if(!remaining){
+      document.getElementById('btn-process-captures').disabled=true;
+      document.getElementById('btn-process').disabled=true;
+    }
+  };
+  div.appendChild(img);div.appendChild(num);div.appendChild(del);
+  wrap.appendChild(div);
+  wrap.scrollLeft=wrap.scrollWidth;
+  toast('⟐ Captured #'+cnt);
+}
 /* ---- CAMERA SYSTEM ---- */
 var cameraDevices=[];
 var autoCaptureTimer=null,autoCaptureActive=false;
@@ -1725,8 +1804,7 @@ function showCameraUI(s){
   document.getElementById('dz-placeholder').style.display='none';
   document.getElementById('btn-close-cam').style.display='';
   document.getElementById('vf-overlay').classList.add('active');
-  document.getElementById('capture-status').style.display='';
-  document.getElementById('done-capturing-bar').style.display='flex';
+  document.getElementById('capture-filmstrip').style.display='';
   document.getElementById('cam-selector-wrap').style.display='';
   document.getElementById('shutter-btn').classList.add('active');
   document.getElementById('btn-open-cam').textContent='✕ CLOSE CAMERA';
@@ -1891,11 +1969,33 @@ function startAutoDetect(){
     document.getElementById('tel-blur').textContent='Δ'+diff.toFixed(1);
     document.getElementById('tel-glare').textContent='LV'+avgBright.toFixed(0);
 
-    // Auto-capture logic: frame is steady AND has content (not black/white)
+    // Corner bracket edge-detection animation
+    var brackets=['vb-tl','vb-tr','vb-bl','vb-br'];
     if(diff<CAPTURE_THRESHOLD&&avgBright>30&&avgBright<240){
       stillFrames++;
+      // Animate brackets while document is steady
+      var pulse=stillFrames/STILL_FRAMES_NEEDED;
+      var opacity=0.4+pulse*0.6;
+      var color=pulse>0.5?'var(--emerald)':'var(--gold)';
+      var size=36+pulse*8;
+      brackets.forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){el.style.opacity=opacity;el.style.borderColor=color;el.style.width=size+'px';el.style.height=size+'px'}
+      });
       if(stillFrames>=STILL_FRAMES_NEEDED){
         stillFrames=0;
+        shutterSound();
+        // Flash brackets on capture
+        brackets.forEach(function(id){
+          var el=document.getElementById(id);
+          if(el){el.style.borderColor='var(--emerald)';el.style.boxShadow='0 0 20px rgba(45,74,59,0.6)'}
+        });
+        setTimeout(function(){
+          brackets.forEach(function(id){
+            var el=document.getElementById(id);
+            if(el){el.style.borderColor='var(--gold)';el.style.boxShadow='';el.style.width='36px';el.style.height='36px';el.style.opacity='1'}
+          });
+        },300);
         // Capture full-res frame
         var bigC=document.createElement('canvas');
         bigC.width=v.videoWidth;bigC.height=v.videoHeight;
@@ -1903,13 +2003,15 @@ function startAutoDetect(){
         bigC.toBlob(function(bigBlob){
           state.capturedBlobs.push(bigBlob);
           state.capturedBlob=bigBlob;
-          var cnt=state.capturedBlobs.length;
-          document.getElementById('capture-count-badge').textContent='📄 '+cnt;
-          toast('⟐ CAPTURED #'+cnt);
+          addFilmstripThumb(bigBlob,state.capturedBlobs.length);
         },'image/jpeg',0.85);
       }
     }else{
       stillFrames=0;
+      brackets.forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){el.style.opacity='1';el.style.borderColor='var(--gold)';el.style.width='36px';el.style.height='36px';el.style.boxShadow=''}
+      });
     }
   },200); // faster check interval
 }
@@ -1924,26 +2026,13 @@ function closeCamera(){
   document.getElementById('cam-view').style.display='none';
   document.getElementById('btn-close-cam').style.display='none';
   document.getElementById('vf-overlay').classList.remove('active');
-  document.getElementById('capture-status').style.display='none';
-  document.getElementById('done-capturing-bar').style.display='none';
+  document.getElementById('capture-filmstrip').style.display='none';
   document.getElementById('cam-selector-wrap').style.display='none';
   document.getElementById('shutter-btn').classList.remove('active');
   document.getElementById('btn-open-cam').textContent='⟐ OPEN CAMERA';
   document.getElementById('btn-open-cam').style.background='';
 }
-document.getElementById('btn-done-capture').addEventListener('click',function(){
-  closeCamera();
-  if(!state.capturedBlobs.length){toast('No captures to process','warn');return}
-  var last=state.capturedBlobs[state.capturedBlobs.length-1];
-  if(last){
-    state.capturedBlob=last;
-    document.getElementById('preview-img').src=URL.createObjectURL(last);
-    document.getElementById('scan-preview').classList.add('active');
-  }
-  document.getElementById('btn-process-all').style.display='';
-  toast(state.capturedBlobs.length+' pages captured. Click PROCESS ALL');
-  document.getElementById('shutter-btn').classList.remove('active');
-});
+
 function processAllCaptures(){
   if(!state.capturedBlobs.length){toast('No captures','warn');return}
   showLoader('PROCESSING...','AI ANALYZING '+state.capturedBlobs.length+' PAGES');
@@ -1962,6 +2051,7 @@ function processAllCaptures(){
         document.getElementById('post-process-actions').style.display='flex';
       }
       document.getElementById('btn-process-all').style.display='none';
+      document.getElementById('filmstrip-thumbs').innerHTML='';
       state.capturedBlobs=[];
       return;
     }
@@ -1996,7 +2086,8 @@ function handleFile(f){
   state.capturedBlob=f;
   state.capturedBlobs.push(f);
   var cnt=state.capturedBlobs.length;
-  document.getElementById('capture-count-badge').textContent='📄 '+cnt;
+  document.getElementById('capture-count-badge').textContent=cnt;
+  document.getElementById('btn-process-captures').disabled=false;
   document.getElementById('preview-img').src=URL.createObjectURL(f);
   document.getElementById('scan-preview').classList.add('active');
   document.getElementById('dz-placeholder').style.display='none';
@@ -2107,6 +2198,8 @@ function resetScanner(){
   document.getElementById('scan-preview').classList.remove('active');
   document.getElementById('dz-placeholder').style.display='';
   document.getElementById('btn-process-all').style.display='none';
+  document.getElementById('filmstrip-thumbs').innerHTML='';
+  document.getElementById('btn-process-captures').disabled=true;
   state.capturedBlobs=[];
   state.capturedBlob=null;state.currentResult=null;
   fi.value='';document.getElementById('btn-process').disabled=true;
