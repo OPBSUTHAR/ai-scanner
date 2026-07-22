@@ -21,7 +21,9 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 class LocalStorage:
-    def __init__(self, base_dir: str = "data"):
+    def __init__(self, base_dir: str = None):
+        if base_dir is None:
+            base_dir = Path(__file__).resolve().parent.parent.parent / "data"
         self.base_dir = Path(base_dir)
         self._ensure_dirs()
 
