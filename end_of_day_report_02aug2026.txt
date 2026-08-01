@@ -1,0 +1,33 @@
+END OF DAY REPORT — 02 Aug 2026
+AI Document Scanner (WebEnoid Intern)
+
+RESUMED FROM: 01 Aug — app running at http://localhost:5000, all work committed (a84d0f5).
+
+DONE TODAY
+1. Frontend refactor: separated inline CSS + JS out of src/templates/index.html
+   (2616 lines -> 413 lines) for easier maintenance:
+   - All styles moved to src/static/css/style.css (~1100 lines)
+   - All JavaScript moved to src/static/js/app.js (~1101 lines)
+   - index.html now links /static/css/style.css + /static/js/app.js only
+   - No Jinja placeholders existed, so extraction was lossless
+2. Verified end-to-end: Flask serves 200 on /, /static/css/style.css and
+   /static/js/app.js; page markup, styles and behaviour unchanged
+   (NOT yet committed)
+
+CURRENT STATE
+- App RUNNING at http://localhost:5000 (verified 200, Tesseract detected)
+- Frontend now modular — edit style.css / app.js without touching HTML
+
+NOT DONE
+- Cloud OCR backends (OCR.space / OCR API / Azure Vision) — optional
+- Render deployment (Docker daemon not running locally to test build)
+- MongoDB / auth / multi-user — optional
+
+HOW TO RUN: .\.venv\Scripts\python -m src.web_app  (or run.bat)
+HOW TO TEST: .\.venv\Scripts\python -m pytest tests/
+
+NEXT (tomorrow)
+1. Commit frontend refactor (CSS/JS separation)
+2. Cloud OCR backends (optional)
+3. Deploy: Render account -> git push -> auto-deploy -> test phone camera
+4. Optional: MongoDB metadata, auth
