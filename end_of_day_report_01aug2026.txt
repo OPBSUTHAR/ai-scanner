@@ -60,6 +60,17 @@ NEW WORK DONE TODAY
    - Created clean project venv (.venv) with CPU torch; verified 46/46 tests + all endpoints pass
    - Fixed broken global pytest plugins (typing_extensions, httpx); plain pytest now works
    - run.bat now auto-uses .venv when present; README setup section updated
+6. SERVER STARTED (first run of the day)
+   - Found + fixed Unicode crash: startup banner glyphs (◈ 🌐) crashed on Windows when stdout
+     is redirected (cp1252) — exactly what happens on Render/Docker. Fixed with UTF-8 stdout
+     reconfigure in web_app.py main()
+   - Server now RUNNING at http://localhost:5000 (venv python, verified 200 OK)
+   - Output logged to server_stdout.log / server_stderr.log
+
+CURRENT STATE (end of day)
+- App running locally at http://localhost:5000 — open in browser, camera works over
+  LAN/HTTPS; test with: python -m src.web_app --ngrok
+- All session work committed (latest: a84d0f5)
 
 NOT DONE YET
 - Cloud OCR backends (OCR.space / OCR API / Azure Vision) - optional
@@ -74,7 +85,7 @@ Then open http://localhost:5000 (camera needs HTTPS: python -m src.web_app --ngr
 HOW TO TEST
 .\.venv\Scripts\python -m pytest tests/
 
-NEXT STEPS (this session onward)
+NEXT STEPS (tomorrow)
 1. ~~Wire missing features~~ DONE: handwriting, dewarp, anti-glare fusion
 2. ~~Fix token persistence~~ DONE: _load_token() + restore_session()
 3. ~~Write the 6 empty test files~~ DONE: 46 tests passing
@@ -82,13 +93,3 @@ NEXT STEPS (this session onward)
 5. ~~Remove unused deps~~ DONE: transformers removed, pytest split to requirements-dev.txt
 6. Deploy: create Render account, git push triggers auto-deploy, test camera over HTTPS on phone
 7. Optional: MongoDB metadata storage, authentication/multi-user
-
-HOW TO RUN
-cd ai_scanner && pip install -r requirements.txt && python -m src.web_app
-Then open http://localhost:5000 (camera needs HTTPS: python -m src.web_app --ngrok)
-
-KEY FILES
-- src/web_app.py (~780 lines, all Flask endpoints)
-- src/templates/index.html (~2568 lines, single-page frontend)
-- src/storage/cloud_sync.py, src/ocr/ocr_engine.py, src/edge_detection/detector.py
-- src/enhancement/enhancer.py, src/utils/*, PROJECT_STATUS.md (authoritative roadmap)

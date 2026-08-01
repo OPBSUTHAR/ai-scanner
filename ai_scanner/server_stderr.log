@@ -5,3 +5,4 @@ WARNING: This is a development server. Do not use it in a production deployment.
 Press CTRL+C to quit
 127.0.0.1 - - [01/Aug/2026 19:20:06] "GET / HTTP/1.1" 200 -
 127.0.0.1 - - [01/Aug/2026 19:20:09] "GET /api/ocr/status HTTP/1.1" 200 -
+127.0.0.1 - - [01/Aug/2026 20:23:54] "GET / HTTP/1.1" 200 -
