@@ -1,95 +1,42 @@
-END OF DAY REPORT — 01 Aug 2026 (SESSION START / RESUMPTION)
+END OF DAY REPORT — 01 Aug 2026
 AI Document Scanner (WebEnoid Intern)
 
-WHERE WE STOPPED (22 Jul 2026 — last session)
-- Docker containerization done: Dockerfile, .dockerignore, render.yaml, railway.json
-- DEPLOYMENT_GUIDE.md written (Render backend, Vercel frontend, MongoDB Atlas)
-- UI rewrite completed: Classic Archive theme (cream/parchment, burgundy/gold/emerald)
-- Filmstrip gallery + capture fixes, shutter sound, edge-detection animation
-- All code committed and pushed to GitHub (origin/main @ b46d32d, up to date)
-- NO deployment was ever triggered (Render account not created, no live URL)
+RESUMED FROM: 22 Jul — code complete & pushed (b46d32d), never deployed.
 
-STATUS CHECK — VERIFIED AGAINST CODE TODAY
+DONE TODAY
+1. Wired dormant features (backend existed, UI/endpoint missing):
+   - Handwriting OCR toggle -> /scan/advanced -> EasyOCR
+   - Dewarp toggle -> edges.dewarp() after auto-crop
+- Anti-Glare Multi-Shot -> new /scan/fusion endpoint (N shots -> ECC align ->
+  median fuse -> full pipeline), wired to Process Scan + Process All
+2. Token persistence: added _load_token() + restore_session() in
+   cloud_sync.py — OAuth tokens now reload on restart
+3. Tests: wrote all 6 empty files + conftest.py (camera, classification, edges,
+   enhancement, ocr, storage) — 46/46 PASSING
+4. Bugs fixed by tests: ECC non-convergence crash -> fallback to median;
+   invoice regex missed "Amount Due: $150.00"; np.bool_ JSON hazard -> bool;
+   storage config double-nested -> fixed path
+5. Cross-platform: removed committed Fernet key (src/data/.key_enc) from git;
+   tracked .env.example; removed opencv-contrib duplicate; pytest moved to
+   requirements-dev.txt; Dockerfile + libzbar0; clean .venv (CPU torch, all
+   tests verified); fixed broken global pytest plugins; run.bat venv-aware;
+   README updated
+6. Server started: fixed Unicode banner crash (stdout UTF-8 reconfigure —
+   cp1252 broke on redirect, would have crashed on Render too)
 
-WORKING OUT OF THE BOX:
-- Document upload (picker + drag-and-drop), camera capture (getUserMedia + <input capture> fallback)
-- Edge detection + perspective correction (auto-crop)
-- Enhancement: shadow removal, CLAHE contrast, sharpen; effects: grayscale, Otsu binarize, invert
-- Quality assessment (Laplacian blur, brightness), Tesseract OCR v5.5.0
-- Keyword/regex classification, content extraction (amounts, dates, names), auto-naming
-- QR/barcode detection, local storage + metadata JSON, full-text search
-- PDF merge (reportlab), multi-page capture, dashboard, gallery/vault, settings (encrypted keys)
+CURRENT STATE
+- App RUNNING at http://localhost:5000 (verified 200, Tesseract detected)
+- All work committed (a84d0f5)
 
-NEEDS USER CONFIGURATION (API keys via Settings):
-- Google Vision OCR | Google Drive Sync | Dropbox Sync | OneDrive Sync
+NOT DONE
+- Cloud OCR backends (OCR.space / OCR API / Azure Vision) — optional
+- Render deployment (Docker daemon not running locally to test build)
+- MongoDB / auth / multi-user — optional
 
-WHAT IS STILL INCOMPLETE (from PROJECT_STATUS.md — all verified still true):
-| Feature | Status | What's Missing |
-|---------|--------|----------------|
-| EasyOCR Handwriting | Backend exists (ocr_engine.py:123), NOT connected | use_handwriting=true never passed from /scan/advanced; no UI toggle |
-| OCR.space / OCR API / Azure Vision | UI key entry only, no backend | No ocrspace.py / ocrapi.py / azure_vision.py modules |
-| Multi-shot fusion (anti-glare) | Backend complete (enhancer.py:56), NOT connected | No endpoint calls multi_shot_fusion() |
-| Dewarping (curved pages) | Backend complete (detector.py:59), NOT connected | No endpoint calls dewarp() |
-| Cloud usage stats | Backend complete, manual only | Not auto-displayed |
-| Token persistence | Partial | _save_token() exists (cloud_sync.py:404), _load_token() MISSING — OAuth tokens lost on restart |
-| Tests | Empty | All 6 tests/*.py are 0 bytes |
-| Deployment | Files ready, never deployed | Not pushed live, no Render/Railway account setup |
+HOW TO RUN: .\.venv\Scripts\python -m src.web_app  (or run.bat)
+HOW TO TEST: .\.venv\Scripts\python -m pytest tests/
 
-NEW WORK DONE TODAY
-1. WIRED MISSING FEATURES (was: backend only, not connected)
-   - Handwriting OCR toggle -> /scan/advanced passes use_handwriting -> EasyOCR
-   - Dewarp toggle -> edges.dewarp() runs after auto-crop
-   - Anti-Glare (Multi-Shot) -> new /scan/fusion endpoint (N shots -> ECC align -> median fuse -> full pipeline)
-     wired to both Process Scan and Process All buttons
-2. FIXED TOKEN PERSISTENCE
-   - Added _load_token(provider) + restore_session() in cloud_sync.py; OAuth tokens now reload on restart
-3. TESTS WRITTEN (was: all empty)
-   - 6 test files + conftest.py: camera, classification, edge_detection, enhancement, ocr, storage
-   - 46 tests, ALL PASSING (pytest)
-4. BUGS FOUND & FIXED BY TESTS
-   - multi_shot_fusion crashed on non-converging ECC (would 500 endpoint) -> graceful fallback to median
-   - Invoice amount regex missed "Amount Due: $150.00" -> amounts now extracted (classifier.py)
-   - detect_blur/check_lighting returned np.bool_ (JSON serialization hazard) -> cast to bool
-   - Broken storage config double-nested data/documents/documents -> fixed path, relocated files
-5. CROSS-PLATFORM CLEANUP
-   - Removed secret src/data/.key_enc from git tracking (was committed!), added to .gitignore
-   - Created tracked .env.example (env template travels with repo)
-   - requirements.txt: removed opencv-contrib-python duplicate; torch kept (easyocr dep);
-     pytest moved to new requirements-dev.txt (leaner Docker builds)
-   - Dockerfile: added libzbar0 (pyzbar QR now works in containers)
-   - Created clean project venv (.venv) with CPU torch; verified 46/46 tests + all endpoints pass
-   - Fixed broken global pytest plugins (typing_extensions, httpx); plain pytest now works
-   - run.bat now auto-uses .venv when present; README setup section updated
-6. SERVER STARTED (first run of the day)
-   - Found + fixed Unicode crash: startup banner glyphs (◈ 🌐) crashed on Windows when stdout
-     is redirected (cp1252) — exactly what happens on Render/Docker. Fixed with UTF-8 stdout
-     reconfigure in web_app.py main()
-   - Server now RUNNING at http://localhost:5000 (venv python, verified 200 OK)
-   - Output logged to server_stdout.log / server_stderr.log
-
-CURRENT STATE (end of day)
-- App running locally at http://localhost:5000 — open in browser, camera works over
-  LAN/HTTPS; test with: python -m src.web_app --ngrok
-- All session work committed (latest: a84d0f5)
-
-NOT DONE YET
-- Cloud OCR backends (OCR.space / OCR API / Azure Vision) - optional
-- Deployment to Render (docker files ready; Docker daemon not running locally to test build)
-- MongoDB metadata / auth / multi-user - optional
-
-HOW TO RUN
-cd ai_scanner
-.\.venv\Scripts\python -m src.web_app     (or run.bat - auto-detects .venv)
-Then open http://localhost:5000 (camera needs HTTPS: python -m src.web_app --ngrok)
-
-HOW TO TEST
-.\.venv\Scripts\python -m pytest tests/
-
-NEXT STEPS (tomorrow)
-1. ~~Wire missing features~~ DONE: handwriting, dewarp, anti-glare fusion
-2. ~~Fix token persistence~~ DONE: _load_token() + restore_session()
-3. ~~Write the 6 empty test files~~ DONE: 46 tests passing
-4. Implement cloud OCR backends (optional): ocrspace.py, ocrapi.py, azure_vision.py
-5. ~~Remove unused deps~~ DONE: transformers removed, pytest split to requirements-dev.txt
-6. Deploy: create Render account, git push triggers auto-deploy, test camera over HTTPS on phone
-7. Optional: MongoDB metadata storage, authentication/multi-user
+NEXT (tomorrow)
+1. Cloud OCR backends (optional)
+2. Deploy: Render account -> git push -> auto-deploy -> test phone camera
+3. Optional: MongoDB metadata, auth
