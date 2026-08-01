@@ -1,0 +1,12 @@
+
+  =============================================
+  ◈ AI SCANNER // NEXUS-OS v3.0
+  =============================================
+  Local:   http://localhost:5000
+  Network: http://192.168.31.57:5000
+  Phone:   Use --ngrok for HTTPS (camera requires HTTPS on mobile)
+  =============================================
+  =============================================
+
+ * Serving Flask app 'web_app'
+ * Debug mode: off
