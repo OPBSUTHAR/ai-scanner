@@ -31,12 +31,12 @@ class ImageEnhancer:
     def detect_blur(self, image: np.ndarray, threshold: float = 100.0) -> Tuple[bool, float]:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-        return laplacian_var < threshold, laplacian_var
+        return bool(laplacian_var < threshold), laplacian_var
 
     def check_lighting(self, image: np.ndarray) -> Tuple[bool, float]:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         mean_brightness = gray.mean()
-        return 30 <= mean_brightness <= 240, mean_brightness
+        return bool(30 <= mean_brightness <= 240), mean_brightness
 
     def quality_assessment(self, image: np.ndarray) -> dict:
         is_blurry, blur_score = self.detect_blur(image)
@@ -65,9 +65,12 @@ class ImageEnhancer:
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             warp_matrix = np.eye(2, 3, dtype=np.float32)
             criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50, 1e-5)
-            _, warp_matrix = cv2.findTransformECC(gray_ref, gray, warp_matrix, cv2.MOTION_AFFINE, criteria)
-            aligned_img = cv2.warpAffine(img, warp_matrix, (images[0].shape[1], images[0].shape[0]),
-                                          borderMode=cv2.BORDER_REPLICATE)
+            try:
+                _, warp_matrix = cv2.findTransformECC(gray_ref, gray, warp_matrix, cv2.MOTION_AFFINE, criteria)
+                aligned_img = cv2.warpAffine(img, warp_matrix, (images[0].shape[1], images[0].shape[0]),
+                                              borderMode=cv2.BORDER_REPLICATE)
+            except cv2.error:
+                aligned_img = img
             aligned.append(aligned_img)
 
         aligned.insert(0, images[0])

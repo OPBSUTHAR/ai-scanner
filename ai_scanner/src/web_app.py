@@ -92,6 +92,7 @@ def _serialize_result(r):
             "extracted_data": r.get("classification", {}).get("extracted_data", {}),
         },
         "qr_codes": r.get("qr_codes", []),
+        "fusion": r.get("fusion", None),
         "filename": r.get("filename", ""),
         "saved_path": r.get("saved_path", ""),
         "original_shape": r.get("original_shape", []),
@@ -339,6 +340,8 @@ def scan_advanced():
     enhance = request.form.get("enhance", "true") == "true"
     effect = request.form.get("effect", "none")
     use_google_vision = request.form.get("use_google_vision", "false") == "true"
+    use_handwriting = request.form.get("use_handwriting", "false") == "true"
+    dewarp = request.form.get("dewarp", "false") == "true"
 
     edges = scanner.edges
     enhancer = scanner.enhancer
@@ -354,6 +357,9 @@ def scan_advanced():
             result["document_detected"] = False
     else:
         result["document_detected"] = False
+
+    if dewarp:
+        img = edges.dewarp(img)
 
     if shadow_removal and hasattr(enhancer, 'remove_shadows'):
         try:
@@ -387,7 +393,7 @@ def scan_advanced():
 
     if use_google_vision:
         scanner.ocr.use_google_vision = True
-    ocr_res = scanner.ocr.extract_text(img)
+    ocr_res = scanner.ocr.extract_text(img, use_handwriting=use_handwriting)
     scanner.ocr.use_google_vision = False
     text = ocr_res.text
     conf = ocr_res.confidence
@@ -413,6 +419,93 @@ def scan_advanced():
         "doc_type": result["classification"]["type"],
         "extracted_data": result["classification"]["extracted_data"],
         "quality": quality,
+    })
+    result["saved_path"] = str(fpath)
+    return jsonify(_serialize_result(result))
+
+
+@app.route("/scan/fusion", methods=["POST"])
+def scan_fusion():
+    files = request.files.getlist("images")
+    if len(files) < 1:
+        return jsonify({"error": "No images"}), 400
+
+    frames = []
+    for file in files:
+        nparr = np.frombuffer(file.read(), np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is not None:
+            frames.append(img)
+    if not frames:
+        return jsonify({"error": "Cannot read images"}), 500
+
+    auto_crop = request.form.get("auto_crop", "true") == "true"
+    dewarp = request.form.get("dewarp", "false") == "true"
+    use_google_vision = request.form.get("use_google_vision", "false") == "true"
+    use_handwriting = request.form.get("use_handwriting", "false") == "true"
+
+    edges = scanner.edges
+    enhancer = scanner.enhancer
+
+    prepared = []
+    detected_any = False
+    for img in frames:
+        if auto_crop:
+            corners = edges.find_document_contour(img)
+            if corners is not None:
+                detected_any = True
+                img = edges.perspective_correct(img, corners)
+        if dewarp:
+            img = edges.dewarp(img)
+        prepared.append(img)
+
+    fused = enhancer.multi_shot_fusion(prepared)
+    fused = enhancer.enhance_document(fused)
+
+    quality = enhancer.quality_assessment(fused)
+    result = {
+        "original_shape": fused.shape,
+        "document_detected": detected_any,
+        "enhanced": True,
+        "quality": quality,
+        "fusion": {"shots": len(frames)},
+    }
+
+    if use_google_vision:
+        scanner.ocr.use_google_vision = True
+    ocr_res = scanner.ocr.extract_text(fused, use_handwriting=use_handwriting)
+    scanner.ocr.use_google_vision = False
+    text = ocr_res.text
+    conf = ocr_res.confidence
+    result["ocr"] = {"text": text, "confidence": conf}
+
+    if text:
+        cls = scanner.classifier.classify(text)
+        result["classification"] = {
+            "type": cls.doc_type, "confidence": cls.confidence,
+            "extracted_data": cls.extracted_data,
+        }
+        qrs = scanner.qr.detect(fused)
+        result["qr_codes"] = [{"data": q.data, "type": q.type} for q in qrs] if qrs else []
+        fname = scanner.namer.generate_name(cls.doc_type, cls.extracted_data, text)
+    else:
+        result["classification"] = {"type": "unknown", "confidence": 0, "extracted_data": {}}
+        result["qr_codes"] = []
+        fname = f"fused_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    orig_path = UPLOAD_FOLDER / f"orig_{ts}.jpg"
+    _, buf = cv2.imencode(".jpg", frames[0], [cv2.IMWRITE_JPEG_QUALITY, 90])
+    orig_path.write_bytes(buf.tobytes())
+    result["_orig_url"] = url_for("serve_image", subpath=f"orig_{ts}.jpg")
+
+    result["filename"] = fname
+    fpath = scanner.storage.save_document(fused, fname, result["classification"]["type"], {
+        "ocr_text": text, "ocr_confidence": conf,
+        "doc_type": result["classification"]["type"],
+        "extracted_data": result["classification"]["extracted_data"],
+        "quality": quality,
+        "fusion_shots": len(frames),
     })
     result["saved_path"] = str(fpath)
     return jsonify(_serialize_result(result))

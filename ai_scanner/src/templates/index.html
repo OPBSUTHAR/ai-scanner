@@ -1369,6 +1369,9 @@ body{
             <div class="toggle-row"><span>Shadow Removal</span><div class="toggle on" id="tog-shadow" onclick="this.classList.toggle('on')"></div></div>
             <div class="toggle-row"><span>Enhance</span><div class="toggle on" id="tog-enhance" onclick="this.classList.toggle('on')"></div></div>
             <div class="toggle-row"><span>Google Vision</span><div class="toggle" id="tog-vision" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><span>Handwriting OCR</span><div class="toggle" id="tog-handwriting" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><span>Dewarp (Curved Pages)</span><div class="toggle" id="tog-dewarp" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><span>Anti-Glare (Multi-Shot)</span><div class="toggle" id="tog-fusion" onclick="this.classList.toggle('on')"></div></div>
             <div class="toggle-row" style="border-top:1px solid rgba(201,169,110,0.06);margin-top:4px;padding-top:5px">
               <span style="font-size:0.5rem">OCR Engine</span>
               <span id="ocr-status-badge" style="font-family:var(--font-mono);font-size:0.48rem;color:var(--text-tertiary)">Checking...</span>
@@ -2036,6 +2039,31 @@ function closeCamera(){
 function processAllCaptures(){
   if(!state.capturedBlobs.length){toast('No captures','warn');return}
   showLoader('PROCESSING...','AI ANALYZING '+state.capturedBlobs.length+' PAGES');
+  var fusionOn=document.getElementById('tog-fusion').classList.contains('on');
+  if(fusionOn&&state.capturedBlobs.length>=2){
+    var ffd=new FormData();
+    for(var i=0;i<state.capturedBlobs.length;i++)ffd.append('images',state.capturedBlobs[i],'shot_'+i+'.jpg');
+    ffd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
+    ffd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
+    ffd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
+    ffd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
+    fetch('/scan/fusion',{method:'POST',body:ffd}).then(function(r){return r.json()}).then(function(data){
+      hideLoader();
+      if(!data.error){
+        processedResults=[data];
+        toast('✅ ANTI-GLARE FUSED '+state.capturedBlobs.length+' SHOTS');
+        if(data.image_url){
+          document.getElementById('preview-img').src=data.image_url;
+          document.getElementById('scan-preview').classList.add('active');
+        }
+        document.getElementById('post-process-actions').style.display='flex';
+      }else{toast(data.error,'err')}
+      document.getElementById('btn-process-all').style.display='none';
+      document.getElementById('filmstrip-thumbs').innerHTML='';
+      state.capturedBlobs=[];
+    }).catch(function(e){hideLoader();toast('ERROR: '+e.message,'err');document.getElementById('btn-process-all').style.display='none'});
+    return;
+  }
   var results=[],idx=0;
   (function processNext(){
     if(idx>=state.capturedBlobs.length){
@@ -2062,6 +2090,8 @@ function processAllCaptures(){
     fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on')?'true':'false');
     fd.append('effect',state.selectedEffect);
     fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
+    fd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
+    fd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
     fetch('/scan/advanced',{method:'POST',body:fd})
       .then(function(r){return r.json()})
       .then(function(data){
@@ -2130,12 +2160,30 @@ document.getElementById('btn-process').addEventListener('click',function(){
   if(!state.capturedBlob)return;
   showLoader('SCANNING...','AI PROCESSING DOCUMENT');
   document.getElementById('result-panel').style.display='none';
+  var fusionOn=document.getElementById('tog-fusion').classList.contains('on');
+  var shots=state.capturedBlobs.length>=2?state.capturedBlobs:[state.capturedBlob];
+  if(fusionOn&&shots.length>=2){
+    var ffd=new FormData();
+    for(var i=0;i<shots.length;i++)ffd.append('images',shots[i],'shot_'+i+'.jpg');
+    ffd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
+    ffd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
+    ffd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
+    ffd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
+    fetch('/scan/fusion',{method:'POST',body:ffd}).then(function(r){return r.json()}).then(function(data){
+      hideLoader();
+      if(data.error){toast(data.error,'err');return}
+      state.currentResult=data;showResults(data);toast('FUSED '+shots.length+' SHOTS');
+    }).catch(function(e){hideLoader();toast('ERROR: '+e.message,'err')});
+    return;
+  }
   var fd=new FormData();fd.append('image',state.capturedBlob,'scan.jpg');
   fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
   fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on')?'true':'false');
   fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on')?'true':'false');
   fd.append('effect',state.selectedEffect);
   fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
+  fd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
+  fd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
   fetch('/scan/advanced',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(data){
     hideLoader();
     if(data.error){toast(data.error,'err');return}

@@ -9,6 +9,7 @@ class CloudSync:
         self.dropbox_client = None
         self.onedrive_client = None
         self.onedrive_token = None
+        self.restore_session()
 
     def status(self) -> dict:
         return {
@@ -406,3 +407,50 @@ class CloudSync:
         os.makedirs(token_dir, exist_ok=True)
         with open(os.path.join(token_dir, f"{provider}.json"), "w") as f:
             f.write(token_data)
+
+    def _load_token(self, provider: str) -> Optional[str]:
+        token_dir = os.path.join(os.path.dirname(__file__), "..", "..", "tokens")
+        path = os.path.join(token_dir, f"{provider}.json")
+        if os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    return f.read()
+            except Exception:
+                return None
+        return None
+
+    def restore_session(self):
+        token_data = self._load_token("google_drive")
+        if token_data:
+            try:
+                from google.oauth2.credentials import Credentials
+                from googleapiclient.discovery import build
+                creds = Credentials.from_authorized_user_info(json.loads(token_data))
+                self.drive_service = build("drive", "v3", credentials=creds)
+            except Exception:
+                self.drive_service = None
+
+        token = self._load_token("dropbox")
+        if token:
+            try:
+                import dropbox
+                self.dropbox_client = dropbox.Dropbox(token)
+                self.dropbox_client.users_get_current_account()
+            except Exception:
+                self.dropbox_client = None
+
+        token = self._load_token("onedrive")
+        if token:
+            self.onedrive_token = token
+            try:
+                import msal
+                client_id = os.getenv("ONEDRIVE_CLIENT_ID")
+                tenant_id = os.getenv("ONEDRIVE_TENANT_ID", "common")
+                if client_id:
+                    self.onedrive_client = msal.ConfidentialClientApplication(
+                        client_id,
+                        authority=f"https://login.microsoftonline.com/{tenant_id}",
+                        client_credential=os.getenv("ONEDRIVE_CLIENT_SECRET"),
+                    )
+            except Exception:
+                self.onedrive_client = None

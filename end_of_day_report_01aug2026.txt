@@ -1,0 +1,58 @@
+END OF DAY REPORT — 01 Aug 2026 (SESSION START / RESUMPTION)
+AI Document Scanner (WebEnoid Intern)
+
+WHERE WE STOPPED (22 Jul 2026 — last session)
+- Docker containerization done: Dockerfile, .dockerignore, render.yaml, railway.json
+- DEPLOYMENT_GUIDE.md written (Render backend, Vercel frontend, MongoDB Atlas)
+- UI rewrite completed: Classic Archive theme (cream/parchment, burgundy/gold/emerald)
+- Filmstrip gallery + capture fixes, shutter sound, edge-detection animation
+- All code committed and pushed to GitHub (origin/main @ b46d32d, up to date)
+- NO deployment was ever triggered (Render account not created, no live URL)
+
+STATUS CHECK — VERIFIED AGAINST CODE TODAY
+
+WORKING OUT OF THE BOX:
+- Document upload (picker + drag-and-drop), camera capture (getUserMedia + <input capture> fallback)
+- Edge detection + perspective correction (auto-crop)
+- Enhancement: shadow removal, CLAHE contrast, sharpen; effects: grayscale, Otsu binarize, invert
+- Quality assessment (Laplacian blur, brightness), Tesseract OCR v5.5.0
+- Keyword/regex classification, content extraction (amounts, dates, names), auto-naming
+- QR/barcode detection, local storage + metadata JSON, full-text search
+- PDF merge (reportlab), multi-page capture, dashboard, gallery/vault, settings (encrypted keys)
+
+NEEDS USER CONFIGURATION (API keys via Settings):
+- Google Vision OCR | Google Drive Sync | Dropbox Sync | OneDrive Sync
+
+WHAT IS STILL INCOMPLETE (from PROJECT_STATUS.md — all verified still true):
+| Feature | Status | What's Missing |
+|---------|--------|----------------|
+| EasyOCR Handwriting | Backend exists (ocr_engine.py:123), NOT connected | use_handwriting=true never passed from /scan/advanced; no UI toggle |
+| OCR.space / OCR API / Azure Vision | UI key entry only, no backend | No ocrspace.py / ocrapi.py / azure_vision.py modules |
+| Multi-shot fusion (anti-glare) | Backend complete (enhancer.py:56), NOT connected | No endpoint calls multi_shot_fusion() |
+| Dewarping (curved pages) | Backend complete (detector.py:59), NOT connected | No endpoint calls dewarp() |
+| Cloud usage stats | Backend complete, manual only | Not auto-displayed |
+| Token persistence | Partial | _save_token() exists (cloud_sync.py:404), _load_token() MISSING — OAuth tokens lost on restart |
+| Tests | Empty | All 6 tests/*.py are 0 bytes |
+| Deployment | Files ready, never deployed | Not pushed live, no Render/Railway account setup |
+
+NEW WORK DONE TODAY
+- Created this session-start report documenting project state (nothing coded yet)
+
+NEXT STEPS (this session onward)
+1. Wire missing features: handwriting toggle, dewarp toggle, anti-glare multi-shot endpoint
+2. Fix token persistence: add _load_token(provider) in cloud_sync.py, call in _get_authenticated_service()
+3. Write the 6 empty test files (pytest: scanner, ocr, enhancement, classification, endpoints, storage)
+4. Implement cloud OCR backends (optional): ocrspace.py, ocrapi.py, azure_vision.py
+5. Remove unused deps (torch, transformers ~2GB) from requirements.txt if not imported
+6. Deploy: create Render account, git push triggers auto-deploy, test camera over HTTPS on phone
+7. Optional: MongoDB metadata storage, authentication/multi-user
+
+HOW TO RUN
+cd ai_scanner && pip install -r requirements.txt && python -m src.web_app
+Then open http://localhost:5000 (camera needs HTTPS: python -m src.web_app --ngrok)
+
+KEY FILES
+- src/web_app.py (~780 lines, all Flask endpoints)
+- src/templates/index.html (~2568 lines, single-page frontend)
+- src/storage/cloud_sync.py, src/ocr/ocr_engine.py, src/edge_detection/detector.py
+- src/enhancement/enhancer.py, src/utils/*, PROJECT_STATUS.md (authoritative roadmap)

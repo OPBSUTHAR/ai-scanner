@@ -16,7 +16,7 @@ class DocumentClassifier:
             "keywords": ["invoice", "bill", "amount due", "total due", "payment terms",
                          "invoice number", "invoice #", "due date"],
             "patterns": [
-                (r'(?:total|amount|sum)\s*(?:due|:|$)?\s*[\$£€]?\s*([\d,]+\.?\d*)', "amount"),
+                (r'(?:total|amount|sum)\s*(?:due)?\s*:?\s*[\$£€]?\s*([\d,]+\.?\d*)', "amount"),
                 (r'(?:invoice|inv)\s*(?:#|number|no|:)?\s*([\w-]+)', "invoice_number"),
                 (r'(?:due\s*date|payment\s*due)[:\s]+([\w\s,]+)', "due_date"),
             ]
