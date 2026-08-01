@@ -36,14 +36,50 @@ WHAT IS STILL INCOMPLETE (from PROJECT_STATUS.md — all verified still true):
 | Deployment | Files ready, never deployed | Not pushed live, no Render/Railway account setup |
 
 NEW WORK DONE TODAY
-- Created this session-start report documenting project state (nothing coded yet)
+1. WIRED MISSING FEATURES (was: backend only, not connected)
+   - Handwriting OCR toggle -> /scan/advanced passes use_handwriting -> EasyOCR
+   - Dewarp toggle -> edges.dewarp() runs after auto-crop
+   - Anti-Glare (Multi-Shot) -> new /scan/fusion endpoint (N shots -> ECC align -> median fuse -> full pipeline)
+     wired to both Process Scan and Process All buttons
+2. FIXED TOKEN PERSISTENCE
+   - Added _load_token(provider) + restore_session() in cloud_sync.py; OAuth tokens now reload on restart
+3. TESTS WRITTEN (was: all empty)
+   - 6 test files + conftest.py: camera, classification, edge_detection, enhancement, ocr, storage
+   - 46 tests, ALL PASSING (pytest)
+4. BUGS FOUND & FIXED BY TESTS
+   - multi_shot_fusion crashed on non-converging ECC (would 500 endpoint) -> graceful fallback to median
+   - Invoice amount regex missed "Amount Due: $150.00" -> amounts now extracted (classifier.py)
+   - detect_blur/check_lighting returned np.bool_ (JSON serialization hazard) -> cast to bool
+   - Broken storage config double-nested data/documents/documents -> fixed path, relocated files
+5. CROSS-PLATFORM CLEANUP
+   - Removed secret src/data/.key_enc from git tracking (was committed!), added to .gitignore
+   - Created tracked .env.example (env template travels with repo)
+   - requirements.txt: removed opencv-contrib-python duplicate; torch kept (easyocr dep);
+     pytest moved to new requirements-dev.txt (leaner Docker builds)
+   - Dockerfile: added libzbar0 (pyzbar QR now works in containers)
+   - Created clean project venv (.venv) with CPU torch; verified 46/46 tests + all endpoints pass
+   - Fixed broken global pytest plugins (typing_extensions, httpx); plain pytest now works
+   - run.bat now auto-uses .venv when present; README setup section updated
+
+NOT DONE YET
+- Cloud OCR backends (OCR.space / OCR API / Azure Vision) - optional
+- Deployment to Render (docker files ready; Docker daemon not running locally to test build)
+- MongoDB metadata / auth / multi-user - optional
+
+HOW TO RUN
+cd ai_scanner
+.\.venv\Scripts\python -m src.web_app     (or run.bat - auto-detects .venv)
+Then open http://localhost:5000 (camera needs HTTPS: python -m src.web_app --ngrok)
+
+HOW TO TEST
+.\.venv\Scripts\python -m pytest tests/
 
 NEXT STEPS (this session onward)
-1. Wire missing features: handwriting toggle, dewarp toggle, anti-glare multi-shot endpoint
-2. Fix token persistence: add _load_token(provider) in cloud_sync.py, call in _get_authenticated_service()
-3. Write the 6 empty test files (pytest: scanner, ocr, enhancement, classification, endpoints, storage)
+1. ~~Wire missing features~~ DONE: handwriting, dewarp, anti-glare fusion
+2. ~~Fix token persistence~~ DONE: _load_token() + restore_session()
+3. ~~Write the 6 empty test files~~ DONE: 46 tests passing
 4. Implement cloud OCR backends (optional): ocrspace.py, ocrapi.py, azure_vision.py
-5. Remove unused deps (torch, transformers ~2GB) from requirements.txt if not imported
+5. ~~Remove unused deps~~ DONE: transformers removed, pytest split to requirements-dev.txt
 6. Deploy: create Render account, git push triggers auto-deploy, test camera over HTTPS on phone
 7. Optional: MongoDB metadata storage, authentication/multi-user
 

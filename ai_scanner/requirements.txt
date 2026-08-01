@@ -25,7 +25,6 @@ requests>=2.31.0
 
 # QR/Barcode
 pyzbar>=0.1.9
-opencv-contrib-python>=4.8.0
 
 # PDF Generation
 reportlab>=4.0.0
@@ -45,6 +44,3 @@ cryptography>=41.0.0
 python-dotenv>=1.0.0
 tqdm>=4.65.0
 loguru>=0.7.0
-
-# Testing
-pytest>=8.0.0

@@ -82,18 +82,35 @@ Upload/Camera → Edge Detection → Enhancement → OCR → Classification → 
 git clone <repo-url>
 cd ai_scanner
 
-# Create virtual environment
+# Create virtual environment (isolated from your system Python)
 python -m venv .venv
-.venv\Scripts\activate   # Windows
-# source .venv/bin/activate  # Linux/Mac
+
+# Activate it
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Linux/Mac
 
 # Install dependencies
 pip install -r requirements.txt
+pip install -r requirements-dev.txt   # optional: pytest for running tests
 
-# Set up environment variables
-cp .env .env
+# Set up environment variables (template tracked in repo)
+cp .env.example .env    # Windows: copy .env.example .env
 # Fill in your API keys in .env
 ```
+
+### Running Tests
+
+```bash
+pytest tests/
+```
+
+### System Dependencies
+
+- **Tesseract OCR** required for text extraction ([install guide](https://github.com/tesseract-ocr/tesseract)). The app auto-detects the binary on Windows/Linux/Mac.
+- **Windows**: install Tesseract from the official installer; path is auto-detected.
+- **Docker/Linux**: handled by the Dockerfile (installs tesseract + libzbar0).
+- QR/barcode decoding uses `pyzbar`, which needs the platform zbar library
+  (`libzbar0` on Debian/Ubuntu, `zbar-tools` via Homebrew on Mac).
 
 ### API Keys Required
 

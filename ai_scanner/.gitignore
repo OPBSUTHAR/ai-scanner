@@ -1,6 +1,9 @@
 # Environment variables (CONTAINS SECRETS - NEVER COMMIT)
 .env
 
+# Fernet key for API key encryption (regenerated on first run)
+src/data/.key_enc
+
 # Python cache
 __pycache__/
 *.py[cod]
