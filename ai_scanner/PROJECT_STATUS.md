@@ -1,5 +1,28 @@
 # AI Scanner — Project Status & Roadmap
 
+## Session Log — 08 Aug 2026 (Latest First)
+
+### Sidebar Upgrade
+- Added live **ARCHIVE STATUS** widget in the sidebar (DOCUMENTS count, STORAGE used, OCR ENGINE, scanner status tick with green/amber pulse dot).
+- Wired to `loadDashboard()`, `loadOcrStatus()`, and batch lifecycle (`setScannerTick`).
+
+### Scanner Flow: Original → Process → Done
+- Upload/capture now shows the **ORIGINAL** file in preview — no more instant auto-processing.
+- Effect/toggle changes apply only via **▶ Process Scan** (or auto re-process when a batch exists).
+- Done-bar shows phase hints: `ORIGINAL PREVIEW — tune settings & press PROCESS` → `READY — effect settings applied & pending save`.
+- DONE & SAVE blocked until a batch is processed ("NOTHING TO SAVE — press PROCESS first").
+- Added **✕ CANCEL** (discard files + batch), **RETAKE** (reopens camera), **RE-UPLOAD** (reopens file picker) buttons in the done-bar.
+- Placeholder pill updated: "SHOWS ORIGINAL — PROCESS CHANGES, THEN DONE".
+
+### Cloud Sync Connect Buttons
+- **UNCONFIGURED** providers (Google Drive / Dropbox / OneDrive) now also get a **CONNECT** button → OAuth login popup → paste code → connected.
+- Badges: **CONFIGURED** (emerald, glowing) / **OFFLINE** (gold) / **UNCONFIGURED** (red).
+- Missing app keys → guided dialog that jumps to Settings API Keys.
+
+### API Keys — First-Time Setup Guide
+- Settings → API Keys now lists the **main connections required to run the project** with, for each: status badge (CONFIGURED / N KEYS MISSING), a **GET KEY** link (opens the exact console page), and an **ADD** button that pre-selects that key in the form.
+- Covered: Google Vision OCR, Google Drive Sync, Dropbox Sync, OneDrive Sync, OCR.space (free fallback), Azure Vision OCR.
+
 ## What Has Been Done (Fixed)
 
 ### Storage Fix
@@ -60,7 +83,7 @@
 | Dropbox Sync | `dropbox_app_key` + `dropbox_app_secret` (+ access token) | Dropbox Developer Console |
 | OneDrive Sync | `onedrive_client_id` + `onedrive_client_secret` + `onedrive_tenant_id` | Azure Portal → App Registrations |
 
-**How to configure:** Open the app → Settings → scroll to API Keys → click "Add Key" → select service + paste key.
+**How to configure:** Open the app → Settings → scroll to **API Keys** → a first-time setup guide lists the main connections with status badges, a **GET KEY** link to the exact console page, and an **ADD** button per key. Then connect in **Cloud Sync** with your own account.
 
 ---
 

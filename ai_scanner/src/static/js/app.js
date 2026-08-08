@@ -1046,11 +1046,46 @@ var KEY_META_UI={
   azure_vision_key:{label:'AZURE VISION KEY',icon:'<i class="lucide icon-file-text"></i>'},
   azure_vision_endpoint:{label:'AZURE VISION ENDPOINT',icon:'<i class="lucide icon-file-text"></i>'},
 };
+var KEY_SETUP_GUIDE=[
+  {icon:'<i class="lucide icon-eye"></i>',label:'GOOGLE VISION OCR',keys:['google_vision_api_key'],
+   get:'https://console.cloud.google.com/apis/credentials',tip:'Enables cloud OCR — enable the Cloud Vision API then create an API key'},
+  {icon:'<i class="lucide icon-cloud"></i>',label:'GOOGLE DRIVE SYNC',keys:['google_drive_client_id','google_drive_client_secret'],
+   get:'https://console.cloud.google.com/apis/credentials',tip:'Backup scans to your own Drive (OAuth client ID + secret)'},
+  {icon:'<i class="lucide icon-package"></i>',label:'DROPBOX SYNC',keys:['dropbox_app_key','dropbox_app_secret'],
+   get:'https://www.dropbox.com/developers/apps',tip:'Create an app in the Dropbox Developer Console for full access'},
+  {icon:'<i class="lucide icon-monitor"></i>',label:'ONEDRIVE SYNC',keys:['onedrive_client_id','onedrive_client_secret','onedrive_tenant_id'],
+   get:'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps',tip:'Register an app in Azure → add client ID, secret & tenant'},
+  {icon:'<i class="lucide icon-file-text"></i>',label:'OCR.SPACE (FREE FALLBACK)',keys:['ocr_space_api_key'],
+   get:'https://ocr.space/ocrapi',tip:'Free OCR tier — grab a key at ocr.space/ocrapi'},
+  {icon:'<i class="lucide icon-sparkles"></i>',label:'AZURE VISION OCR',keys:['azure_vision_key','azure_vision_endpoint'],
+   get:'https://portal.azure.com/#create/microsoft.cognitiveservices',tip:'Optional AI OCR — create an Azure Computer Vision resource & copy Key/Endpoint'},
+];
+function renderKeySetupGuide(keys){
+  var el=document.getElementById('setup-key-guide');
+  if(!el)return;
+  var have={};
+  (keys||[]).forEach(function(k){have[k.name]=k.configured});
+  el.innerHTML=KEY_SETUP_GUIDE.map(function(g){
+    var missing=g.keys.filter(function(k){return !have[k]});
+    var done=!missing.length;
+    var badge=done
+      ?'<span class="cloud-badge ok">CONFIGURED</span>'
+      :'<span class="cloud-badge warn">'+missing.length+' KEY'+(missing.length>1?'S':'')+' MISSING</span>';
+    return '<div class="toggle-row" style="align-items:flex-start">'+
+      '<span style="display:flex;flex-direction:column;gap:2px"><span>'+g.icon+' '+g.label+'</span>'+
+      '<span style="font-family:var(--font-mono);font-size:0.45rem;color:var(--text-tertiary);font-weight:400">'+g.tip+'</span></span>'+
+      '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+badge+
+      '<a href="'+g.get+'" target="_blank" rel="noopener" class="btn btn-outline btn-xs" style="font-size:0.48rem;padding:4px 7px"><i class="lucide icon-external-link"></i> GET KEY</a>'+
+      '<button class="btn btn-primary btn-xs" style="font-size:0.48rem;padding:4px 7px" onclick="showAddKeyForm('+JSON.stringify(g.keys[0])+')"><i class="lucide icon-plus"></i> ADD</button>'+
+      '</div></div>';
+  }).join('');
+}
 function loadApiKeys(){
   fetch('/api/keys').then(function(r){return r.json()}).then(function(keys){
+    renderKeySetupGuide(keys);
     var list=document.getElementById('api-keys-list');
     var configured=keys.filter(function(k){return k.configured});
-    if(!configured.length){list.innerHTML='<div style="font-family:var(--font-classic);font-size:0.6rem;color:var(--text-tertiary);padding:6px 0;font-style:italic">No keys configured</div>';return}
+    if(!configured.length){list.innerHTML='';return}
     list.innerHTML=configured.map(function(k){
       return '<div class="toggle-row"><span>'+KEY_META_UI[k.name]?.icon+' '+KEY_META_UI[k.name]?.label+'</span>'+
         '<div style="display:flex;gap:6px;align-items:center"><code class="code">'+(k.masked_value||'****')+'</code>'+
@@ -1058,15 +1093,17 @@ function loadApiKeys(){
     }).join('');
   }).catch(function(){});
 }
-function showAddKeyForm(){
+function showAddKeyForm(preselect){
   var sel=document.getElementById('ak-service');sel.innerHTML='';
   Object.entries(KEY_META_UI).forEach(function(x){
     var opt=document.createElement('option');opt.value=x[0];
     opt.textContent=x[1].icon+' '+x[1].label;sel.appendChild(opt);
   });
+  if(preselect&&KEY_META_UI[preselect])sel.value=preselect;
   document.getElementById('ak-value').value='';
   document.getElementById('api-key-form').style.display='block';
   document.getElementById('btn-add-key').style.display='none';
+  sel.focus();
 }
 function saveApiKey(){
   var name=document.getElementById('ak-service').value;
