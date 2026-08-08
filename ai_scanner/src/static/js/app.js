@@ -1093,7 +1093,30 @@ setTimeout(function(){
   if(kh)kh.style.opacity='0.15';
 },10000);
 
+/* ---- QUICK LOGIN SESSION ---- */
+function getSessionCookie(name){
+  var m=document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+  return m?decodeURIComponent(m[1]):'';
+}
+function applySession(){
+  var name=getSessionCookie('user_name');
+  if(!name){window.location.href='/login';return}
+  var avatar=document.getElementById('user-avatar');
+  var label=document.getElementById('user-name');
+  if(avatar)avatar.textContent=name.charAt(0).toUpperCase();
+  if(label)label.textContent=name;
+  document.title='AI SCANNER // '+name.toUpperCase();
+}
+function logoutSession(){
+  showConfirm('EXIT THE ARCHIVE?',function(){
+    fetch('/api/logout',{method:'POST'}).catch(function(){}).finally(function(){
+      window.location.href='/login';
+    });
+  });
+}
+
 /* ---- INIT ---- */
+applySession();
 restoreState();
 loadDashboard();loadActivity();
 loadOcrStatus();

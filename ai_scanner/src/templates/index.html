@@ -58,12 +58,13 @@
     </button>
   </div>
   <div class="sidebar-footer">
-    <div class="avatar">A</div>
+    <div class="avatar" id="user-avatar">A</div>
     <div class="info">
-      <div class="name">Curator</div>
+      <div class="name" id="user-name">Curator</div>
       <div class="role">ARCHIVE KEEPER</div>
     </div>
     <button class="s-btn" onclick="switchView('settings')" title="Config">⚙</button>
+    <button class="s-btn" onclick="logoutSession()" title="Exit">⏻</button>
   </div>
 </nav>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>

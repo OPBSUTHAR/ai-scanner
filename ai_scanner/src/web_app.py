@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from flask import (
     Flask, request, jsonify, render_template,
-    send_file, url_for, Response
+    send_file, url_for, Response, redirect, make_response
 )
 import cv2
 import numpy as np
@@ -239,8 +239,50 @@ def api_ocr_status():
         "engine": "tesseract" if has_tesseract else ("google_vision" if has_google_vision else "none"),
     })
 
+# ---------------------------------------------------------------------------
+#  Quick Login (preferred name, no password)
+# ---------------------------------------------------------------------------
+
+SESSION_COOKIE = "user_name"
+SESSION_DAYS = 30
+
+
+@app.route("/login")
+def login():
+    if request.cookies.get(SESSION_COOKIE, "").strip():
+        return redirect(url_for("index"))
+    return render_template("login.html")
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.json or {}
+    name = re.sub(r"\s+", " ", data.get("name", "")).strip()
+    if not name:
+        return jsonify({"error": "Name required"}), 400
+    name = name[:40]
+    resp = make_response(jsonify({"ok": True, "name": name}))
+    resp.set_cookie(SESSION_COOKIE, name, max_age=SESSION_DAYS * 24 * 3600,
+                    samesite="Lax")
+    return resp
+
+
+@app.route("/api/session", methods=["GET"])
+def api_session():
+    return jsonify({"name": request.cookies.get(SESSION_COOKIE, "")})
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    resp = make_response(jsonify({"ok": True}))
+    resp.delete_cookie(SESSION_COOKIE)
+    return resp
+
+
 @app.route("/")
 def index():
+    if not request.cookies.get(SESSION_COOKIE, "").strip():
+        return redirect(url_for("login"))
     data = {"stats": {}, "recent": []}
     if DOCUMENTS_FOLDER.exists():
         allf = [f for f in DOCUMENTS_FOLDER.rglob("*") if f.is_file()]
