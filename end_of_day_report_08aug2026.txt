@@ -65,7 +65,16 @@ DONE TODAY
     - NEW backend endpoints: POST/GET /api/profile/avatar — users can upload their own
       profile picture (stored per-user in data/profiles/, served with explicit mime);
       frontend falls back to logo.svg while none set
-11. HOUSEKEEPING
+11. BUGFIX – PROCESS SCAN BUTTON + LAYOUT
+    - Process Scan click handler checked state.capturedBlob (single-shot) but multi-file
+      uploads never set it -> clicking did nothing; now checks state.capturedBlobs.length
+    - Grid tracks changed from 1fr to minmax(0,1fr) everywhere (scanner-grid, stat-grid,
+      dash-bottom, preview-grid) so no min-content overflow on standard resolutions
+    - .main/.content/.view got min-width:0/min-height:0 so content scrolls correctly
+      instead of clipping (body is overflow:hidden)
+    - Boot-splash now auto-hides via pure CSS animation (2.6s) even if JS fails, so it
+      can never block the app layout
+12. HOUSEKEEPING
    - Removed stale diary_log.txt / log_file.txt from working tree & git (already in
      .gitignore)
    - EOD report regenerated to this file in project root
@@ -75,6 +84,8 @@ CURRENT STATE
   name; docx/xlsx/pptx/csv -> valid PDF; mixed image+csv -> single merged PDF;
   images-mode keeps files separate (png + individual pdfs)
 - Full suite: 46/46 PASSING; JS syntax check OK
+- Smoke re-test on port 5099: btn-process, boot-splash, logo.svg references and avatar
+  upload input all present in served HTML; previous avatar upload flow verified
 - Live smoke test on port 5099 (report session): login + index render; boot-splash and
   avatar markup present; logo.svg served (200, 470B); avatar GET -> 404 before upload,
   POST -> 200, GET after upload -> 200 (56KB png, correct mime); test file cleaned up

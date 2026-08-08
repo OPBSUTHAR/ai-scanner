@@ -714,7 +714,7 @@ function updatePreview(){
   fetch('/effects/preview',{method:'POST',body:fd}).then(function(r){if(r.ok)return r.blob()}).then(function(b){if(b)document.getElementById('preview-img').src=URL.createObjectURL(b)}).catch(function(){});
 }
 document.getElementById('btn-process').addEventListener('click',function(){
-  if(!state.capturedBlob)return;
+  if(!state.capturedBlobs.length)return;
   startBatchProcessing();
 });
 function showResults(r){

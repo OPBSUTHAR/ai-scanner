@@ -438,13 +438,14 @@ body{
 /* ============================================================
    MAIN CONTENT AREA
    ============================================================ */
-.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
 .content{
   flex:1;overflow-y:auto;padding:20px 24px 28px;position:relative;
+  min-height:0;min-width:0;
 }
 .content::-webkit-scrollbar{width:4px}
 .content::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:3px}
-.view{display:none}
+.view{display:none;min-width:0}
 .view.active{display:block;animation:pageFadeIn 0.5s ease}
 @keyframes pageFadeIn{
   from{opacity:0;transform:translateY(12px)}
@@ -524,7 +525,7 @@ body{
 /* ============================================================
    STAT GRID – CLASSIC LEDGER
    ============================================================ */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px;width:100%}
 .stat-card{
   background:var(--bg-card);border-radius:var(--radius-md);
   padding:16px 18px;position:relative;overflow:hidden;
@@ -580,7 +581,7 @@ body{
 @keyframes stepPulse{0%,100%{box-shadow:0 0 6px rgba(212,175,55,0.1)}50%{box-shadow:0 0 14px rgba(212,175,55,0.2)}}
 .pipe-connector{color:var(--text-tertiary);font-family:var(--font-mono);font-size:0.45rem;opacity:0.3}
 
-.dash-bottom{display:grid;grid-template-columns:1fr 280px;gap:12px;margin-bottom:18px}
+.dash-bottom{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:12px;margin-bottom:18px}
 
 /* Feed */
 .feed-card{
@@ -655,7 +656,7 @@ body{
 .doc-card.selected::after{content:'✓';position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--burgundy);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(107,45,60,0.3);z-index:2;line-height:18px;text-align:center}
 
 /* Preview Modal – Document Viewer */
-.preview-grid{display:grid;grid-template-columns:1fr 260px;gap:0;max-height:calc(90vh - 110px)}
+.preview-grid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:0;max-height:calc(90vh - 110px);width:100%}
 .preview-image{position:relative;background:var(--paper);display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:280px}
 .preview-image img{max-width:100%;max-height:calc(90vh - 140px);object-fit:contain;display:block;border-radius:0}
 .preview-side{padding:14px 16px;overflow-y:auto;border-left:1px solid rgba(201,169,110,0.08);background:var(--cream)}
@@ -676,8 +677,8 @@ body{
 /* ============================================================
    SCANNER VIEW – ANTIQUE VIEWFINDER
    ============================================================ */
-.scanner-grid{display:grid;grid-template-columns:1fr 280px;gap:14px;max-width:1200px;margin:0 auto}
-.scanner-grid.full{grid-template-columns:1fr;max-width:720px}
+.scanner-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px;max-width:1200px;margin:0 auto;width:100%}
+.scanner-grid.full{grid-template-columns:minmax(0,1fr);max-width:720px}
 
 .vf-container{
   position:relative;border-radius:var(--radius-lg);overflow:hidden;
@@ -923,8 +924,13 @@ body{
   background:linear-gradient(180deg,#2C1810 0%,#1A0F0A 100%);
   display:flex;align-items:center;justify-content:center;
   transition:opacity 0.6s ease, visibility 0.6s ease;
+  animation:bootAutoHide 0.6s ease 2.6s forwards;
 }
 .boot-splash.done{opacity:0;visibility:hidden;pointer-events:none}
+@keyframes bootAutoHide{
+  0%{opacity:1;visibility:visible}
+  100%{opacity:0;visibility:hidden}
+}
 .boot-inner{text-align:center}
 .boot-logo{
   width:110px;height:110px;margin:0 auto 18px;border-radius:50%;
