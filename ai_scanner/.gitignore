@@ -36,6 +36,7 @@ models/
 # Logs (auto-generated)
 log_file.txt
 diary_log.txt
+server_*.log
 
 # Service account keys (JSON credentials)
 *.json
