@@ -36,25 +36,25 @@
   <div class="sidebar-nav">
     <div class="nav-section">Sections</div>
     <button class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
-      <span class="icon"><i class="lucide lucide-layout-dashboard"></i></span>
+      <span class="icon"><i class="lucide icon-layout-dashboard"></i></span>
       <span class="nav-label">Dashboard</span>
     </button>
     <button class="nav-item" data-view="scanner" onclick="switchView('scanner')">
-      <span class="icon"><i class="lucide lucide-scan-line"></i></span>
+      <span class="icon"><i class="lucide icon-scan-line"></i></span>
       <span class="nav-label">Scanner</span>
     </button>
     <button class="nav-item" data-view="gallery" onclick="switchView('gallery')">
-      <span class="icon"><i class="lucide lucide-archive"></i></span>
+      <span class="icon"><i class="lucide icon-archive"></i></span>
       <span class="nav-label">Vault</span>
       <span class="badge" id="gallery-count">0</span>
     </button>
     <div class="nav-section">Tools</div>
     <button class="nav-item" onclick="switchView('gallery');setTimeout(function(){if(state.selectedDocs.length)mergeToPdf();else toast('SELECT DOCUMENTS IN VAULT FIRST','warn')},100)">
-      <span class="icon"><i class="lucide lucide-file-stack"></i></span>
+      <span class="icon"><i class="lucide icon-file-stack"></i></span>
       <span class="nav-label">Merge PDF</span>
     </button>
     <button class="nav-item" data-view="settings" onclick="switchView('settings')">
-      <span class="icon"><i class="lucide lucide-settings"></i></span>
+      <span class="icon"><i class="lucide icon-settings"></i></span>
       <span class="nav-label">Settings</span>
     </button>
   </div>
@@ -64,8 +64,8 @@
       <div class="name" id="user-name">Curator</div>
       <div class="role">ARCHIVE KEEPER</div>
     </div>
-    <button class="s-btn" onclick="switchView('settings')" title="Config"><i class="lucide lucide-settings"></i></button>
-    <button class="s-btn" onclick="logoutSession()" title="Exit"><i class="lucide lucide-power"></i></button>
+    <button class="s-btn" onclick="switchView('settings')" title="Config"><i class="lucide icon-settings"></i></button>
+    <button class="s-btn" onclick="logoutSession()" title="Exit"><i class="lucide icon-power"></i></button>
   </div>
 </nav>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -75,8 +75,8 @@
 
   <!-- HUD Top Bar -->
   <div class="hud-topbar">
-    <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()"><i class="lucide lucide-menu"></i></button>
-    <button class="btn-back" id="btn-back" onclick="goBack()"><i class="lucide lucide-arrow-left"></i><span class="back-label">BACK</span></button>
+    <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()"><i class="lucide icon-menu"></i></button>
+    <button class="btn-back" id="btn-back" onclick="goBack()"><i class="lucide icon-arrow-left"></i><span class="back-label">BACK</span></button>
     <div class="brand-tag"><strong>Archive</strong> // Document Scanner</div>
     <div class="hud-tabs">
       <button class="hud-tab active" data-tab="dashboard" onclick="switchView('dashboard')">Dashboard</button>
@@ -96,9 +96,9 @@
 
   <!-- HTTPS warning for camera access from phone via LAN -->
   <div id="https-warning" style="display:none;background:rgba(168,50,50,0.08);border:1px solid rgba(168,50,50,0.2);border-radius:6px;padding:6px 12px;margin:6px 10px 0;font-family:var(--font-mono);font-size:0.5rem;color:var(--crimson);align-items:center;gap:6px">
-    <span>⚠</span>
+    <span><i class="lucide icon-triangle-alert" style="vertical-align:-1px"></i></span>
     <span id="https-warning-text">Camera requires HTTPS on mobile. Use <strong>--ngrok</strong> or deploy with HTTPS.</span>
-    <button onclick="this.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:0.55rem">✕</button>
+    <button onclick="this.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--text-tertiary);cursor:pointer;font-size:0.55rem"><i class="lucide icon-x"></i></button>
   </div>
 
   <div class="content">
@@ -111,7 +111,7 @@
       </div>
       <div class="stat-grid" id="stat-grid"></div>
       <div class="pipeline-card">
-        <div class="pipe-title"><i class="lucide lucide-cpu"></i> Processing Pipeline</div>
+        <div class="pipe-title"><i class="lucide icon-cpu"></i> Processing Pipeline</div>
         <div class="pipeline-flow">
           <div class="pipe-step done"><span class="step-num">01</span> CAPTURE</div>
           <span class="pipe-connector">→</span>
@@ -153,19 +153,19 @@
           <div class="vf-container gborder gborder-glow" id="vf-container">
             <div class="drop-zone gborder" id="drop-zone">
               <div class="dz-placeholder" id="dz-placeholder">
-                <div class="dz-icon"><i class="lucide lucide-file-image"></i></div>
+                <div class="dz-icon"><i class="lucide icon-file-image"></i></div>
                 <h3>Place Documents</h3>
                 <p>Images · PDF · DOCX · XLSX · CSV · PPTX — select one or many</p>
                 <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-                  <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();document.getElementById('file-input').click()"><i class="lucide lucide-upload"></i> Select Files</button>
+                  <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();document.getElementById('file-input').click()"><i class="lucide icon-upload"></i> Select Files</button>
                   <button class="btn btn-primary btn-lg" id="btn-open-cam">
-                    <i class="lucide lucide-camera"></i> Open Camera
+                    <i class="lucide icon-camera"></i> Open Camera
                   </button>
                   <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();phoneCameraCapture()" style="background:var(--burgundy);border-color:var(--rust);color:var(--cream)">
-                    <i class="lucide lucide-smartphone"></i> Phone Camera
+                    <i class="lucide icon-smartphone"></i> Phone Camera
                   </button>
                   <div class="btn btn-primary btn-lg" style="background:var(--emerald);cursor:default;opacity:0.9;font-size:0.62rem;line-height:1.5">
-                    <i class="lucide lucide-zap"></i> PROCESSING STARTS<br>INSTANTLY ON UPLOAD
+                    <i class="lucide icon-zap"></i> PROCESSING STARTS<br>INSTANTLY ON UPLOAD
                   </div>
                 </div>
               </div>
@@ -213,16 +213,16 @@
                     </div>
                   </div>
                   <!-- Shutter Button -->
-                  <div class="shutter-btn" id="shutter-btn"><div class="btn btn-primary btn-icon" style="width:52px;height:52px;border-radius:50%;padding:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" onclick="captureFromCam()">◉</div></div>
+                  <div class="shutter-btn" id="shutter-btn"><div class="btn btn-primary btn-icon" style="width:52px;height:52px;border-radius:50%;padding:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" onclick="captureFromCam()"><i class="lucide icon-aperture"></i></div></div>
                 </div>
               </div>
-              <button class="btn btn-outline" id="btn-close-cam" style="position:absolute;top:8px;right:8px;z-index:12;display:none;padding:4px 10px;font-size:0.5rem;background:rgba(245,230,200,0.85);border-color:var(--gold)">✕ Close</button>
+              <button class="btn btn-outline" id="btn-close-cam" style="position:absolute;top:8px;right:8px;z-index:12;display:none;padding:4px 10px;font-size:0.5rem;background:rgba(245,230,200,0.85);border-color:var(--gold)"><i class="lucide icon-x"></i> Close</button>
               <!-- Filmstrip gallery – replaces capture status and Done button -->
               <div id="capture-filmstrip" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:10;background:rgba(245,230,200,0.92);backdrop-filter:blur(6px);border-top:1px solid rgba(201,169,110,0.15);padding:6px 10px;gap:4px">
                 <div id="filmstrip-thumbs" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;min-height:56px;align-items:center;scrollbar-width:thin"></div>
                 <div style="display:flex;gap:6px;justify-content:center;margin-top:4px">
                   <button class="btn btn-primary btn-xs" id="btn-process-captures" disabled onclick="processAllCaptures()">▶ Process All (<span id="capture-count-badge">0</span>)</button>
-                  <button class="btn btn-outline btn-xs" onclick="closeCamera()">✕ Close</button>
+                  <button class="btn btn-outline btn-xs" onclick="closeCamera()"><i class="lucide icon-x"></i> Close</button>
                 </div>
               </div>
               <div id="cam-selector-wrap" style="display:none;position:absolute;top:40px;left:8px;z-index:12">
@@ -231,12 +231,12 @@
               <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
               <div id="done-bar" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:11;background:rgba(245,230,200,0.94);backdrop-filter:blur(8px);border-top:1px solid rgba(201,169,110,0.25);padding:8px 12px;box-shadow:0 -4px 16px rgba(0,0,0,0.15)">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                  <button class="btn btn-outline btn-sm" onclick="cancelBatch()" style="min-width:30px"><i class="lucide lucide-x"></i></button>
+                  <button class="btn btn-outline btn-sm" onclick="cancelBatch()" style="min-width:30px"><i class="lucide icon-x"></i></button>
                   <div style="flex:1;min-width:120px">
-                    <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-secondary)"><i class="lucide lucide-check-circle-2" style="vertical-align:-1px"></i> <span id="batch-strip-count">0</span> READY — effect settings applied &amp; pending save</div>
+                    <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-secondary)"><i class="lucide icon-badge-check" style="vertical-align:-1px"></i> <span id="batch-strip-count">0</span> READY — effect settings applied &amp; pending save</div>
                     <div id="batch-strip" style="display:flex;gap:4px;overflow-x:auto;min-height:52px;align-items:center;padding:3px 0"></div>
                   </div>
-                  <button class="btn btn-primary btn-sm" id="btn-done-save" onclick="doneSaveBatch()" style="font-size:0.6rem;padding:10px 16px"><i class="lucide lucide-save"></i> DONE &amp; SAVE</button>
+                  <button class="btn btn-primary btn-sm" id="btn-done-save" onclick="doneSaveBatch()" style="font-size:0.6rem;padding:10px 16px"><i class="lucide icon-save"></i> DONE &amp; SAVE</button>
                 </div>
               </div>
               <!-- Native camera capture input (works on ALL phones, no HTTPS needed) -->
@@ -244,9 +244,9 @@
               <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.tsv,.ppt,.pptx,.txt,.md,.rtf,.log" multiple id="file-input">
               <!-- Post-process save/download buttons -->
               <div id="post-process-actions" style="display:none;margin-top:8px;gap:6px;flex-wrap:wrap;justify-content:center;width:100%">
-                <button class="btn btn-primary btn-sm" onclick="saveProcessedResults()">💾 Save to Vault</button>
-                <button class="btn btn-outline btn-sm" onclick="downloadLastResult()">⬇ Download</button>
-                <button class="btn btn-outline btn-sm" onclick="resetScanner()">⟐ New Scan</button>
+                <button class="btn btn-primary btn-sm" onclick="saveProcessedResults()"><i class="lucide icon-folder-down"></i> Save to Vault</button>
+                <button class="btn btn-outline btn-sm" onclick="downloadLastResult()"><i class="lucide icon-download"></i> Download</button>
+                <button class="btn btn-outline btn-sm" onclick="resetScanner()"><i class="lucide icon-refresh-cw"></i> New Scan</button>
               </div>
             </div>
           </div>
@@ -254,7 +254,7 @@
           <div class="result-panel" id="result-panel">
             <div class="card">
               <div class="card-header">
-                <h3><span>✦</span> <span id="result-title">Scan Result</span></h3>
+                <h3><span class="lucide icon-sparkles"></span> <span id="result-title">Scan Result</span></h3>
                 <span class="badge" id="result-badge" style="display:none">--</span>
               </div>
               <div class="card-body">
@@ -264,9 +264,9 @@
                 <div id="result-ocr" style="margin-top:8px"></div>
                 <div id="result-qr" style="margin-top:8px"></div>
                 <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-                  <button class="btn btn-primary" onclick="resetScanner()">⟐ New Scan</button>
-                  <button class="btn btn-outline" id="btn-dl">⬇ Download</button>
-                  <button class="btn btn-outline" id="btn-cloud" style="display:none" onclick="cloudUploadFromResult()">☁ Upload</button>
+                  <button class="btn btn-primary" onclick="resetScanner()"><i class="lucide icon-refresh-cw"></i> New Scan</button>
+                  <button class="btn btn-outline" id="btn-dl"><i class="lucide icon-download"></i> Download</button>
+                  <button class="btn btn-outline" id="btn-cloud" style="display:none" onclick="cloudUploadFromResult()"><i class="lucide icon-cloud"></i> Upload</button>
                 </div>
               </div>
             </div>
@@ -275,7 +275,7 @@
 
         <div class="ctrl-panel">
           <div class="ctrl-group">
-            <h4>✦ AI Features</h4>
+            <h4><i class="lucide icon-brain"></i> AI Features</h4>
             <div class="toggle-row"><span>Auto Crop</span><div class="toggle on" id="tog-crop" onclick="this.classList.toggle('on')"></div></div>
             <div class="toggle-row"><span>Shadow Removal</span><div class="toggle on" id="tog-shadow" onclick="this.classList.toggle('on')"></div></div>
             <div class="toggle-row"><span>Enhance</span><div class="toggle on" id="tog-enhance" onclick="this.classList.toggle('on')"></div></div>
@@ -289,7 +289,7 @@
             </div>
           </div>
           <div class="ctrl-group">
-            <h4>✦ Effects</h4>
+            <h4><i class="lucide icon-sliders"></i> Effects</h4>
             <div class="effect-grid">
               <button class="effect-btn active" data-effect="none">None</button>
               <button class="effect-btn" data-effect="grayscale">Gray</button>
@@ -321,7 +321,7 @@
           <button data-filter="contract">Contracts</button>
         </div>
         <div style="flex:1"></div>
-        <button class="btn btn-outline btn-sm" id="btn-merge" style="display:none" onclick="mergeToPdf()">⊞ Merge PDF (<span id="merge-n">0</span>)</button>
+        <button class="btn btn-outline btn-sm" id="btn-merge" style="display:none" onclick="mergeToPdf()"><i class="lucide icon-file-stack"></i> Merge PDF (<span id="merge-n">0</span>)</button>
       </div>
       <div id="gallery-container"></div>
     </div>
@@ -334,37 +334,37 @@
       </div>
       <div style="max-width:560px">
         <div class="ctrl-group" style="margin-bottom:10px">
-          <h4>💾 Storage</h4>
+          <h4><i class="lucide icon-database"></i> Storage</h4>
           <div class="toggle-row"><span>Location</span><div style="display:flex;gap:4px;align-items:center;flex:1;max-width:280px"><span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="storage-path-display">data/documents/</span><button class="btn btn-primary btn-xs" onclick="browseStorageFolder()">Browse</button></div></div>
           <input type="file" id="folder-picker" webkitdirectory style="display:none" onchange="handleFolderPick(this)">
           <div class="toggle-row"><span>Documents</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)" id="set-count">--</span></div>
           <div class="toggle-row"><span>Storage Used</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)" id="set-size">--</span></div>
         </div>
         <div class="ctrl-group" style="margin-bottom:10px">
-          <h4>☁ Cloud Sync</h4>
+          <h4><i class="lucide icon-cloud"></i> Cloud Sync</h4>
           <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);margin-bottom:6px">Connect cloud providers for backup</p>
           <div id="cloud-status-list"></div>
         </div>
         <div class="ctrl-group" style="margin-bottom:10px">
-          <h4>🔑 API Keys</h4>
+          <h4><i class="lucide icon-key"></i> API Keys</h4>
           <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);margin-bottom:6px">Encrypted · never exposed</p>
           <div id="api-keys-list"></div>
           <div id="api-key-form" style="display:none;margin-top:6px;padding:8px;background:var(--cream);border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.1)">
             <select id="ak-service" style="width:100%;padding:6px 8px;border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.12);background:var(--cream);color:var(--ink);font-family:var(--font-mono);font-size:0.55rem;margin-bottom:5px;outline:none"></select>
             <input type="password" id="ak-value" placeholder="Paste API key" style="width:100%;padding:6px 8px;border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.12);background:var(--cream);color:var(--ink);font-family:var(--font-mono);font-size:0.55rem;margin-bottom:5px;outline:none">
             <div style="display:flex;gap:6px">
-              <button class="btn btn-primary btn-sm" onclick="saveApiKey()">💾 Save</button>
+              <button class="btn btn-primary btn-sm" onclick="saveApiKey()"><i class="lucide icon-save"></i> Save</button>
               <button class="btn btn-outline btn-sm" onclick="document.getElementById('api-key-form').style.display='none';document.getElementById('btn-add-key').style.display=''">Cancel</button>
             </div>
           </div>
-          <button class="btn btn-primary btn-sm" id="btn-add-key" onclick="showAddKeyForm()" style="margin-top:4px">➕ Add Key</button>
+          <button class="btn btn-primary btn-sm" id="btn-add-key" onclick="showAddKeyForm()" style="margin-top:4px"><i class="lucide icon-plus"></i> Add Key</button>
         </div>
         <div class="ctrl-group">
-          <h4>ℹ About</h4>
+          <h4><i class="lucide icon-info"></i> About</h4>
           <div class="toggle-row"><span>Version</span><span style="font-family:var(--font-mono);color:var(--text-tertiary)">3.0.0</span></div>
           <div class="toggle-row"><span>Framework</span><span style="font-family:var(--font-mono);color:var(--text-tertiary)">Archive</span></div>
           <div class="toggle-row"><span>Project</span><span style="font-family:var(--font-mono);color:var(--text-tertiary)">WebEnoid Intern</span></div>
-          <div class="toggle-row"><span>Rating</span><span style="font-family:var(--font-mono);color:var(--gold)">★ 5.0</span></div>
+          <div class="toggle-row"><span>Rating</span><span style="font-family:var(--font-mono);color:var(--gold)"><i class="lucide icon-star" style="vertical-align:-2px"></i> 5.0</span></div>
         </div>
       </div>
     </div>
@@ -378,7 +378,7 @@
   <div class="modal" style="max-width:740px">
     <div class="modal-head">
       <h3 id="modal-title">DOCUMENT INSPECTOR</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <button class="modal-close" onclick="closeModal()"><i class="lucide icon-x"></i></button>
     </div>
     <div class="modal-body" id="modal-body"></div>
   </div>
@@ -396,8 +396,8 @@
         <input type="text" id="dialog-input" placeholder="Type here..." style="width:100%;padding:6px 10px;border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.12);background:var(--cream);color:var(--ink);font-family:var(--font-mono);font-size:0.6rem;outline:none;text-align:center">
       </div>
       <div style="display:flex;gap:6px;justify-content:center;margin-top:10px">
-        <button class="btn btn-primary btn-sm" id="dialog-ok">✓ Confirm</button>
-        <button class="btn btn-outline btn-sm" id="dialog-cancel">✕ Cancel</button>
+        <button class="btn btn-primary btn-sm" id="dialog-ok"><i class="lucide icon-check"></i> Confirm</button>
+        <button class="btn btn-outline btn-sm" id="dialog-cancel"><i class="lucide icon-x"></i> Cancel</button>
       </div>
     </div>
   </div>

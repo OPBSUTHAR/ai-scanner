@@ -8,7 +8,7 @@ function showConfirm(msg,onConfirm){
   document.getElementById('dialog-msg').textContent=msg;
   document.getElementById('dialog-input-wrap').style.display='none';
   document.getElementById('dialog-ok').style.display='';
-  document.getElementById('dialog-ok').textContent='✓ CONFIRM';
+  document.getElementById('dialog-ok').innerHTML='<i class="lucide icon-check"></i> CONFIRM';
   d.classList.add('show');
   document.getElementById('dialog-ok').onclick=function(){d.classList.remove('show');if(onConfirm)onConfirm()};
   document.getElementById('dialog-cancel').onclick=function(){d.classList.remove('show')};
@@ -19,8 +19,8 @@ function showChoice(msg,okLabel,cancelLabel,onOk,onCancel){
   document.getElementById('dialog-msg').textContent=msg;
   document.getElementById('dialog-input-wrap').style.display='none';
   document.getElementById('dialog-ok').style.display='';
-  document.getElementById('dialog-ok').textContent=okLabel||'✓ OK';
-  document.getElementById('dialog-cancel').textContent=cancelLabel||'✕ CANCEL';
+  document.getElementById('dialog-ok').innerHTML='<i class="lucide icon-check"></i> '+(okLabel||'OK');
+  document.getElementById('dialog-cancel').innerHTML='<i class="lucide icon-x"></i> '+(cancelLabel||'CANCEL');
   d.classList.add('show');
   document.getElementById('dialog-ok').onclick=function(){d.classList.remove('show');if(onOk)onOk()};
   document.getElementById('dialog-cancel').onclick=function(){d.classList.remove('show');if(onCancel)onCancel()};
@@ -33,7 +33,7 @@ function showPrompt(msg,onConfirm,defaultVal){
   var inp=document.getElementById('dialog-input');
   inp.value=defaultVal||'';
   document.getElementById('dialog-ok').style.display='';
-  document.getElementById('dialog-ok').textContent='✓ OK';
+  document.getElementById('dialog-ok').innerHTML='<i class="lucide icon-check"></i> OK';
   d.classList.add('show');
   inp.focus();inp.select();
   document.getElementById('dialog-ok').onclick=function(){var v=inp.value.trim();d.classList.remove('show');if(onConfirm)onConfirm(v)};
@@ -68,7 +68,7 @@ function toast(m,t){
   var c=document.getElementById('toast-c');
   var e=document.createElement('div');
   e.className='toast'+(t==='err'?' err':t==='warn'?' warn':'');
-  e.innerHTML='<span>'+(t==='err'?'✕':t==='warn'?'⚠':'✓')+'</span> '+m;
+  e.innerHTML='<span class="toast-ic"><i class="lucide '+(t==='err'?'lucide-circle-x':t==='warn'?'lucide-triangle-alert':'lucide-circle-check')+'"></i></span> '+m;
   c.appendChild(e);
   setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.remove()},300)},3500);
 }
@@ -129,10 +129,10 @@ function loadDashboard(){
   fetch('/stats').then(function(r){return r.json()}).then(function(s){
     var te=Object.entries(s.type_counts||{});
     document.getElementById('stat-grid').innerHTML=
-      '<div class="stat-card"><div class="stat-top"><div class="stat-icon">✦</div></div><div class="stat-number">'+s.total+'</div><div class="stat-label">Documents</div><div class="stat-footer" style="color:var(--gold)">● active</div></div>'+
-      '<div class="stat-card"><div class="stat-top"><div class="stat-icon" style="background:var(--burgundy-dim);color:var(--burgundy)">▣</div></div><div class="stat-number">'+s.types+'</div><div class="stat-label">Types</div><div class="stat-footer" style="color:var(--burgundy);font-family:var(--font-mono);font-size:0.5rem">'+(te.map(function(x){return x[0]+':'+x[1]}).join(' · ')||'—')+'</div></div>'+
-      '<div class="stat-card"><div class="stat-top"><div class="stat-icon" style="background:var(--rust-dim);color:var(--rust)">◉</div></div><div class="stat-number">'+s.total_size+'</div><div class="stat-label">Storage</div><div class="stat-footer" style="color:var(--rust)">● '+s.total+' files</div></div>'+
-      '<div class="stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(45,74,59,0.1);color:var(--emerald)">⟐</div></div><div class="stat-number">'+s.total+'</div><div class="stat-label">Processed</div><div class="stat-footer" style="color:var(--emerald)">● scanned</div></div>';
+      '<div class="stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(255,248,231,0);color:var(--gold)"><i class="lucide icon-files"></i></div></div><div class="stat-number">'+s.total+'</div><div class="stat-label">Documents</div><div class="stat-footer" style="color:var(--gold)">• active</div></div>'+
+      '<div class="stat-card"><div class="stat-top"><div class="stat-icon" style="background:var(--burgundy-dim);color:var(--burgundy)"><i class="lucide icon-shapes"></i></div></div><div class="stat-number">'+s.types+'</div><div class="stat-label">Types</div><div class="stat-footer" style="color:var(--burgundy);font-family:var(--font-mono);font-size:0.5rem">'+(te.map(function(x){return x[0]+':'+x[1]}).join(' · ')||'—')+'</div></div>'+
+      '<div class="stat-card"><div class="stat-top"><div class="stat-icon" style="background:var(--rust-dim);color:var(--rust)"><i class="lucide icon-hard-drive"></i></div></div><div class="stat-number">'+s.total_size+'</div><div class="stat-label">Storage</div><div class="stat-footer" style="color:var(--rust)">• '+s.total+' files</div></div>'+
+      '<div class="stat-card"><div class="stat-top"><div class="stat-icon" style="background:rgba(45,74,59,0.1);color:var(--emerald)"><i class="lucide icon-scan-line"></i></div></div><div class="stat-number">'+s.total+'</div><div class="stat-label">Processed</div><div class="stat-footer" style="color:var(--emerald)">• scanned</div></div>';
     document.getElementById('dash-total').textContent=s.total;
     document.getElementById('hud-storage').innerHTML='<strong>STORAGE</strong> '+s.total_size;
     document.getElementById('gallery-count').textContent=s.total;
@@ -143,10 +143,10 @@ function loadDashboard(){
     if(!docs.length)rg.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-tertiary);font-family:var(--font-classic);font-size:0.7rem;font-style:italic">No scans yet — begin with the Scanner</div>';
     else rg.innerHTML=docs.slice(0,6).map(function(d){
       return '<div class="doc-card" onclick="openPreview(\''+d.path+'\')">'+
-        '<img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--bg-deep)\\\'>◈</div>\'">'+
-        '<div class="doc-overlay"><button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')">⬇</button>'+
-        '<button onclick="event.stopPropagation();openPreview(\''+d.path+'\')">👁</button>'+
-        '<button onclick="event.stopPropagation();deleteDoc(\''+d.path+'\')">🗑</button></div>'+
+        '<img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;color:var(--text-tertiary);opacity:.4;background:var(--bg-deep)\\\'><i class=\\\'lucide icon-image-off\\\'></i></div>\'">'+
+        '<div class="doc-overlay"><button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')"><i class="lucide icon-download"></i></button>'+
+        '<button onclick="event.stopPropagation();openPreview(\''+d.path+'\')"><i class="lucide icon-eye"></i></button>'+
+        '<button onclick="event.stopPropagation();deleteDoc(\''+d.path+'\')"><i class="lucide icon-trash-2"></i></button></div>'+
         '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
     }).join('');
   }).catch(function(){});
@@ -236,7 +236,7 @@ function addFilmstripThumb(blob,idx){
   div.dataset.idx=idx-1;
   var img=document.createElement('img');img.src=URL.createObjectURL(blob);
   var num=document.createElement('span');num.className='thumb-num';num.textContent='#'+cnt;
-  var del=document.createElement('button');del.className='thumb-del';del.textContent='✕';
+  var del=document.createElement('button');del.className='thumb-del';del.innerHTML='<i class="lucide icon-x"></i>';
   del.onclick=function(e){e.stopPropagation();
     var i=parseInt(div.dataset.idx);
     state.capturedBlobs.splice(i,1);
@@ -257,7 +257,7 @@ function addFilmstripThumb(blob,idx){
   div.appendChild(img);div.appendChild(num);div.appendChild(del);
   wrap.appendChild(div);
   wrap.scrollLeft=wrap.scrollWidth;
-  toast('⟐ Captured #'+cnt);
+  toast('Captured #'+cnt);
 }
 /* ---- CAMERA SYSTEM ---- */
 var cameraDevices=[];
@@ -319,7 +319,7 @@ function showCameraUI(s){
   document.getElementById('capture-filmstrip').style.display='';
   document.getElementById('cam-selector-wrap').style.display='';
   document.getElementById('shutter-btn').classList.add('active');
-  document.getElementById('btn-open-cam').textContent='✕ CLOSE CAMERA';
+  document.getElementById('btn-open-cam').innerHTML='<i class="lucide icon-x"></i> CLOSE CAMERA';
   document.getElementById('btn-open-cam').style.background='var(--crimson)';
   refreshCameraList();
   if(!isSecureContext()){
@@ -360,7 +360,7 @@ function startCamera(deviceId){
           else toast('NO CAMERA','err');
         });
       }else if(msg.includes('NotAllowed')||msg.includes('Permission')){
-        toast('⛔ CAMERA BLOCKED — use HTTPS or allow camera access','err');
+        toast('CAMERA BLOCKED — use HTTPS or allow camera access','err');
       }else{
         toast('CAMERA: '+msg,'err');
       }
@@ -378,14 +378,14 @@ function startCamera(deviceId){
           if(!ok2){
             var msg2=err2&&err2.message||'';
             if(msg2.includes('NotAllowed')||msg2.includes('Permission')){
-              toast('⛔ CAMERA BLOCKED — use HTTPS or allow camera access','err');
+              toast('CAMERA BLOCKED — use HTTPS or allow camera access','err');
             }else{
               toast('CAMERA: '+msg2,'err');
             }
           }
         });
       }else if(msg.includes('NotAllowed')||msg.includes('Permission')){
-        toast('⛔ CAMERA BLOCKED — use HTTPS or allow camera access','err');
+        toast('CAMERA BLOCKED — use HTTPS or allow camera access','err');
       }else{
         toast('CAMERA: '+msg,'err');
       }
@@ -399,7 +399,7 @@ document.getElementById('btn-open-cam').addEventListener('click',function(e){
 
   // Check HTTPS FIRST — on HTTP, mediaDevices is often null, so order matters
   if(!isSecureContext()){
-    toast('⚠ CAMERA REQUIRES HTTPS — add --ngrok flag or deploy with HTTPS','err');
+    toast('CAMERA REQUIRES HTTPS — add --ngrok flag or deploy with HTTPS','err');
     return;
   }
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -435,7 +435,7 @@ function phoneCameraCapture(){
   navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){
     // Success — use the stream (same as OPEN CAMERA)
     showCameraUI(s);
-    toast('📷 CAMERA READY');
+    toast('CAMERA READY');
   }).catch(function(){
     // Failed (HTTP, permission, etc.) — fall back to native capture input
     document.getElementById('native-capture').click();
@@ -477,7 +477,7 @@ function startAutoDetect(){
     var avgBright=totalBright/(tw*th);
 
     // Update telemetry
-    document.getElementById('tel-edge').textContent=diff<CAPTURE_THRESHOLD?'⟐ STEADY':'⟐ MOVING';
+    document.getElementById('tel-edge').textContent=diff<CAPTURE_THRESHOLD?'STEADY':'MOVING';
     document.getElementById('tel-blur').textContent='Δ'+diff.toFixed(1);
     document.getElementById('tel-glare').textContent='LV'+avgBright.toFixed(0);
 
@@ -541,7 +541,7 @@ function closeCamera(){
   document.getElementById('capture-filmstrip').style.display='none';
   document.getElementById('cam-selector-wrap').style.display='none';
   document.getElementById('shutter-btn').classList.remove('active');
-  document.getElementById('btn-open-cam').textContent='⟐ OPEN CAMERA';
+  document.getElementById('btn-open-cam').innerHTML='<i class="lucide icon-camera"></i> OPEN CAMERA';
   document.getElementById('btn-open-cam').style.background='';
 }
 
@@ -581,7 +581,7 @@ function startBatchProcessing(){
           state.batchPdfAsked=true;
           showChoice(
             state.batchItems.length+' FILES READY — CONVERT ALL TO A SINGLE PDF, OR SAVE THEM AS SEPARATE IMAGES?',
-            '✔ PDF + SAVE','🃏 IMAGES + SAVE',
+            'PDF + SAVE','IMAGES + SAVE',
             function(){doneSaveBatch(true)},
             function(){doneSaveBatch(false)});
         }else{
@@ -589,7 +589,7 @@ function startBatchProcessing(){
         }
       }else{
         document.getElementById('done-bar').style.display='flex';
-        toast('✓ PROCESSED — set effect & press ✔ DONE to save');
+        toast('PROCESSED — set effect & press DONE to save');
       }
     })
     .catch(function(e){hideLoader();toast('PROCESS ERROR: '+e.message,'err')});
@@ -600,7 +600,7 @@ function renderBatchStrip(items,errors){
   strip.innerHTML=items.map(function(it){
     var label=it.title||it.name||it.key;
     if(it.kind==='pdf'){
-      return '<div class="filmstrip-thumb" title="'+esc(label)+'"><div style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--cream);color:var(--burgundy);font-size:22px">📄</div><span class="thumb-num">PDF</span></div>';
+      return '<div class="filmstrip-thumb" title="'+esc(label)+'"><div style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--cream);color:var(--burgundy);font-size:22px"><i class="lucide icon-file-text"></i></div><span class="thumb-num">PDF</span></div>';
     }
     return '<div class="filmstrip-thumb" title="'+esc(label)+'"><img src="'+it.url+'"><span class="thumb-num">'+(wt[state.selectedEffect]||'')+'</span></div>';
   }).join('');
@@ -620,7 +620,7 @@ function doneSaveBatch(asPdf){
   if(asPdf===undefined&&state.batchItems.length>1){
     showChoice(
       state.batchItems.length+' FILES READY — CONVERT ALL TO A SINGLE PDF, OR SAVE THEM AS SEPARATE IMAGES?',
-      '✔ PDF + SAVE','🃏 IMAGES + SAVE',
+      'PDF + SAVE','IMAGES + SAVE',
       function(){doneSaveBatch(true)},
       function(){doneSaveBatch(false)});
     return;
@@ -633,7 +633,7 @@ function doneSaveBatch(asPdf){
       hideLoader();
       if(data.error){toast(data.error,'err');return}
       var n=data.count||0;
-      toast(asPdf?'📕 PDF SAVED: '+data.pdf_name:'✅ SAVED '+n+' FILES TO VAULT');
+      toast(asPdf?'PDF SAVED: '+data.pdf_name:'SAVED '+n+' FILES TO VAULT');
       resetBatch();
       loadGallery();loadDashboard();
     })
@@ -686,7 +686,7 @@ document.getElementById('native-capture').addEventListener('change',function(e){
   var f=e.target.files[0];
   if(!f)return;
   handleFile(f);
-  toast('📷 PHOTO CAPTURED #'+state.capturedBlobs.length);
+  toast('PHOTO CAPTURED #'+state.capturedBlobs.length);
   this.value='';
 });
 // Post-process save/download
@@ -695,7 +695,7 @@ function saveProcessedResults(){
   // Results are already saved by /scan/advanced — this notifies user
   var n=processedResults.length;
   if(!n){toast('No processed results','warn');return}
-  toast('✅ SAVED '+n+' document'+(n>1?'s':'')+' TO VAULT');
+  toast('SAVED '+n+' document'+(n>1?'s':'')+' TO VAULT');
   document.getElementById('post-process-actions').style.display='none';
   processedResults=[];
   loadGallery();
@@ -737,12 +737,12 @@ function showResults(r){
     '<div class="stat-card" style="padding:10px"><div style="font-size:1rem;font-weight:700">'+(r.dimensions||'--')+'</div><div class="stat-label">Dimensions</div></div>'+
     '<div class="stat-card" style="padding:10px"><div style="font-size:1rem;font-weight:700">'+(r.file_size||'--')+'</div><div class="stat-label">Size</div></div>'+
     '<div class="stat-card" style="padding:10px"><div style="font-size:1rem;font-weight:700">'+r.ocr_length+'</div><div class="stat-label">Text</div></div>'+
-    '<div class="stat-card" style="padding:10px"><div style="font-size:1rem;font-weight:700;color:'+(r.quality.quality_pass?'var(--emerald)':'var(--crimson)')+'">'+(r.quality.quality_pass?'✓':'✕')+'</div><div class="stat-label">Quality</div></div>';
+    '<div class="stat-card" style="padding:10px"><div style="font-size:1rem;font-weight:700;color:'+(r.quality.quality_pass?'var(--emerald)':'var(--crimson)')+'"><i class="lucide icon-'+(r.quality.quality_pass?'badge-check':'badge-x')+'" style="vertical-align:-1px"></i></div><div class="stat-label">Quality</div></div>';
   var det=document.getElementById('result-details');
   var dh='<div class="ctrl-group" style="margin-top:4px"><h4>Details</h4>';
   dh+='<div class="toggle-row"><span>FILENAME</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+r.filename+'</span></div>';
   dh+='<div class="toggle-row"><span>BRIGHTNESS</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+r.quality.brightness+'</span></div>';
-  dh+='<div class="toggle-row"><span>LIGHTING</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+(r.quality.good_lighting?'✓ GOOD':'✕ POOR')+'</span></div>';
+  dh+='<div class="toggle-row"><span>LIGHTING</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+(r.quality.good_lighting?'PASS':'POOR')+'</span></div>';
   dh+='<div class="toggle-row"><span>BLUR</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+r.quality.blur_score+'</span></div>';
   dh+='<div class="toggle-row"><span>OCR CONF</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)">'+(r.ocr.confidence*100).toFixed(0)+'%</span></div>';
   var ex=r.classification.extracted_data||{};
@@ -794,7 +794,7 @@ function renderGallery(){
   var docs=state.galleryDocs;
   if(state.filter!=='all')docs=docs.filter(function(d){return d.folder===state.filter});
   if(!docs.length){
-    c.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-tertiary)"><div style="font-size:48px;margin-bottom:8px;opacity:.15;font-family:var(--font-classic)">✦</div><p style="font-family:var(--font-classic);font-size:0.7rem;font-style:italic">No documents found</p></div>';
+    c.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-tertiary)"><div style="font-size:48px;margin-bottom:8px;opacity:.15;font-family:var(--font-classic)"><i class="lucide icon-archive"></i></div><p style="font-family:var(--font-classic);font-size:0.7rem;font-style:italic">No documents found</p></div>';
     document.getElementById('btn-merge').style.display='none';return;
   }
   document.getElementById('btn-merge').style.display=state.selectedDocs.length?'inline-flex':'none';
@@ -803,10 +803,10 @@ function renderGallery(){
     var s=state.selectedDocs.includes(d.path);
     var sp=JSON.stringify(d.path);
     return '<div class="doc-card '+(s?'selected':'')+'" onclick="toggleDoc('+sp+')">'+
-      '<div class="doc-thumb-wrap"><img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.3;background:var(--bg-deep)\\\'>◈</div>\'">'+
-      '<div class="doc-overlay"><button onclick="event.stopPropagation();openPreview('+sp+')">🔍</button>'+
-      '<button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')">⬇</button>'+
-      '<button onclick="event.stopPropagation();deleteDoc('+sp+')">🗑</button></div></div>'+
+      '<div class="doc-thumb-wrap"><img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);opacity:.4;background:var(--bg-deep)\\\'><i class=\'lucide icon-image-off\'></i></div>\'">'+
+      '<div class="doc-overlay"><button onclick="event.stopPropagation();openPreview('+sp+')"><i class="lucide icon-search"></i></button>'+
+      '<button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')"><i class="lucide icon-download"></i></button>'+
+      '<button onclick="event.stopPropagation();deleteDoc('+sp+')"><i class="lucide icon-trash-2"></i></button></div></div>'+
       '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
   }).join('')+'</div>';
 }
@@ -839,13 +839,13 @@ function openPreview(p){
     '<div style="display:flex;gap:6px"><input type="text" id="rn-input" value="'+d.name+'" style="flex:1;background:var(--bg-card);border:1px solid rgba(0,242,254,0.08);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.55rem;outline:none">'+
     '<button class="btn btn-primary btn-sm" onclick="renameDoc(\''+d.path+'\')">SAVE</button></div>'+
     '<div class="preview-actions">'+
-    '<button class="btn btn-primary" onclick="window.location.href=\''+d.image_url+'\'">⬇ DOWNLOAD</button>'+
-    '<button class="btn btn-outline" onclick="var c=window.location.origin+\''+d.image_url+'\';navigator.clipboard.writeText(c).catch(function(){prompt(\'COPY:\',c)});toast(\'LINK COPIED\')">🔗 SHARE</button>'+
-    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'google_drive\')">☁ DRIVE</button>'+
-    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'dropbox\')">☁ DROPBOX</button>'+
-    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'onedrive\')">☁ ONEDRIVE</button>'+
-    '<button class="btn btn-danger" onclick="deleteDoc(\''+d.path+'\');closeModal()">🗑 DELETE</button>'+
-    '<button class="btn btn-outline" onclick="closeModal()">✕ CLOSE</button></div></div></div>';
+    '<button class="btn btn-primary" onclick="window.location.href=\''+d.image_url+'\'"><i class="lucide icon-download"></i> DOWNLOAD</button>'+
+    '<button class="btn btn-outline" onclick="var c=window.location.origin+\''+d.image_url+'\';navigator.clipboard.writeText(c).catch(function(){prompt(\'COPY:\',c)});toast(\'LINK COPIED\')"><i class="lucide icon-link"></i> SHARE</button>'+
+    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'google_drive\')"><i class="lucide icon-cloud"></i> DRIVE</button>'+
+    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'dropbox\')"><i class="lucide icon-cloudy"></i> DROPBOX</button>'+
+    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'onedrive\')"><i class="lucide icon-cloud-download"></i> ONEDRIVE</button>'+
+    '<button class="btn btn-danger" onclick="deleteDoc(\''+d.path+'\');closeModal()"><i class="lucide icon-trash-2"></i> DELETE</button>'+
+    '<button class="btn btn-outline" onclick="closeModal()"><i class="lucide icon-x"></i> CLOSE</button></div></div></div>';
   document.getElementById('modal').classList.add('show');
 }
 function closeModal(){document.getElementById('modal').classList.remove('show')}
@@ -894,7 +894,7 @@ function loadCloudStatus(){
   fetch('/cloud/status').then(function(r){return r.json()}).then(function(d){
     var list=document.getElementById('cloud-status-list');
     var labels={google_drive:'GOOGLE DRIVE',dropbox:'DROPBOX',onedrive:'ONEDRIVE'};
-    var icons={google_drive:'☁',dropbox:'📦',onedrive:'🪟'};
+    var icons={google_drive:'<i class="lucide icon-cloud"></i>',dropbox:'<i class="lucide icon-package"></i>',onedrive:'<i class="lucide icon-monitor"></i>'};
     list.innerHTML=Object.entries(d.providers).map(function(x){
       var k=x[0],v=x[1];
       var usageHtml='';
@@ -906,7 +906,7 @@ function loadCloudStatus(){
         :v.configured?'<span class="cloud-badge no">OFFLINE</span><button class="btn btn-primary btn-xs" onclick="cloudAuth(\''+k+'\')">CONNECT</button>'
         :'<span class="cloud-badge no">UNCONFIGURED</span>')+'</div></div>';
     }).join('');
-    list.innerHTML+='<div style="margin-top:6px;text-align:center"><button class="btn btn-outline btn-xs" onclick="checkCloudUsage()" style="font-size:0.5rem">📊 CHECK CLOUD USAGE</button></div>';
+    list.innerHTML+='<div style="margin-top:6px;text-align:center"><button class="btn btn-outline btn-xs" onclick="checkCloudUsage()" style="font-size:0.5rem"><i class="lucide icon-bar-chart-3"></i> CHECK CLOUD USAGE</button></div>';
   }).catch(function(){});
 }
 function checkCloudUsage(){
@@ -914,9 +914,9 @@ function checkCloudUsage(){
   fetch('/api/cloud/usage').then(function(r){return r.json()}).then(function(d){
     hideLoader();
     var lines=[];
-    if(d.google_drive) lines.push('☁ DRIVE: '+d.google_drive);
-    if(d.dropbox) lines.push('📦 DROPBOX: '+d.dropbox);
-    if(d.onedrive) lines.push('🪟 ONEDRIVE: '+d.onedrive);
+    if(d.google_drive) lines.push('DRIVE: '+d.google_drive);
+    if(d.dropbox) lines.push('DROPBOX: '+d.dropbox);
+    if(d.onedrive) lines.push('ONEDRIVE: '+d.onedrive);
     if(lines.length) toast(lines.join(' | '));
     else toast('No connected cloud services');
     loadCloudStatus();
@@ -952,20 +952,20 @@ function cloudUpload(path,provider){
 
 /* ---- API KEYS ---- */
 var KEY_META_UI={
-  google_drive_client_id:{label:'GOOGLE DRIVE CLIENT ID',icon:'☁'},
-  google_drive_client_secret:{label:'GOOGLE DRIVE SECRET',icon:'☁'},
-  dropbox_app_key:{label:'DROPBOX APP KEY',icon:'📦'},
-  dropbox_app_secret:{label:'DROPBOX APP SECRET',icon:'📦'},
-  dropbox_access_token:{label:'DROPBOX ACCESS TOKEN',icon:'📦'},
-  onedrive_client_id:{label:'ONEDRIVE CLIENT ID',icon:'🪟'},
-  onedrive_client_secret:{label:'ONEDRIVE SECRET',icon:'🪟'},
-  onedrive_tenant_id:{label:'ONEDRIVE TENANT ID',icon:'🪟'},
-  google_vision_api_key:{label:'GOOGLE VISION KEY',icon:'👁'},
-  google_application_credentials:{label:'GOOGLE SERVICE ACCOUNT',icon:'👁'},
-  ocr_space_api_key:{label:'OCR.SPACE API KEY (FREE)',icon:'📝'},
-  ocr_api_key:{label:'OCR API KEY (ocr-api.com)',icon:'📝'},
-  azure_vision_key:{label:'AZURE VISION KEY',icon:'📝'},
-  azure_vision_endpoint:{label:'AZURE VISION ENDPOINT',icon:'📝'},
+  google_drive_client_id:{label:'GOOGLE DRIVE CLIENT ID',icon:'<i class="lucide icon-cloud"></i>'},
+  google_drive_client_secret:{label:'GOOGLE DRIVE SECRET',icon:'<i class="lucide icon-cloud"></i>'},
+  dropbox_app_key:{label:'DROPBOX APP KEY',icon:'<i class="lucide icon-package"></i>'},
+  dropbox_app_secret:{label:'DROPBOX APP SECRET',icon:'<i class="lucide icon-package"></i>'},
+  dropbox_access_token:{label:'DROPBOX ACCESS TOKEN',icon:'<i class="lucide icon-package"></i>'},
+  onedrive_client_id:{label:'ONEDRIVE CLIENT ID',icon:'<i class="lucide icon-monitor"></i>'},
+  onedrive_client_secret:{label:'ONEDRIVE SECRET',icon:'<i class="lucide icon-monitor"></i>'},
+  onedrive_tenant_id:{label:'ONEDRIVE TENANT ID',icon:'<i class="lucide icon-monitor"></i>'},
+  google_vision_api_key:{label:'GOOGLE VISION KEY',icon:'<i class="lucide icon-eye"></i>'},
+  google_application_credentials:{label:'GOOGLE SERVICE ACCOUNT',icon:'<i class="lucide icon-eye"></i>'},
+  ocr_space_api_key:{label:'OCR.SPACE API KEY (FREE)',icon:'<i class="lucide icon-file-text"></i>'},
+  ocr_api_key:{label:'OCR API KEY (ocr-api.com)',icon:'<i class="lucide icon-file-text"></i>'},
+  azure_vision_key:{label:'AZURE VISION KEY',icon:'<i class="lucide icon-file-text"></i>'},
+  azure_vision_endpoint:{label:'AZURE VISION ENDPOINT',icon:'<i class="lucide icon-file-text"></i>'},
 };
 function loadApiKeys(){
   fetch('/api/keys').then(function(r){return r.json()}).then(function(keys){
@@ -975,7 +975,7 @@ function loadApiKeys(){
     list.innerHTML=configured.map(function(k){
       return '<div class="toggle-row"><span>'+KEY_META_UI[k.name]?.icon+' '+KEY_META_UI[k.name]?.label+'</span>'+
         '<div style="display:flex;gap:6px;align-items:center"><code class="code">'+(k.masked_value||'****')+'</code>'+
-        '<button class="btn btn-danger btn-xs" onclick="deleteApiKey(\''+k.name+'\')" style="padding:1px 6px">✕</button></div></div>';
+        '<button class="btn btn-danger btn-xs" onclick="deleteApiKey(\''+k.name+'\')" style="padding:1px 6px"><i class="lucide icon-x"></i></button></div></div>';
     }).join('');
   }).catch(function(){});
 }
@@ -1071,11 +1071,11 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 function loadOcrStatus(){
   fetch('/api/ocr/status').then(function(r){return r.json()}).then(function(s){
     var badge=document.getElementById('ocr-status-badge');
-    if(s.tesseract) badge.innerHTML='<span style="color:var(--emerald)">● Tesseract</span>';
-    else if(s.google_vision) badge.innerHTML='<span style="color:var(--gold)">● Google Vision</span>';
-    else badge.innerHTML='<span style="color:var(--crimson)">● Not available</span>';
+    if(s.tesseract) badge.innerHTML='<span style="color:var(--emerald)"><i class="lucide icon-check" style="font-size:0.6em"></i> Tesseract</span>';
+    else if(s.google_vision) badge.innerHTML='<span style="color:var(--gold)"><i class="lucide icon-check" style="font-size:0.6em"></i> Google Vision</span>';
+    else badge.innerHTML='<span style="color:var(--crimson)"><i class="lucide icon-x" style="font-size:0.6em"></i> Not available</span>';
   }).catch(function(){
-    document.getElementById('ocr-status-badge').innerHTML='<span style="color:var(--crimson)">● Error</span>';
+    document.getElementById('ocr-status-badge').innerHTML='<span style="color:var(--crimson)"><i class="lucide icon-x" style="font-size:0.6em"></i> Error</span>';
   });
 }
 

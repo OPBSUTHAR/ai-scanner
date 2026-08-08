@@ -46,6 +46,44 @@
 }
 
 /* ============================================================
+   LUCIDE ICONS – THEMED (MIT / open source Lucide library)
+   Flows inline with the Archive palette; inherits text color.
+   ============================================================ */
+i.lucide{
+  font-size:1em;
+  line-height:1;
+  vertical-align:-0.125em;
+  display:inline-block;
+  color:inherit;
+  transition:transform 0.35s ease, color 0.35s ease, filter 0.35s ease;
+}
+/* icons inside nav / buttons */
+.nav-item .icon i.lucide,
+.sidebar .icon i.lucide{font-size:1.05rem}
+button:hover i.lucide,
+.s-btn:hover i.lucide{transform:translateY(1px) scale(1.08)}
+button:active i.lucide{transform:scale(0.92)}
+/* gold wash on hover for primary-adjacent icons */
+a:hover i.lucide, button:hover i.lucide{filter:drop-shadow(0 0 6px rgba(201,169,110,0.35))}
+/* stat icon chips */
+.stat-icon{
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.05rem;background:rgba(201,169,110,0.12);color:var(--gold);
+  transition:transform 0.35s ease;
+}
+.stat-card:hover .stat-icon{transform:rotate(8deg) scale(1.06)}
+/* drop zone big icon */
+.dz-icon i.lucide{font-size:2.2rem;color:var(--gold)}
+/* thumb overlay / small actions */
+.doc-overlay button i.lucide{font-size:0.85rem;pointer-events:none}
+.thumb-del i.lucide{font-size:0.7rem}
+.toast-ic{display:inline-flex;align-items:center}
+.toast-ic i.lucide{color:var(--gold)}
+.toast.err .toast-ic i.lucide{color:var(--crimson)}
+.toast.warn .toast-ic i.lucide{color:var(--amber)}
+
+/* ============================================================
    GLOBAL RESET & BASE – CLASSIC ARCHIVE
    ============================================================ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -252,12 +290,15 @@ body{
   width:100%;text-align:left;position:relative;
   border:1px solid transparent;
 }
-.nav-item:hover{color:var(--gold-light);background:rgba(201,169,110,0.06);border-color:rgba(201,169,110,0.08)}
+.nav-item:hover{color:var(--gold-light);background:rgba(201,169,110,0.06);border-color:rgba(201,169,110,0.08);text-shadow:0 0 12px rgba(201,169,110,0.3)}
+.nav-item:hover .icon{opacity:1}
 .nav-item.active{
   color:var(--gold);background:rgba(201,169,110,0.08);
   border-color:rgba(201,169,110,0.15);
   box-shadow:inset 2px 0 0 var(--gold);
+  text-shadow:0 0 14px rgba(201,169,110,0.35);
 }
+.nav-item:active{transform:scale(0.985)}
 .nav-item .icon{width:20px;text-align:center;font-size:12px;flex-shrink:0;opacity:0.6}
 .nav-item .nav-label{flex:1}
 .nav-item .badge{
@@ -852,7 +893,7 @@ body{
 .filter-group button:hover:not(.active){color:var(--text-secondary);background:rgba(201,169,110,0.06)}
 
 /* ============================================================
-   LOADER – VINTAGE SPINNER
+   LOADER – VINTAGE SPINNER + SCAN RAY
    ============================================================ */
 .loader-overlay{
   display:none;position:fixed;inset:0;z-index:100;
@@ -866,16 +907,51 @@ body{
   border:1px solid rgba(201,169,110,0.2);
   position:relative;overflow:hidden;
   box-shadow:0 16px 48px rgba(0,0,0,0.15);
+  animation:loaderBoxIn 0.4s ease;
 }
+@keyframes loaderBoxIn{from{opacity:0;transform:translateY(10px) scale(0.96)}to{opacity:1;transform:none}}
+/* laser sweep across the box — echo of the archive scan ray */
+.loader-box::before{
+  content:'';position:absolute;left:0;right:0;bottom:-2px;height:2px;
+  background:var(--gradient-border);background-size:200% 100%;
+  animation:loaderRay 2.4s ease-in-out infinite;pointer-events:none;
+}
+@keyframes loaderRay{0%,100%{transform:translateX(-60%);opacity:0.2}50%{transform:translateX(60%);opacity:1}}
+/* faint rotating conic shimmer behind the ring */
+.loader-box::after{
+  content:'';position:absolute;inset:-40%;pointer-events:none;
+  background:conic-gradient(from 0deg, transparent 0deg, rgba(201,169,110,0.06) 60deg, transparent 120deg, transparent 240deg, rgba(107,45,60,0.05) 300deg, transparent 360deg);
+  animation:loaderHalo 5s linear infinite;
+}
+@keyframes loaderHalo{to{transform:rotate(360deg)}}
 .spinner-ring{
   width:44px;height:44px;margin:0 auto 12px;position:relative;
   border-radius:50%;border:2px solid rgba(201,169,110,0.15);
   border-top-color:var(--gold);border-right-color:var(--burgundy);
   animation:spin 1.2s linear infinite;
 }
+/* engraved double-ring for depth */
+.spinner-ring::before{
+  content:'';position:absolute;inset:-7px;border-radius:50%;
+  border:1px dashed rgba(139,58,74,0.25);
+  animation:spin 4s linear infinite reverse;
+}
+/* walking dot — "inspection" orbit */
+.spinner-ring::after{
+  content:'';position:absolute;top:-3px;left:50%;width:6px;height:6px;
+  margin-left:-3px;border-radius:50%;background:var(--gold);
+  box-shadow:0 0 8px rgba(201,169,110,0.8);
+  animation:orbitDot 2.4s ease-in-out infinite;
+}
+@keyframes orbitDot{
+  0%{transform:rotate(0deg) translateX(22px)}
+  50%{transform:rotate(180deg) translateX(22px)}
+  100%{transform:rotate(360deg) translateX(22px)}
+}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loader-text{font-family:var(--font-display);font-size:0.8rem;font-weight:600;color:var(--ink);font-style:italic}
+.loader-text{font-family:var(--font-display);font-size:0.8rem;font-weight:600;color:var(--ink);font-style:italic;animation:blurRay 2.2s ease-in-out infinite}
 .loader-sub{font-family:var(--font-classic);font-size:0.6rem;color:var(--text-tertiary);margin-top:4px;font-style:italic}
+@keyframes blurRay{0%,100%{opacity:1;letter-spacing:0.2px}50%{opacity:0.75;letter-spacing:0.8px}}
 .loader-bar{height:2px;background:rgba(201,169,110,0.1);border-radius:2px;margin-top:10px;overflow:hidden}
 .loader-bar-fill{height:100%;width:0%;background:var(--gradient-border);background-size:200% 100%;animation:loaderBarAnim 1.8s ease infinite;border-radius:2px;transition:width 0.3s}
 @keyframes loaderBarAnim{0%{background-position:-200% 0}100%{background-position:200% 0}}
@@ -946,7 +1022,7 @@ body{
 }
 .toast.err{border-left-color:var(--crimson)}
 .toast.warn{border-left-color:var(--amber)}
-@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(24px) scale(0.96)}60%{transform:translateX(-3px) scale(1.01)}to{opacity:1;transform:translateX(0) scale(1)}}
 
 /* Cloud badges */
 .cloud-badge{font-family:var(--font-mono);font-size:0.5rem;padding:2px 7px;border-radius:3px;font-weight:600}

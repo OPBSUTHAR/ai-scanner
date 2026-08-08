@@ -30,25 +30,40 @@ DONE TODAY
      matches the selected setting
 6. MULTI-FILE -> PDF POPUP
    - Uploading/capturing 2+ images pops up: "Convert all to a single PDF, or save as
-     separate images?" — PDF + SAVE merges everything into one PDF (img2pdf + pypdf),
-     IMAGES + SAVE keeps each file separate
+     separate images?" — PDF + SAVE merges everything into one merged PDF,
+     IMAGES + SAVE keeps each image separate
 7. OFFICE DOCUMENTS -> PDF (NEW)
    - New src/utils/doc_converter.py: converts DOCX, XLSX, CSV/TSV, PPTX, TXT/MD/RTF/LOG
-     to PDF via reportlab (paragraphs + tables preserved)
+     to PDF via renderlab (paragraphs + tables preserved)
    - PDF merge via pypdf (merge_pdfs)
    - New deps: python-docx, python-pptx, openpyxl, pypdf (installed in .venv, added to
      requirements.txt)
-8. FIXES
-   - reportlab 5.x style keys (BodyText/Heading6) + HexColor usage in converter
-   - removed orphaned legacy processAllCaptures body from app.js
-   - batch items kept pending; only /api/batch/done writes to archive
+8. ICONS — OPEN SOURCE LUCIDE (MIT) VAULT-FRIENDLY LIBRARY
+   - Added libre font CSS from lucide-static CDN in index.html <head> (works without JS,
+     same Warehouse palette via existing CSS vars)
+   - Replaced every graphic icon in index.html (nav, buttons, back bar, drop zone,
+     camera, panels, modals, dialog) with Lucide icon classes — 0 leftover glyphs/emoji
+   - Swapped dashboard stat cards, gallery cards, inspector modal actions, cloud rows,
+     API-key rows, toasts, OCR badge and batch strip to Lucide
+   - Icons inherit text color; hover glow + scale micro-interactions in style.css
+9. LOADER & MICRO-ANIMATIONS (ARCHIVE-STYLE)
+   - Reworked loader overlay: laser sweep line, rotating conic halo, engraved dashed
+     double ring, orbiting gold dot (parallel), progress bar shimmer
+   - Toast now springs in (slide + scale) with status-colored icon chip
+   - Nav items glow/tint on hover + active text-shadow; icon press feedback;
+     stat-card icons tilt on hover; text shimmer on loader
+10. HOUSEKEEPING
+   - Removed stale diary_log.txt / log_file.txt from working tree & git (already in
+     .gitignore)
+   - EOD report regenerated to this file in project root
 
 CURRENT STATE
 - Verified end-to-end via Flask test client: single image -> saved PNG with classified
   name; docx/xlsx/pptx/csv -> valid PDF; mixed image+csv -> single merged PDF;
   images-mode keeps files separate (png + individual pdfs)
 - Full suite: 46/46 PASSING; JS syntax check OK
-- Live smoke test on port 5099: login + index render with new UI elements
+- Icons: all classes verified against the downloaded Lucide font file (46 used names,
+  only 'window' missing -> replaced with monitor icon) — no external server call needed
 - App RUNNING at http://localhost:5000
 
 NOT DONE
@@ -59,7 +74,10 @@ NOT DONE
 HOW TO RUN: .\.venv\Scripts\python -m src.web_app  (or run.bat)
 HOW TO TEST: .\.venv\Scripts\python -m pytest tests/
 
-NEXT (tomorrow)
-1. Polish batch UX: per-item delete in done bar, re-order pages before PDF
-2. Deploy: Render account -> git push -> auto-deploy -> test phone camera
-3. Optional: MongoDB metadata, auth, cloud OCR backends
+NEXT (this week / tomorrow)
+1. Check icons visually in-browser (they now render from the font; if the CDN is
+   unreachable offline, fallback plan = vendor lucide.css + lucide.* font files into
+   src/static/)
+2. Polish batch UX: per-item delete in done bar, re-order pages before PDF merge
+3. Deploy: Render (git push -> auto-deploy) -> test phone camera over HTTPS
+4. Optional: MongoDB metadata, auth (login exists), OCR backends
