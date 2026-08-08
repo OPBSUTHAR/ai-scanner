@@ -137,6 +137,8 @@ function loadDashboard(){
     document.getElementById('hud-storage').innerHTML='<strong>STORAGE</strong> '+s.total_size;
     document.getElementById('gallery-count').textContent=s.total;
     document.getElementById('gallery-total').textContent=s.total;
+    var sd=document.getElementById('sb-docs');if(sd)sd.textContent=s.total;
+    var ss=document.getElementById('sb-storage');if(ss)ss.textContent=s.total_size;
   }).catch(function(){});
   fetch('/history').then(function(r){return r.json()}).then(function(docs){
     var rg=document.getElementById('recent-grid');
@@ -549,10 +551,11 @@ function processAllCaptures(){
   startBatchProcessing();
 }
 
-/* ---- INSTANT BATCH PROCESSING (upload → auto process → DONE to save) ---- */
+/* ---- BATCH PROCESSING (upload → original preview → PROCESS applies settings → DONE saves) ---- */
 function startBatchProcessing(){
   var files=state.capturedBlobs.filter(function(b){return b});
   if(!files.length){toast('NO FILES','warn');return}
+  setScannerTick('PROCESSING '+files.length+' FILE(S)...',true);
   state.batchPdfAsked=false;
   showLoader('PROCESSING...','AI ANALYZING '+files.length+' FILE(S)');
   var fd=new FormData();
@@ -589,10 +592,13 @@ function startBatchProcessing(){
         }
       }else{
         document.getElementById('done-bar').style.display='flex';
-        toast('PROCESSED — set effect & press DONE to save');
+        updateBatchHint();
+        toast('PROCESSED — make changes or press DONE to save');
       }
+      updateBatch();
+      setScannerTick('READY — '+state.batchItems.length+' PROCESSED',false);
     })
-    .catch(function(e){hideLoader();toast('PROCESS ERROR: '+e.message,'err')});
+    .catch(function(e){hideLoader();toast('PROCESS ERROR: '+e.message,'err');setScannerTick('PROCESS ERROR',true)});
 }
 function renderBatchStrip(items,errors){
   var strip=document.getElementById('batch-strip');
@@ -606,6 +612,7 @@ function renderBatchStrip(items,errors){
   }).join('');
   document.getElementById('batch-strip-count').textContent=items.length;
   document.getElementById('done-bar').style.display='flex';
+  updateBatchHint();
   if(items.length){
     var last=items[items.length-1];
     if(last.url){
@@ -615,8 +622,34 @@ function renderBatchStrip(items,errors){
     }
   }
 }
+function updateBatch(){
+  var n=state.capturedBlobs.filter(function(b){return b}).length;
+  var cnt=document.getElementById('batch-strip-count');
+  if(cnt)cnt.textContent=n;
+  var pb=document.getElementById('btn-process');
+  if(pb)pb.disabled=n===0;
+  updateBatchHint();
+}
+function updateBatchHint(){
+  var lbl=document.getElementById('batch-status-label');
+  if(!lbl)return;
+  var bar=document.getElementById('done-bar');
+  if(state.batchJobId&&state.batchItems.length){
+    lbl.innerHTML='<i class="lucide icon-badge-check" style="vertical-align:-1px"></i> READY — effect settings applied &amp; pending save';
+  }else if(state.capturedBlobs.length){
+    lbl.innerHTML='<i class="lucide icon-eye" style="vertical-align:-1px"></i> ORIGINAL PREVIEW — tune settings &amp; press PROCESS';
+  }else{
+    lbl.innerHTML='AWAITING FILES';
+  }
+}
+function setScannerTick(txt,busy){
+  var el=document.getElementById('sb-tick-label');
+  var dot=document.querySelector('#sb-scan-tick .dot');
+  if(el)el.textContent=txt;
+  if(dot){dot.className='dot '+(busy?'busy':'on')}
+}
 function doneSaveBatch(asPdf){
-  if(!state.batchJobId||!state.batchItems.length){toast('NOTHING TO SAVE','warn');return}
+  if(!state.batchJobId||!state.batchItems.length){toast('NOTHING TO SAVE — press PROCESS first','warn');return}
   if(asPdf===undefined&&state.batchItems.length>1){
     showChoice(
       state.batchItems.length+' FILES READY — CONVERT ALL TO A SINGLE PDF, OR SAVE THEM AS SEPARATE IMAGES?',
@@ -639,11 +672,35 @@ function doneSaveBatch(asPdf){
     })
     .catch(function(e){hideLoader();toast('SAVE ERROR: '+e.message,'err')});
 }
-function cancelBatch(){resetBatch()}
+function cancelBatch(){
+  var n=state.capturedBlobs.filter(function(b){return b}).length;
+  resetBatch();
+  document.getElementById('filmstrip-thumbs').innerHTML='';
+  document.getElementById('preview-img').removeAttribute('src');
+  document.getElementById('scan-preview').classList.remove('active');
+  document.getElementById('dz-placeholder').style.display='';
+  state.capturedBlobs=[];state.capturedBlob=null;
+  document.getElementById('btn-process-captures').disabled=true;
+  document.getElementById('capture-count-badge').textContent='0';
+  if(n)toast('CANCELLED — '+n+' FILE(S) DISCARDED','warn');
+}
+function retakeBatch(){
+  cancelBatch();
+  closeCamera();
+  var oc=document.getElementById('btn-open-cam');
+  setTimeout(function(){oc.click()},50);
+}
+function reuploadBatch(){
+  cancelBatch();
+  var fi2=document.getElementById('file-input');
+  fi2.value='';
+  fi2.click();
+}
 function resetBatch(){
   document.getElementById('done-bar').style.display='none';
   document.getElementById('batch-strip').innerHTML='';
   state.batchJobId=null;state.batchItems=[];state.batchPdfAsked=false;
+  updateBatch();
 }
 
 var dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');
@@ -665,9 +722,19 @@ function handleFiles(files){
   if(!supported.length){toast('NO SUPPORTED FILES','err');return}
   supported.forEach(function(f){
     state.capturedBlobs.push(f);
+    state.capturedBlob=f;
     addFilmstripThumb(f,state.capturedBlobs.length);
+    if(!document.getElementById('scan-preview').classList.contains('active')){
+      document.getElementById('preview-img').src=URL.createObjectURL(f);
+      document.getElementById('scan-preview').classList.add('active');
+    }
   });
-  startBatchProcessing();
+  document.getElementById('dz-placeholder').style.display='none';
+document.getElementById('btn-process').disabled=false;
+  document.getElementById('batch-strip-count').textContent=state.capturedBlobs.length;
+  document.getElementById('done-bar').style.display='flex';
+  document.getElementById('done-bar').classList.add('origin');
+  updateBatch();
 }
 function handleFile(f){
   state.capturedBlob=f;
@@ -679,7 +746,10 @@ function handleFile(f){
   document.getElementById('scan-preview').classList.add('active');
   document.getElementById('dz-placeholder').style.display='none';
   document.getElementById('btn-process').disabled=false;
-  startBatchProcessing();
+  document.getElementById('batch-strip-count').textContent=cnt;
+document.getElementById('done-bar').style.display='flex';
+  document.getElementById('done-bar').classList.add('origin');
+  updateBatch();
 }
 // Native camera capture handler (works on ALL phones, no getUserMedia needed)
 document.getElementById('native-capture').addEventListener('change',function(e){
@@ -778,6 +848,7 @@ function resetScanner(){
   state.capturedBlob=null;state.currentResult=null;
   resetBatch();
   fi.value='';document.getElementById('btn-process').disabled=true;
+  setScannerTick('SCANNER IDLE',false);
 }
 
 /* ---- GALLERY / VAULT ---- */
@@ -1071,11 +1142,14 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 function loadOcrStatus(){
   fetch('/api/ocr/status').then(function(r){return r.json()}).then(function(s){
     var badge=document.getElementById('ocr-status-badge');
-    if(s.tesseract) badge.innerHTML='<span style="color:var(--emerald)"><i class="lucide icon-check" style="font-size:0.6em"></i> Tesseract</span>';
-    else if(s.google_vision) badge.innerHTML='<span style="color:var(--gold)"><i class="lucide icon-check" style="font-size:0.6em"></i> Google Vision</span>';
-    else badge.innerHTML='<span style="color:var(--crimson)"><i class="lucide icon-x" style="font-size:0.6em"></i> Not available</span>';
+    var eng;
+    if(s.tesseract){eng='TESSERACT';badge.innerHTML='<span style="color:var(--emerald)"><i class="lucide icon-check" style="font-size:0.6em"></i> Tesseract</span>';}
+    else if(s.google_vision){eng='GOOGLE VISION';badge.innerHTML='<span style="color:var(--gold)"><i class="lucide icon-check" style="font-size:0.6em"></i> Google Vision</span>';}
+    else {eng='NONE';badge.innerHTML='<span style="color:var(--crimson)"><i class="lucide icon-x" style="font-size:0.6em"></i> Not available</span>';}
+    var sb=document.getElementById('sb-ocr');if(sb)sb.textContent=eng;
   }).catch(function(){
     document.getElementById('ocr-status-badge').innerHTML='<span style="color:var(--crimson)"><i class="lucide icon-x" style="font-size:0.6em"></i> Error</span>';
+    var sb=document.getElementById('sb-ocr');if(sb)sb.textContent='ERROR';
   });
 }
 

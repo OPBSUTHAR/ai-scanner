@@ -70,6 +70,13 @@
       <span class="nav-label">Settings</span>
     </button>
   </div>
+  <div class="sidebar-status" id="sidebar-status">
+    <div class="sb-head"><i class="lucide icon-gauge"></i> ARCHIVE STATUS</div>
+    <div class="sb-row"><span class="sb-k">DOCUMENTS</span><b class="sb-v" id="sb-docs">0</b></div>
+    <div class="sb-row"><span class="sb-k">STORAGE</span><b class="sb-v" id="sb-storage">--</b></div>
+    <div class="sb-row"><span class="sb-k">OCR ENGINE</span><b class="sb-v" id="sb-ocr" style="font-size:0.48rem">CHECK...</b></div>
+    <div class="sb-tick" id="sb-scan-tick"><span class="dot on"></span> <span id="sb-tick-label">SCANNER IDLE</span></div>
+  </div>
   <div class="sidebar-footer">
     <div class="avatar" id="user-avatar" title="Change profile picture" onclick="document.getElementById('avatar-input').click()">
       <img id="avatar-img" class="avatar-img" src="/static/images/logo.svg" alt="profile">
@@ -181,7 +188,7 @@
                     <i class="lucide icon-smartphone"></i> Phone Camera
                   </button>
                   <div class="btn btn-primary btn-lg" style="background:var(--emerald);cursor:default;opacity:0.9;font-size:0.62rem;line-height:1.5">
-                    <i class="lucide icon-zap"></i> PROCESSING STARTS<br>INSTANTLY ON UPLOAD
+                    <i class="lucide icon-eye"></i> SHOWS ORIGINAL —<br>PROCESS CHANGES, THEN DONE
                   </div>
                 </div>
               </div>
@@ -247,9 +254,11 @@
               <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
               <div id="done-bar" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:11;background:rgba(245,230,200,0.94);backdrop-filter:blur(8px);border-top:1px solid rgba(201,169,110,0.25);padding:8px 12px;box-shadow:0 -4px 16px rgba(0,0,0,0.15)">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                  <button class="btn btn-outline btn-sm" onclick="cancelBatch()" style="min-width:30px"><i class="lucide icon-x"></i></button>
+                  <button class="btn btn-outline btn-sm" onclick="cancelBatch()" title="Cancel &amp; discard batch" style="min-width:30px"><i class="lucide icon-x"></i></button>
+                  <button class="btn btn-outline btn-sm" onclick="retakeBatch()" title="Retake photos" style="font-size:0.5rem;padding:6px 8px"><i class="lucide icon-camera"></i> RETAKE</button>
+                  <button class="btn btn-outline btn-sm" onclick="reuploadBatch()" title="Re-upload files" style="font-size:0.5rem;padding:6px 8px"><i class="lucide icon-upload"></i> RE-UPLOAD</button>
                   <div style="flex:1;min-width:120px">
-                    <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-secondary)"><i class="lucide icon-badge-check" style="vertical-align:-1px"></i> <span id="batch-strip-count">0</span> READY — effect settings applied &amp; pending save</div>
+                    <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-secondary)"><i class="lucide icon-badge-check" style="vertical-align:-1px"></i> <span id="batch-strip-count">0</span> <span id="batch-status-label">READY — effect settings applied &amp; pending save</span></div>
                     <div id="batch-strip" style="display:flex;gap:4px;overflow-x:auto;min-height:52px;align-items:center;padding:3px 0"></div>
                   </div>
                   <button class="btn btn-primary btn-sm" id="btn-done-save" onclick="doneSaveBatch()" style="font-size:0.6rem;padding:10px 16px"><i class="lucide icon-save"></i> DONE &amp; SAVE</button>
