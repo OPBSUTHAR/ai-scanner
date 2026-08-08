@@ -973,9 +973,9 @@ function loadCloudStatus(){
       return '<div class="toggle-row"><span>'+icons[k]+' '+labels[k]+'</span>'+
         '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+
         usageHtml+
-        (v.connected?'<span class="cloud-badge ok">CONNECTED</span><button class="btn btn-outline btn-xs" onclick="cloudDisconnect(\''+k+'\')">DISCONNECT</button>'
-        :v.configured?'<span class="cloud-badge no">OFFLINE</span><button class="btn btn-primary btn-xs" onclick="cloudAuth(\''+k+'\')">CONNECT</button>'
-        :'<span class="cloud-badge no">UNCONFIGURED</span>')+'</div></div>';
+        (v.connected?'<span class="cloud-badge ok">CONFIGURED</span><button class="btn btn-outline btn-xs" onclick="cloudDisconnect(\''+k+'\')">DISCONNECT</button>'
+        :v.configured?'<span class="cloud-badge warn">OFFLINE</span><button class="btn btn-primary btn-xs" onclick="cloudAuth(\''+k+'\')">CONNECT</button>'
+        :'<span class="cloud-badge no">UNCONFIGURED</span><button class="btn btn-primary btn-xs" onclick="cloudAuth(\''+k+'\')"><i class="lucide icon-plug"></i> CONNECT</button>')+'</div></div>';
     }).join('');
     list.innerHTML+='<div style="margin-top:6px;text-align:center"><button class="btn btn-outline btn-xs" onclick="checkCloudUsage()" style="font-size:0.5rem"><i class="lucide icon-bar-chart-3"></i> CHECK CLOUD USAGE</button></div>';
   }).catch(function(){});
@@ -995,7 +995,14 @@ function checkCloudUsage(){
 }
 function cloudAuth(provider){
   fetch('/cloud/auth/'+provider).then(function(r){return r.json()}).then(function(d){
-    if(d.error){toast(d.error,'err');return}
+    if(d.error){
+      if(/not configured/i.test(d.error)){
+        showConfirm(labelsFor(provider)+' NEEDS APP KEYS FIRST — ADD YOUR OWN CLIENT ID/SECRET IN API KEYS, THEN CONNECT',function(){switchView('settings')});
+      }else{
+        toast(d.error,'err');
+      }
+      return;
+    }
     if(d.auth_url){
       window.open(d.auth_url,'_blank','width=600,height=700');
       showPrompt('PASTE AUTHORIZATION CODE:',function(code){
@@ -1007,6 +1014,7 @@ function cloudAuth(provider){
     }
   }).catch(function(e){toast('AUTH FAILED: '+e.message,'err')});
 }
+function labelsFor(p){return {google_drive:'GOOGLE DRIVE',dropbox:'DROPBOX',onedrive:'ONEDRIVE'}[p]||p.toUpperCase()}
 function cloudDisconnect(provider){
   fetch('/cloud/disconnect/'+provider,{method:'POST'}).then(function(r){return r.json()})
     .then(function(d){if(d.disconnected){toast('DISCONNECTED');loadCloudStatus()}}).catch(function(){});
