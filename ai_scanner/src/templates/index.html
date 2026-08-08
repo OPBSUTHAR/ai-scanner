@@ -6,6 +6,7 @@
 <title>AI SCANNER // ARCHIVE v3.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.css">
 </head>
 <body>
 
@@ -35,25 +36,25 @@
   <div class="sidebar-nav">
     <div class="nav-section">Sections</div>
     <button class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
-      <span class="icon">◈</span>
+      <span class="icon"><i class="lucide lucide-layout-dashboard"></i></span>
       <span class="nav-label">Dashboard</span>
     </button>
     <button class="nav-item" data-view="scanner" onclick="switchView('scanner')">
-      <span class="icon">⟐</span>
+      <span class="icon"><i class="lucide lucide-scan-line"></i></span>
       <span class="nav-label">Scanner</span>
     </button>
     <button class="nav-item" data-view="gallery" onclick="switchView('gallery')">
-      <span class="icon">▣</span>
+      <span class="icon"><i class="lucide lucide-archive"></i></span>
       <span class="nav-label">Vault</span>
       <span class="badge" id="gallery-count">0</span>
     </button>
     <div class="nav-section">Tools</div>
     <button class="nav-item" onclick="switchView('gallery');setTimeout(function(){if(state.selectedDocs.length)mergeToPdf();else toast('SELECT DOCUMENTS IN VAULT FIRST','warn')},100)">
-      <span class="icon">⊞</span>
+      <span class="icon"><i class="lucide lucide-file-stack"></i></span>
       <span class="nav-label">Merge PDF</span>
     </button>
     <button class="nav-item" data-view="settings" onclick="switchView('settings')">
-      <span class="icon">⚙</span>
+      <span class="icon"><i class="lucide lucide-settings"></i></span>
       <span class="nav-label">Settings</span>
     </button>
   </div>
@@ -63,8 +64,8 @@
       <div class="name" id="user-name">Curator</div>
       <div class="role">ARCHIVE KEEPER</div>
     </div>
-    <button class="s-btn" onclick="switchView('settings')" title="Config">⚙</button>
-    <button class="s-btn" onclick="logoutSession()" title="Exit">⏻</button>
+    <button class="s-btn" onclick="switchView('settings')" title="Config"><i class="lucide lucide-settings"></i></button>
+    <button class="s-btn" onclick="logoutSession()" title="Exit"><i class="lucide lucide-power"></i></button>
   </div>
 </nav>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -74,8 +75,8 @@
 
   <!-- HUD Top Bar -->
   <div class="hud-topbar">
-    <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-    <button class="btn-back" id="btn-back" onclick="goBack()"><span>←</span><span class="back-label">BACK</span></button>
+    <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()"><i class="lucide lucide-menu"></i></button>
+    <button class="btn-back" id="btn-back" onclick="goBack()"><i class="lucide lucide-arrow-left"></i><span class="back-label">BACK</span></button>
     <div class="brand-tag"><strong>Archive</strong> // Document Scanner</div>
     <div class="hud-tabs">
       <button class="hud-tab active" data-tab="dashboard" onclick="switchView('dashboard')">Dashboard</button>
@@ -110,7 +111,7 @@
       </div>
       <div class="stat-grid" id="stat-grid"></div>
       <div class="pipeline-card">
-        <div class="pipe-title">✦ Processing Pipeline</div>
+        <div class="pipe-title"><i class="lucide lucide-cpu"></i> Processing Pipeline</div>
         <div class="pipeline-flow">
           <div class="pipe-step done"><span class="step-num">01</span> CAPTURE</div>
           <span class="pipe-connector">→</span>
@@ -152,19 +153,19 @@
           <div class="vf-container gborder gborder-glow" id="vf-container">
             <div class="drop-zone gborder" id="drop-zone">
               <div class="dz-placeholder" id="dz-placeholder">
-                <div class="dz-icon">◈</div>
+                <div class="dz-icon"><i class="lucide lucide-file-image"></i></div>
                 <h3>Place Documents</h3>
                 <p>Images · PDF · DOCX · XLSX · CSV · PPTX — select one or many</p>
                 <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-                  <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();document.getElementById('file-input').click()">Select Files</button>
+                  <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();document.getElementById('file-input').click()"><i class="lucide lucide-upload"></i> Select Files</button>
                   <button class="btn btn-primary btn-lg" id="btn-open-cam">
-                    ⟐ Open Camera
+                    <i class="lucide lucide-camera"></i> Open Camera
                   </button>
                   <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();phoneCameraCapture()" style="background:var(--burgundy);border-color:var(--rust);color:var(--cream)">
-                    📷 Phone Camera
+                    <i class="lucide lucide-smartphone"></i> Phone Camera
                   </button>
                   <div class="btn btn-primary btn-lg" style="background:var(--emerald);cursor:default;opacity:0.9;font-size:0.62rem;line-height:1.5">
-                    ⚡ PROCESSING STARTS<br>INSTANTLY ON UPLOAD
+                    <i class="lucide lucide-zap"></i> PROCESSING STARTS<br>INSTANTLY ON UPLOAD
                   </div>
                 </div>
               </div>
@@ -230,12 +231,12 @@
               <div class="scan-preview" id="scan-preview"><img id="preview-img"></div>
               <div id="done-bar" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:11;background:rgba(245,230,200,0.94);backdrop-filter:blur(8px);border-top:1px solid rgba(201,169,110,0.25);padding:8px 12px;box-shadow:0 -4px 16px rgba(0,0,0,0.15)">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                  <button class="btn btn-outline btn-sm" onclick="cancelBatch()" style="min-width:30px">✕</button>
+                  <button class="btn btn-outline btn-sm" onclick="cancelBatch()" style="min-width:30px"><i class="lucide lucide-x"></i></button>
                   <div style="flex:1;min-width:120px">
-                    <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-secondary)">⚡ <span id="batch-strip-count">0</span> READY — effect settings applied &amp; pending save</div>
+                    <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-secondary)"><i class="lucide lucide-check-circle-2" style="vertical-align:-1px"></i> <span id="batch-strip-count">0</span> READY — effect settings applied &amp; pending save</div>
                     <div id="batch-strip" style="display:flex;gap:4px;overflow-x:auto;min-height:52px;align-items:center;padding:3px 0"></div>
                   </div>
-                  <button class="btn btn-primary btn-sm" id="btn-done-save" onclick="doneSaveBatch()" style="font-size:0.6rem;padding:10px 16px">✔ DONE &amp; SAVE</button>
+                  <button class="btn btn-primary btn-sm" id="btn-done-save" onclick="doneSaveBatch()" style="font-size:0.6rem;padding:10px 16px"><i class="lucide lucide-save"></i> DONE &amp; SAVE</button>
                 </div>
               </div>
               <!-- Native camera capture input (works on ALL phones, no HTTPS needed) -->
