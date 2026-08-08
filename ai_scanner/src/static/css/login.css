@@ -90,8 +90,8 @@
   text-align: center;
 }
 
-/* ---- monogram ---- */
-.monogram {
+/* ---- monogram (logo mark) ---- */
+.monogram, .login-logo {
   width: 74px;
   height: 74px;
   margin: 0 auto 14px;
@@ -110,6 +110,7 @@
   box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.25), 0 0 28px rgba(201, 169, 110, 0.35);
   animation: pulseGlow 3.5s ease-in-out infinite, fadeUp 0.9s 0.15s both;
 }
+.login-logo img{width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(26,15,10,0.5))}
 
 /* ---- text ---- */
 .ornament {

@@ -1140,11 +1140,31 @@ function getSessionCookie(name){
 function applySession(){
   var name=getSessionCookie('user_name');
   if(!name){window.location.href='/login';return}
-  var avatar=document.getElementById('user-avatar');
   var label=document.getElementById('user-name');
-  if(avatar)avatar.textContent=name.charAt(0).toUpperCase();
   if(label)label.textContent=name;
   document.title='AI SCANNER // '+name.toUpperCase();
+  var av=document.getElementById('avatar-img');
+  if(av){
+    av.onerror=function(){av.onerror=null;av.src='/static/images/logo.svg'};
+    av.src='/api/profile/avatar?t='+Date.now();
+  }
+}
+function uploadAvatar(input){
+  var f=input.files&&input.files[0];
+  if(!f)return;
+  if(!/^image\//.test(f.type)){toast('IMAGE ONLY','warn');return}
+  var fd=new FormData();
+  fd.append('avatar',f);
+  showLoader('UPLOADING...','SETTING PROFILE PICTURE');
+  fetch('/api/profile/avatar',{method:'POST',body:fd}).then(function(r){return r.json()})
+    .then(function(d){
+      hideLoader();
+      if(d.error){toast(d.error,'err');return}
+      var av=document.getElementById('avatar-img');
+      if(av)av.src='/api/profile/avatar?t='+Date.now();
+      toast('PROFILE PICTURE UPDATED');
+    }).catch(function(){hideLoader();toast('UPLOAD FAILED','err')});
+  input.value='';
 }
 function logoutSession(){
   showConfirm('EXIT THE ARCHIVE?',function(){
@@ -1159,5 +1179,10 @@ applySession();
 restoreState();
 loadDashboard();loadActivity();
 loadOcrStatus();
+// Boot splash: dissolve the intro logo screen
+setTimeout(function(){
+  var bs=document.getElementById('boot-splash');
+  if(bs)bs.classList.add('done');
+},2200);
 // Try to discover cameras without permission (works on some browsers)
 refreshCameraList();

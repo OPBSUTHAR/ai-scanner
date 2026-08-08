@@ -52,7 +52,20 @@ DONE TODAY
    - Toast now springs in (slide + scale) with status-colored icon chip
    - Nav items glow/tint on hover + active text-shadow; icon press feedback;
      stat-card icons tilt on hover; text shimmer on loader
-10. HOUSEKEEPING
+10. LOGO + PROFILE PICTURE (OPEN-SOURCE LUCIDE MARK)
+    - Downloaded open-source Lucide "scan-line" logo (ISC license) into the new
+      src/static/images/logo.svg
+    - Boot splash: full-screen logo reveal animation on app start (boot-splash overlay,
+      dissolves after ~2.2s) — index.html + style.css
+    - Login page monogram replaced with the logo mark (login.css .monogram/.login-logo)
+    - Sidebar brand tile now shows the logo image
+    - Profile card (left-bottom corner) restyled to match the theme: circular gold
+      avatar with camera chip on hover, proper name/role ellipsis, works on mobile
+      (30px avatar when sidebar compacted)
+    - NEW backend endpoints: POST/GET /api/profile/avatar — users can upload their own
+      profile picture (stored per-user in data/profiles/, served with explicit mime);
+      frontend falls back to logo.svg while none set
+11. HOUSEKEEPING
    - Removed stale diary_log.txt / log_file.txt from working tree & git (already in
      .gitignore)
    - EOD report regenerated to this file in project root
@@ -62,22 +75,25 @@ CURRENT STATE
   name; docx/xlsx/pptx/csv -> valid PDF; mixed image+csv -> single merged PDF;
   images-mode keeps files separate (png + individual pdfs)
 - Full suite: 46/46 PASSING; JS syntax check OK
+- Live smoke test on port 5099 (report session): login + index render; boot-splash and
+  avatar markup present; logo.svg served (200, 470B); avatar GET -> 404 before upload,
+  POST -> 200, GET after upload -> 200 (56KB png, correct mime); test file cleaned up
 - Icons: all classes verified against the downloaded Lucide font file (46 used names,
   only 'window' missing -> replaced with monitor icon) — no external server call needed
-- App RUNNING at http://localhost:5000
+- App RUNNING at http://localhost:5000 (restart server to pull new avatar endpoints)
 
 NOT DONE
 - Cloud OCR backends (OCR.space / OCR API / Azure Vision) — optional
 - Render deployment (Docker daemon not running locally to test build)
 - MongoDB / auth / multi-user — optional
+- Crop/rotate of uploaded profile image before saving (currently stored as-is)
 
 HOW TO RUN: .\.venv\Scripts\python -m src.web_app  (or run.bat)
 HOW TO TEST: .\.venv\Scripts\python -m pytest tests/
 
 NEXT (this week / tomorrow)
-1. Check icons visually in-browser (they now render from the font; if the CDN is
-   unreachable offline, fallback plan = vendor lucide.css + lucide.* font files into
-   src/static/)
-2. Polish batch UX: per-item delete in done bar, re-order pages before PDF merge
-3. Deploy: Render (git push -> auto-deploy) -> test phone camera over HTTPS
-4. Optional: MongoDB metadata, auth (login exists), OCR backends
+1. Restart server -> verify boot splash + profile picture in browser
+2. Vendor lucide.css + font files into src/static/ if offline CDN is a concern
+3. Polish batch UX: per-item delete in done bar, re-order pages before PDF merge
+4. Deploy: Render (git push -> auto-deploy) -> test phone camera over HTTPS
+5. Optional: MongoDB metadata, auth (login exists), OCR backends

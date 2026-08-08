@@ -280,6 +280,39 @@ def api_logout():
     return resp
 
 
+PROFILE_DIR = scanner.storage.base_dir / "profiles"
+PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+AVATAR_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+
+
+@app.route("/api/profile/avatar", methods=["POST"])
+def api_upload_avatar():
+    name = request.cookies.get(SESSION_COOKIE, "").strip() or "default"
+    if "avatar" not in request.files:
+        return jsonify({"error": "No file"}), 400
+    file = request.files["avatar"]
+    if not file.filename:
+        return jsonify({"error": "Empty file"}), 400
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in AVATAR_EXTS:
+        ext = ".png"
+    for old in PROFILE_DIR.glob(f"{_safe_name(name)}.*"):
+        old.unlink(missing_ok=True)
+    dest = PROFILE_DIR / f"{_safe_name(name)}{ext}"
+    file.save(str(dest))
+    return jsonify({"ok": True, "url": f"/api/profile/avatar?t={int(datetime.now().timestamp())}"})
+
+
+@app.route("/api/profile/avatar")
+def api_get_avatar():
+    name = request.cookies.get(SESSION_COOKIE, "").strip() or "default"
+    matches = sorted(PROFILE_DIR.glob(f"{_safe_name(name)}.*"))
+    if not matches:
+        return "No profile image", 404
+    mime = mimetypes.guess_type(str(matches[0]))[0]
+    return send_file(str(matches[0]), mimetype=mime or "application/octet-stream")
+
+
 @app.route("/")
 def index():
     if not request.cookies.get(SESSION_COOKIE, "").strip():

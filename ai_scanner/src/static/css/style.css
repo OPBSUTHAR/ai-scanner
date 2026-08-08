@@ -259,6 +259,11 @@ body{
   box-shadow:0 0 12px rgba(201,169,110,0.3);
   letter-spacing:0.5px;
   font-style:italic;
+  overflow:hidden;
+}
+.sidebar-brand .logo .logo-img{
+  width:24px;height:24px;object-fit:contain;display:block;
+  filter:drop-shadow(0 0 2px rgba(26,15,10,0.5));
 }
 .sidebar-brand .logo::after{
   content:'';position:absolute;inset:-2px;border-radius:calc(var(--radius-md) + 2px);
@@ -312,15 +317,32 @@ body{
   display:flex;align-items:center;gap:8px;position:relative;z-index:1;
 }
 .sidebar-footer .avatar{
-  width:30px;height:30px;border-radius:6px;flex-shrink:0;
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
   background:var(--gradient-gold-burgundy);
   display:flex;align-items:center;justify-content:center;
   font-family:var(--font-classic);font-size:12px;font-weight:600;color:#fff;
   font-style:italic;
+  position:relative;cursor:pointer;
+  border:1px solid rgba(201,169,110,0.35);
+  box-shadow:0 0 10px rgba(201,169,110,0.2);
+  transition:var(--transition);
+  overflow:visible;
 }
-.sidebar-footer .info{flex:1}
-.sidebar-footer .info .name{font-size:0.65rem;font-weight:600;color:var(--gold-light)}
-.sidebar-footer .info .role{font-family:var(--font-mono);font-size:0.5rem;color:rgba(201,169,110,0.4);letter-spacing:0.5px}
+.sidebar-footer .avatar:hover{border-color:var(--gold);box-shadow:0 0 14px rgba(201,169,110,0.4)}
+.sidebar-footer .avatar .avatar-img{
+  width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;
+  background:var(--gradient-gold-burgundy);
+}
+.sidebar-footer .avatar .avatar-cam{
+  position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;
+  background:var(--gold);color:#2C1810;display:flex;align-items:center;justify-content:center;
+  font-size:8px;opacity:0;transform:scale(0.6);transition:var(--transition);
+  border:1px solid rgba(26,15,10,0.6);
+}
+.sidebar-footer .avatar:hover .avatar-cam{opacity:1;transform:scale(1)}
+.sidebar-footer .info{flex:1;min-width:0}
+.sidebar-footer .info .name{font-size:0.65rem;font-weight:600;color:var(--gold-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-footer .info .role{font-family:var(--font-mono);font-size:0.5rem;color:rgba(201,169,110,0.4);letter-spacing:0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sidebar-footer .s-btn{
   width:26px;height:26px;border-radius:4px;border:none;
   background:transparent;color:rgba(201,169,110,0.4);cursor:pointer;
@@ -336,6 +358,7 @@ body{
   .sidebar-footer .info,.sidebar-footer .s-btn{display:none}
   .nav-item{justify-content:center;padding:8px}
   .sidebar-footer{justify-content:center;padding:6px}
+  .sidebar-footer .avatar{width:30px;height:30px}
 }
 @media(max-width:480px){
   .sidebar{width:44px}
@@ -891,6 +914,49 @@ body{
   background:var(--burgundy);color:var(--cream);
 }
 .filter-group button:hover:not(.active){color:var(--text-secondary);background:rgba(201,169,110,0.06)}
+
+/* ============================================================
+   BOOT SPLASH – LOGO REVEAL AT APP START
+   ============================================================ */
+.boot-splash{
+  position:fixed;inset:0;z-index:300;
+  background:linear-gradient(180deg,#2C1810 0%,#1A0F0A 100%);
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity 0.6s ease, visibility 0.6s ease;
+}
+.boot-splash.done{opacity:0;visibility:hidden;pointer-events:none}
+.boot-inner{text-align:center}
+.boot-logo{
+  width:110px;height:110px;margin:0 auto 18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--gradient-gold-burgundy);
+  box-shadow:0 0 40px rgba(201,169,110,0.35);
+  position:relative;
+  animation:bootPop 0.9s cubic-bezier(0.2,0.9,0.3,1.2) both;
+}
+.boot-logo img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(26,15,10,0.5))}
+.boot-logo::before{
+  content:'';position:absolute;inset:-6px;border-radius:50%;
+  border:1px dashed rgba(201,169,110,0.35);
+  animation:spin 6s linear infinite;
+}
+@keyframes bootPop{0%{opacity:0;transform:scale(0.5)}100%{opacity:1;transform:scale(1)}}
+.boot-name{
+  font-family:var(--font-display);font-size:1rem;font-weight:700;
+  color:var(--gold-light);letter-spacing:8px;font-style:italic;
+  animation:bootFade 1.2s ease 0.2s both;text-indent:8px;
+}
+.boot-rule{
+  width:60px;height:1px;margin:12px auto;background:var(--gradient-border);
+  background-size:200% 100%;animation:loaderBarAnim 2s ease infinite;
+}
+.boot-sub{
+  font-family:var(--font-classic);font-size:0.6rem;color:rgba(201,169,110,0.55);
+  letter-spacing:3px;font-style:italic;animation:bootFade 1.2s ease 0.4s both;
+}
+@keyframes bootFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* logo pulse used in boot too */
+.boot-logo img{animation:logoPulse 2s ease-in-out infinite}
 
 /* ============================================================
    LOADER – VINTAGE SPINNER + SCAN RAY
