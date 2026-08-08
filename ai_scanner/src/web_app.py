@@ -1,4 +1,4 @@
-import os, sys, json, mimetypes, shutil, re, socket
+import os, sys, json, mimetypes, shutil, re, socket, uuid
 from pathlib import Path
 from datetime import datetime
 from io import BytesIO
@@ -17,6 +17,7 @@ from src.main import AIScanner
 from src.storage.local_storage import LocalStorage
 from src.utils.search import DocumentSearch
 from src.utils.key_manager import KeyManager
+from src.utils.doc_converter import is_office_file, convert_to_pdf, merge_pdfs
 
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "config" / "app_config.json"
 
@@ -599,8 +600,249 @@ def effects_preview():
 
 
 # ---------------------------------------------------------------------------
-#  AI Auto-Detect (for AI auto-capture mode)
+#  Batch Processing (multi-file upload / capture → preview → Done button)
 # ---------------------------------------------------------------------------
+
+BATCH_TEMP_DIR = scanner.storage.base_dir / "temp" / "batch"
+
+
+def _cleanup_old_batches(max_age_hours=6):
+    try:
+        if BATCH_TEMP_DIR.exists():
+            for p in BATCH_TEMP_DIR.iterdir():
+                age = (datetime.now() - datetime.fromtimestamp(p.stat().st_mtime)).total_seconds()
+                if age > max_age_hours * 3600:
+                    shutil.rmtree(str(p), ignore_errors=True)
+    except Exception:
+        pass
+
+
+def _apply_image_effect(img, effect):
+    if effect == "grayscale":
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif effect == "binarize":
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, img = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif effect == "sharpen":
+        k = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+        img = cv2.filter2D(img, -1, k)
+    elif effect == "invert":
+        img = cv2.bitwise_not(img)
+    return img
+
+
+@app.route("/api/batch/process", methods=["POST"])
+def batch_process():
+    files = request.files.getlist("files")
+    if not files:
+        return jsonify({"error": "No files received"}), 400
+
+    _cleanup_old_batches()
+    job_id = uuid.uuid4().hex[:12]
+    job_dir = BATCH_TEMP_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    auto_crop = request.form.get("auto_crop", "true") == "true"
+    shadow_removal = request.form.get("shadow_removal", "true") == "true"
+    enhance = request.form.get("enhance", "true") == "true"
+    effect = request.form.get("effect", "none")
+    use_google_vision = request.form.get("use_google_vision", "false") == "true"
+    use_handwriting = request.form.get("use_handwriting", "false") == "true"
+    dewarp = request.form.get("dewarp", "false") == "true"
+
+    items = []
+    errors = []
+    for i, f in enumerate(files):
+        fname = f.filename or f"file_{i}"
+        safe = re.sub(r"[^A-Za-z0-9._-]", "_", Path(fname).name)[:80]
+        ext = Path(fname).suffix.lower()
+        item_key = f"item{i}"
+
+        if ext and Path(fname).name.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tiff", ".tif")):
+            img = cv2.imdecode(np.frombuffer(f.read(), np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                errors.append(fname)
+                continue
+            if auto_crop:
+                corners = scanner.edges.find_document_contour(img)
+                if corners is not None:
+                    img = scanner.edges.perspective_correct(img, corners)
+            if dewarp:
+                img = scanner.edges.dewarp(img)
+            if shadow_removal and hasattr(scanner.enhancer, "remove_shadows"):
+                try:
+                    img = scanner.enhancer.remove_shadows(img)
+                except Exception:
+                    pass
+            if enhance:
+                img = scanner.enhancer.enhance_document(img)
+            img = _apply_image_effect(img, effect)
+
+            if use_google_vision:
+                scanner.ocr.use_google_vision = True
+            ocr_res = scanner.ocr.extract_text(img, use_handwriting=use_handwriting)
+            scanner.ocr.use_google_vision = False
+            text = ocr_res.text
+            cls = scanner.classifier.classify(text) if text else None
+            title = scanner.namer.generate_name(
+                cls.doc_type if cls else "document",
+                cls.extracted_data if cls else {},
+                text
+            ) if cls else f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            out_path = job_dir / f"{item_key}.png"
+            out_meta = {
+                "index": i, "original": fname, "kind": "image", "title": title,
+                "doc_type": cls.doc_type if cls else "document",
+                "conf": round(float(cls.confidence), 3) if cls else 0,
+                "ocr_text": text,
+                "ocr_confidence": round(conf, 3) if (conf := ocr_res.confidence) is not None else 0,
+                "metadata": {
+                    "ocr_text": text,
+                    "doc_type": cls.doc_type if cls else "document",
+                    "extracted_data": cls.extracted_data if cls else {},
+                    "quality": scanner.enhancer.quality_assessment(img),
+                },
+            }
+            if not cv2.imwrite(str(out_path), img):
+                errors.append(fname)
+                continue
+            (job_dir / f"{item_key}.json").write_text(json.dumps(out_meta))
+            items.append({
+                "key": item_key, "kind": "image",
+                "name": fname, "title": title,
+                "url": url_for("serve_batch_temp", job_id=job_id, filename=f"{item_key}.png"),
+            })
+        elif is_office_file(fname):
+            src_path = job_dir / ("src_" + item_key + "_" + safe)
+            src_path.write_bytes(f.read())
+            pdf_path = convert_to_pdf(str(src_path))
+            if not pdf_path or not Path(pdf_path).exists():
+                errors.append(fname)
+                continue
+            stem = Path(fname).stem or fname
+            out_meta = {"index": i, "kind": "pdf", "title": stem,
+                        "doc_type": "document", "pdf_src": Path(pdf_path).name}
+            dest_pdf = job_dir / f"{item_key}.pdf"
+            shutil.copy2(pdf_path, str(dest_pdf))
+            (job_dir / f"{item_key}.json").write_text(json.dumps(out_meta))
+            items.append({
+                "key": item_key, "kind": "pdf",
+                "name": fname, "title": stem,
+                "url": f"/api/batch/temp/{job_id}/{item_key}.pdf",
+            })
+        else:
+            errors.append(fname)
+
+    return jsonify({"job_id": job_id, "items": items, "errors": errors})
+
+
+def _safe_name(name):
+    return re.sub(r"[^A-Za-z0-9._-]", "_", name)[:60] or "doc"
+
+
+@app.route("/api/batch/temp/<job_id>/<filename>")
+def serve_batch_temp(job_id, filename):
+    full = BATCH_TEMP_DIR / job_id / filename
+    if not full.exists() or not full.is_file():
+        return "Not found", 404
+    mime = mimetypes.guess_type(str(full))[0]
+    return send_file(str(full), mimetype=mime or "application/octet-stream")
+
+
+@app.route("/api/batch/done", methods=["POST"])
+def batch_done():
+    data = request.json or {}
+    job_id = data.get("job_id", "")
+    keys = data.get("keys", []) or []
+    as_pdf = bool(data.get("as_pdf", False))
+    if not job_id or not keys:
+        return jsonify({"error": "job_id and keys required"}), 400
+    job_dir = BATCH_TEMP_DIR / job_id
+    if not job_dir.exists():
+        return jsonify({"error": "Batch session expired — re-upload"}), 410
+
+    saved = []
+    images_for_pdf = []
+    pdfs_for_pdf = []
+    first_title = None
+    first_doc_type = "document"
+
+    for key in keys:
+        meta_path = job_dir / f"{key}.json"
+        if not meta_path.exists():
+            continue
+        meta = json.loads(meta_path.read_text())
+        if first_title is None:
+            first_title = meta.get("title") or f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            first_doc_type = meta.get("doc_type", "document")
+        kind = meta.get("kind", "image")
+        title = _safe_name(meta.get("title") or f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        doc_type = meta.get("doc_type", "document")
+        if kind == "image":
+            src = job_dir / f"{key}.png"
+            if not src.exists():
+                continue
+            if not as_pdf:
+                target = scanner.storage._type_folder(doc_type) / f"{title}.png"
+                if target.exists():
+                    title = f"{title}_{key}"
+                fpath = scanner.storage.save_document(
+                    cv2.imread(str(src)), title, doc_type, meta.get("metadata", {}))
+                rel = os.path.relpath(fpath, str(DOCUMENTS_FOLDER)).replace("\\", "/")
+                saved.append({"name": os.path.basename(fpath), "path": rel,
+                              "url": url_for("serve_image", subpath=rel),
+                              "kind": "image", "type": doc_type})
+            else:
+                images_for_pdf.append(str(src))
+        elif kind == "pdf":
+            src = job_dir / f"{key}.pdf"
+            if src.exists():
+                pdfs_for_pdf.append((key, str(src)))
+
+    pdf_parts = []
+    if images_for_pdf:
+        import img2pdf
+        tmp_pdf = job_dir / "_combined.pdf"
+        tmp_pdf.write_bytes(img2pdf.convert(images_for_pdf))
+        pdf_parts.append(str(tmp_pdf))
+    pdf_parts.extend(p for _, p in sorted(pdfs_for_pdf))
+
+    if as_pdf and pdf_parts:
+        target_dir = DOCUMENTS_FOLDER / "documented"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        out_pdf = target_dir / (_safe_name(first_title) + ".pdf")
+        merged = merge_pdfs(pdf_parts, str(out_pdf)) if len(pdf_parts) > 1 else pdf_parts[0]
+        if merged != str(out_pdf):
+            shutil.copy2(merged, str(out_pdf))
+        rel = os.path.relpath(str(out_pdf), str(DOCUMENTS_FOLDER)).replace("\\", "/")
+        saved.append({"name": out_pdf.name, "path": rel,
+                      "url": url_for("serve_image", subpath=rel),
+                      "kind": "pdf", "type": "documented"})
+    elif not as_pdf:
+        for key, p in sorted(pdfs_for_pdf):
+            meta_path = job_dir / f"{key}.json"
+            if meta_path.exists():
+                meta = json.loads(meta_path.read_text())
+                title = _safe_name(meta.get("title") or f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+            else:
+                title = Path(p).stem
+            target = DOCUMENTS_FOLDER / "documented" / f"{title}.pdf"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists():
+                target = target.with_name(f"{title}_{key}.pdf")
+            shutil.copy2(p, str(target))
+            rel = os.path.relpath(str(target), str(DOCUMENTS_FOLDER)).replace("\\", "/")
+            saved.append({"name": target.name, "path": rel,
+                          "url": url_for("serve_image", subpath=rel),
+                          "kind": "pdf", "type": "documented"})
+
+    shutil.rmtree(str(job_dir), ignore_errors=True)
+    return jsonify({"done": True, "saved": saved,
+                    "count": len(saved),
+                    "pdf_name": next((s["name"] for s in saved if s["kind"] == "pdf"), None)})
 
 @app.route("/api/auto-detect", methods=["POST"])
 def api_auto_detect():

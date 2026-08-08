@@ -1,4 +1,4 @@
-const state={capturedBlob:null,capturedBlobs:[],selectedEffect:'none',stream:null,filter:'all',selectedDocs:[],galleryDocs:[],currentResult:null,currentView:'dashboard',navHistory:[]};
+const state={capturedBlob:null,capturedBlobs:[],selectedEffect:'none',stream:null,filter:'all',selectedDocs:[],galleryDocs:[],currentResult:null,currentView:'dashboard',navHistory:[],batchJobId:null,batchItems:[]};
 var scanActive=false;
 
 /* ---- IN-APP CONFIRM / PROMPT ---- */
@@ -12,6 +12,18 @@ function showConfirm(msg,onConfirm){
   d.classList.add('show');
   document.getElementById('dialog-ok').onclick=function(){d.classList.remove('show');if(onConfirm)onConfirm()};
   document.getElementById('dialog-cancel').onclick=function(){d.classList.remove('show')};
+}
+function showChoice(msg,okLabel,cancelLabel,onOk,onCancel){
+  var d=document.getElementById('dialog');
+  document.getElementById('dialog-title').textContent='CHOICE';
+  document.getElementById('dialog-msg').textContent=msg;
+  document.getElementById('dialog-input-wrap').style.display='none';
+  document.getElementById('dialog-ok').style.display='';
+  document.getElementById('dialog-ok').textContent=okLabel||'✓ OK';
+  document.getElementById('dialog-cancel').textContent=cancelLabel||'✕ CANCEL';
+  d.classList.add('show');
+  document.getElementById('dialog-ok').onclick=function(){d.classList.remove('show');if(onOk)onOk()};
+  document.getElementById('dialog-cancel').onclick=function(){d.classList.remove('show');if(onCancel)onCancel()};
 }
 function showPrompt(msg,onConfirm,defaultVal){
   var d=document.getElementById('dialog');
@@ -156,7 +168,16 @@ document.querySelectorAll('.effect-btn').forEach(function(b){
   b.addEventListener('click',function(){
     document.querySelectorAll('.effect-btn').forEach(function(x){x.classList.remove('active')});
     this.classList.add('active');state.selectedEffect=this.dataset.effect;
-    if(state.capturedBlob)updatePreview();
+    if(state.batchJobId||state.batchItems.length){
+      startBatchProcessing();
+    }else if(state.capturedBlob){
+      updatePreview();
+    }
+  });
+});
+document.querySelectorAll('#view-scanner .toggle').forEach(function(t){
+  t.addEventListener('click',function(){
+    if(state.batchJobId||state.batchItems.length)startBatchProcessing();
   });
 });
 document.getElementById('btn-close-cam').addEventListener('click',function(e){
@@ -525,68 +546,104 @@ function closeCamera(){
 }
 
 function processAllCaptures(){
-  if(!state.capturedBlobs.length){toast('No captures','warn');return}
-  showLoader('PROCESSING...','AI ANALYZING '+state.capturedBlobs.length+' PAGES');
-  var fusionOn=document.getElementById('tog-fusion').classList.contains('on');
-  if(fusionOn&&state.capturedBlobs.length>=2){
-    var ffd=new FormData();
-    for(var i=0;i<state.capturedBlobs.length;i++)ffd.append('images',state.capturedBlobs[i],'shot_'+i+'.jpg');
-    ffd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
-    ffd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
-    ffd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
-    ffd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
-    fetch('/scan/fusion',{method:'POST',body:ffd}).then(function(r){return r.json()}).then(function(data){
+  startBatchProcessing();
+}
+
+/* ---- INSTANT BATCH PROCESSING (upload → auto process → DONE to save) ---- */
+function startBatchProcessing(){
+  var files=state.capturedBlobs.filter(function(b){return b});
+  if(!files.length){toast('NO FILES','warn');return}
+  state.batchPdfAsked=false;
+  showLoader('PROCESSING...','AI ANALYZING '+files.length+' FILE(S)');
+  var fd=new FormData();
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    fd.append('files',f,(f.name||('capture_'+(i+1)+'.jpg')));
+  }
+  fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
+  fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on')?'true':'false');
+  fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on')?'true':'false');
+  fd.append('effect',state.selectedEffect);
+  fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
+  fd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
+  fd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
+  fetch('/api/batch/process',{method:'POST',body:fd})
+    .then(function(r){return r.json()})
+    .then(function(data){
       hideLoader();
-      if(!data.error){
-        processedResults=[data];
-        toast('✅ ANTI-GLARE FUSED '+state.capturedBlobs.length+' SHOTS');
-        if(data.image_url){
-          document.getElementById('preview-img').src=data.image_url;
-          document.getElementById('scan-preview').classList.add('active');
+      if(data.error){toast(data.error,'err');return}
+      state.batchJobId=data.job_id;
+      state.batchItems=data.items||[];
+      renderBatchStrip(data.items,data.errors||[]);
+      if(!state.batchItems.length){toast('NO FILES COULD BE PROCESSED','err');return}
+      if(state.batchItems.length>1){
+        if(!state.batchPdfAsked){
+          state.batchPdfAsked=true;
+          showChoice(
+            state.batchItems.length+' FILES READY — CONVERT ALL TO A SINGLE PDF, OR SAVE THEM AS SEPARATE IMAGES?',
+            '✔ PDF + SAVE','🃏 IMAGES + SAVE',
+            function(){doneSaveBatch(true)},
+            function(){doneSaveBatch(false)});
+        }else{
+          document.getElementById('done-bar').style.display='flex';
         }
-        document.getElementById('post-process-actions').style.display='flex';
-      }else{toast(data.error,'err')}
-      document.getElementById('btn-process-all').style.display='none';
-      document.getElementById('filmstrip-thumbs').innerHTML='';
-      state.capturedBlobs=[];
-    }).catch(function(e){hideLoader();toast('ERROR: '+e.message,'err');document.getElementById('btn-process-all').style.display='none'});
+      }else{
+        document.getElementById('done-bar').style.display='flex';
+        toast('✓ PROCESSED — set effect & press ✔ DONE to save');
+      }
+    })
+    .catch(function(e){hideLoader();toast('PROCESS ERROR: '+e.message,'err')});
+}
+function renderBatchStrip(items,errors){
+  var strip=document.getElementById('batch-strip');
+  var wt={none:'',grayscale:'(GRAY)',binarize:'(B&W)',sharpen:'(SHARP)',invert:'(INVERT)',enhance:'(ENH)'};
+  strip.innerHTML=items.map(function(it){
+    var label=it.title||it.name||it.key;
+    if(it.kind==='pdf'){
+      return '<div class="filmstrip-thumb" title="'+esc(label)+'"><div style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--cream);color:var(--burgundy);font-size:22px">📄</div><span class="thumb-num">PDF</span></div>';
+    }
+    return '<div class="filmstrip-thumb" title="'+esc(label)+'"><img src="'+it.url+'"><span class="thumb-num">'+(wt[state.selectedEffect]||'')+'</span></div>';
+  }).join('');
+  document.getElementById('batch-strip-count').textContent=items.length;
+  document.getElementById('done-bar').style.display='flex';
+  if(items.length){
+    var last=items[items.length-1];
+    if(last.url){
+      document.getElementById('preview-img').src=last.url;
+      document.getElementById('scan-preview').classList.add('active');
+      document.getElementById('dz-placeholder').style.display='none';
+    }
+  }
+}
+function doneSaveBatch(asPdf){
+  if(!state.batchJobId||!state.batchItems.length){toast('NOTHING TO SAVE','warn');return}
+  if(asPdf===undefined&&state.batchItems.length>1){
+    showChoice(
+      state.batchItems.length+' FILES READY — CONVERT ALL TO A SINGLE PDF, OR SAVE THEM AS SEPARATE IMAGES?',
+      '✔ PDF + SAVE','🃏 IMAGES + SAVE',
+      function(){doneSaveBatch(true)},
+      function(){doneSaveBatch(false)});
     return;
   }
-  var results=[],idx=0;
-  (function processNext(){
-    if(idx>=state.capturedBlobs.length){
+  showLoader('SAVING...',asPdf?'GENERATING PDF...':'COMMITTING TO ARCHIVE');
+  fetch('/api/batch/done',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({job_id:state.batchJobId,keys:state.batchItems.map(function(it){return it.key}),as_pdf:!!asPdf})})
+    .then(function(r){return r.json()})
+    .then(function(data){
       hideLoader();
-      processedResults=results;
-      if(results.length){
-        toast('✅ Processed '+results.length+' page'+(results.length>1?'s':''));
-        var last=results[results.length-1];
-        if(last&&last.image_url){
-          document.getElementById('preview-img').src=last.image_url;
-          document.getElementById('scan-preview').classList.add('active');
-        }
-        document.getElementById('post-process-actions').style.display='flex';
-      }
-      document.getElementById('btn-process-all').style.display='none';
-      document.getElementById('filmstrip-thumbs').innerHTML='';
-      state.capturedBlobs=[];
-      return;
-    }
-    var fd=new FormData();
-    fd.append('image',state.capturedBlobs[idx],'page_'+idx+'.jpg');
-    fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
-    fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on')?'true':'false');
-    fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on')?'true':'false');
-    fd.append('effect',state.selectedEffect);
-    fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
-    fd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
-    fd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
-    fetch('/scan/advanced',{method:'POST',body:fd})
-      .then(function(r){return r.json()})
-      .then(function(data){
-        if(!data.error)results.push(data);
-        idx++;processNext();
-      }).catch(function(){idx++;processNext()});
-  })();
+      if(data.error){toast(data.error,'err');return}
+      var n=data.count||0;
+      toast(asPdf?'📕 PDF SAVED: '+data.pdf_name:'✅ SAVED '+n+' FILES TO VAULT');
+      resetBatch();
+      loadGallery();loadDashboard();
+    })
+    .catch(function(e){hideLoader();toast('SAVE ERROR: '+e.message,'err')});
+}
+function cancelBatch(){resetBatch()}
+function resetBatch(){
+  document.getElementById('done-bar').style.display='none';
+  document.getElementById('batch-strip').innerHTML='';
+  state.batchJobId=null;state.batchItems=[];state.batchPdfAsked=false;
 }
 
 var dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');
@@ -597,9 +654,21 @@ dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('
 dz.addEventListener('dragleave',function(){dz.classList.remove('dragover')});
 dz.addEventListener('drop',function(e){
   e.preventDefault();dz.classList.remove('dragover');
-  var f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))handleFile(f);else toast('DROP AN IMAGE','err');
+  var fl=[].slice.call(e.dataTransfer.files);
+  if(fl.length)handleFiles(fl);else toast('DROP FILES','err');
 });
-fi.addEventListener('change',function(e){if(e.target.files[0])handleFile(e.target.files[0])});
+fi.addEventListener('change',function(e){if(e.target.files.length)handleFiles([].slice.call(e.target.files))});
+function handleFiles(files){
+  var supported=files.filter(function(f){return f.type&&f.type.startsWith('image/')||f.name.match(/\.(png|jpe?g|bmp|webp|tiff?|pdf|docx?|xlsx?|csv|tsv|ppt|pptx|txt|md|rtf|log)$/i)});
+  var skipped=files.length-supported.length;
+  if(skipped)toast('SKIPPED '+skipped+' UNSUPPORTED FILE(S)','warn');
+  if(!supported.length){toast('NO SUPPORTED FILES','err');return}
+  supported.forEach(function(f){
+    state.capturedBlobs.push(f);
+    addFilmstripThumb(f,state.capturedBlobs.length);
+  });
+  startBatchProcessing();
+}
 function handleFile(f){
   state.capturedBlob=f;
   state.capturedBlobs.push(f);
@@ -610,7 +679,7 @@ function handleFile(f){
   document.getElementById('scan-preview').classList.add('active');
   document.getElementById('dz-placeholder').style.display='none';
   document.getElementById('btn-process').disabled=false;
-  document.getElementById('btn-process-all').style.display='';
+  startBatchProcessing();
 }
 // Native camera capture handler (works on ALL phones, no getUserMedia needed)
 document.getElementById('native-capture').addEventListener('change',function(e){
@@ -646,37 +715,7 @@ function updatePreview(){
 }
 document.getElementById('btn-process').addEventListener('click',function(){
   if(!state.capturedBlob)return;
-  showLoader('SCANNING...','AI PROCESSING DOCUMENT');
-  document.getElementById('result-panel').style.display='none';
-  var fusionOn=document.getElementById('tog-fusion').classList.contains('on');
-  var shots=state.capturedBlobs.length>=2?state.capturedBlobs:[state.capturedBlob];
-  if(fusionOn&&shots.length>=2){
-    var ffd=new FormData();
-    for(var i=0;i<shots.length;i++)ffd.append('images',shots[i],'shot_'+i+'.jpg');
-    ffd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
-    ffd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
-    ffd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
-    ffd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
-    fetch('/scan/fusion',{method:'POST',body:ffd}).then(function(r){return r.json()}).then(function(data){
-      hideLoader();
-      if(data.error){toast(data.error,'err');return}
-      state.currentResult=data;showResults(data);toast('FUSED '+shots.length+' SHOTS');
-    }).catch(function(e){hideLoader();toast('ERROR: '+e.message,'err')});
-    return;
-  }
-  var fd=new FormData();fd.append('image',state.capturedBlob,'scan.jpg');
-  fd.append('auto_crop',document.getElementById('tog-crop').classList.contains('on')?'true':'false');
-  fd.append('shadow_removal',document.getElementById('tog-shadow').classList.contains('on')?'true':'false');
-  fd.append('enhance',document.getElementById('tog-enhance').classList.contains('on')?'true':'false');
-  fd.append('effect',state.selectedEffect);
-  fd.append('use_google_vision',document.getElementById('tog-vision').classList.contains('on')?'true':'false');
-  fd.append('use_handwriting',document.getElementById('tog-handwriting').classList.contains('on')?'true':'false');
-  fd.append('dewarp',document.getElementById('tog-dewarp').classList.contains('on')?'true':'false');
-  fetch('/scan/advanced',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(data){
-    hideLoader();
-    if(data.error){toast(data.error,'err');return}
-    state.currentResult=data;showResults(data);toast('SCAN COMPLETE');
-  }).catch(function(e){hideLoader();toast('ERROR: '+e.message,'err')});
+  startBatchProcessing();
 });
 function showResults(r){
   document.getElementById('result-panel').style.display='block';
@@ -733,11 +772,11 @@ function resetScanner(){
   document.getElementById('scanner-grid').classList.remove('full');
   document.getElementById('scan-preview').classList.remove('active');
   document.getElementById('dz-placeholder').style.display='';
-  document.getElementById('btn-process-all').style.display='none';
   document.getElementById('filmstrip-thumbs').innerHTML='';
   document.getElementById('btn-process-captures').disabled=true;
   state.capturedBlobs=[];
   state.capturedBlob=null;state.currentResult=null;
+  resetBatch();
   fi.value='';document.getElementById('btn-process').disabled=true;
 }
 
