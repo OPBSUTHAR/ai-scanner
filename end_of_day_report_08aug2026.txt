@@ -1,0 +1,65 @@
+END OF DAY REPORT — 08 Aug 2026
+AI Document Scanner (WebEnoid Intern)
+
+RESUMED FROM: 01 Aug — app running locally at http://localhost:5000, 46/46 tests passing, committed (a84d0f5).
+
+DONE TODAY
+1. SERVER PROCESS HANDLING
+   - Fixed orphaned server: Ctrl+C left Flask alive on port 5000; killed PID via
+     taskkill and gave the manual stop command (netstat + taskkill /f /pid)
+2. LOG FILE CLEANUP
+   - Removed tracked server logs (server_err.log, server_out.log, server_stderr.log,
+     server_stdout.log) from git; added server_*.log to .gitignore so they stay untracked
+3. NEW BATCH PIPELINE — MULTI-FILE UPLOAD + INSTANT PROCESSING
+   - File picker & drag-drop now accept MULTIPLE files (images, PDF, DOCX, XLSX, CSV,
+     PPTX, TXT, MD, RTF, LOG, TSV)
+   - Processing starts INSTANTLY on upload — no "Process Scan" click required
+   - New backend endpoints:
+       POST /api/batch/process   — process N files with settings (auto-crop, shadow,
+                                    enhance, effect, google vision, handwriting, dewarp)
+                                    into a temp workspace (NOT saved yet)
+       GET  /api/batch/temp/<job>/<file> — serve pending previews
+       POST /api/batch/done      — commit items to vault (as images or one merged PDF)
+   - Temp workspaces auto-clean after 6h + cleanup after save
+4. SAVE-ONLY-ON-DONE FLOW
+   - Results stay pending until user clicks the new "DONE & SAVE" bar; only then are
+     files written to the archive, followed by a slide toast confirmation
+5. EFFECTS BAKED INTO SAVED FORMAT
+   - Chosen effect (None/Gray/B&W/Sharpen/Invert/Enhance) is applied at process time and
+     saved as-is; changing the effect re-processes the batch so the saved file always
+     matches the selected setting
+6. MULTI-FILE -> PDF POPUP
+   - Uploading/capturing 2+ images pops up: "Convert all to a single PDF, or save as
+     separate images?" — PDF + SAVE merges everything into one PDF (img2pdf + pypdf),
+     IMAGES + SAVE keeps each file separate
+7. OFFICE DOCUMENTS -> PDF (NEW)
+   - New src/utils/doc_converter.py: converts DOCX, XLSX, CSV/TSV, PPTX, TXT/MD/RTF/LOG
+     to PDF via reportlab (paragraphs + tables preserved)
+   - PDF merge via pypdf (merge_pdfs)
+   - New deps: python-docx, python-pptx, openpyxl, pypdf (installed in .venv, added to
+     requirements.txt)
+8. FIXES
+   - reportlab 5.x style keys (BodyText/Heading6) + HexColor usage in converter
+   - removed orphaned legacy processAllCaptures body from app.js
+   - batch items kept pending; only /api/batch/done writes to archive
+
+CURRENT STATE
+- Verified end-to-end via Flask test client: single image -> saved PNG with classified
+  name; docx/xlsx/pptx/csv -> valid PDF; mixed image+csv -> single merged PDF;
+  images-mode keeps files separate (png + individual pdfs)
+- Full suite: 46/46 PASSING; JS syntax check OK
+- Live smoke test on port 5099: login + index render with new UI elements
+- App RUNNING at http://localhost:5000
+
+NOT DONE
+- Cloud OCR backends (OCR.space / OCR API / Azure Vision) — optional
+- Render deployment (Docker daemon not running locally to test build)
+- MongoDB / auth / multi-user — optional
+
+HOW TO RUN: .\.venv\Scripts\python -m src.web_app  (or run.bat)
+HOW TO TEST: .\.venv\Scripts\python -m pytest tests/
+
+NEXT (tomorrow)
+1. Polish batch UX: per-item delete in done bar, re-order pages before PDF
+2. Deploy: Render account -> git push -> auto-deploy -> test phone camera
+3. Optional: MongoDB metadata, auth, cloud OCR backends
