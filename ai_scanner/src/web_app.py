@@ -1125,6 +1125,9 @@ def cloud_auth(provider):
     if provider == "google_drive":
         auth_url = scanner.cloud.get_google_drive_auth_url(redirect_uri)
     elif provider == "dropbox":
+        if os.getenv("DROPBOX_ACCESS_TOKEN"):
+            if scanner.cloud.setup_dropbox():
+                return jsonify({"connected": True, "provider": "dropbox"})
         auth_url = scanner.cloud.get_dropbox_auth_url(redirect_uri)
     elif provider == "onedrive":
         auth_url = scanner.cloud.get_onedrive_auth_url(redirect_uri)

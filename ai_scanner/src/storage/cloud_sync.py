@@ -185,8 +185,11 @@ class CloudSync:
                 return False
             self.dropbox_client = dropbox.Dropbox(token)
             self.dropbox_client.users_get_current_account()
+            self._save_token("dropbox", json.dumps({"access_token": token}))
             return True
-        except Exception:
+        except Exception as e:
+            self._dropbox_last_error = repr(e)
+            print(f"[CloudSync] Dropbox token validation failed: {e!r}")
             return False
 
     def get_dropbox_auth_url(self, redirect_uri: str = None) -> Optional[str]:

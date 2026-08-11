@@ -995,6 +995,7 @@ function checkCloudUsage(){
 }
 function cloudAuth(provider){
   fetch('/cloud/auth/'+provider).then(function(r){return r.json()}).then(function(d){
+    if(d.connected){toast(labelsFor(provider)+' CONNECTED');loadCloudStatus();return}
     if(d.error){
       if(/not configured/i.test(d.error)){
         showConfirm(labelsFor(provider)+' NEEDS APP KEYS FIRST — ADD YOUR OWN CLIENT ID/SECRET IN API KEYS, THEN CONNECT',function(){switchView('settings')});
