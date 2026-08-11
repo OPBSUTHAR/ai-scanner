@@ -858,7 +858,9 @@ body{
   font-family:var(--font-classic);font-size:0.5rem;font-weight:600;text-transform:uppercase;
   letter-spacing:1.5px;color:var(--text-tertiary);margin-bottom:6px;
 }
-.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:0.68rem;color:var(--text-secondary)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:0.68rem;color:var(--text-secondary);flex-wrap:wrap;gap:4px 6px}
+.toggle-row>span{min-width:0;flex-shrink:1}
+.toggle-row>.right-group,.toggle-row>[style*="flex"]{min-width:0}
 .toggle{
   width:34px;height:17px;border-radius:9px;background:rgba(201,169,110,0.15);
   cursor:pointer;position:relative;transition:0.25s;flex-shrink:0;
@@ -1151,6 +1153,21 @@ body{
   .stat-grid{grid-template-columns:1fr}.doc-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:1400px){.content{padding:24px 36px 32px}}
+
+/* ============================================================
+   SETTINGS / STORAGE / API KEYS RESPONSIVE
+   ============================================================ */
+#view-settings [style*="max-width:560px"]{max-width:100%!important}
+@media(max-width:620px){
+  #view-settings .toggle-row{flex-direction:column;align-items:flex-start;gap:5px}
+  #view-settings .toggle-row>div{width:100%}
+  #view-settings .toggle-row .btn{white-space:normal;text-align:left}
+  #view-settings .ctrl-group{padding:10px}
+  #cloud-status-list .toggle-row,
+  #setup-key-guide .toggle-row,
+  #api-keys-list .toggle-row{flex-direction:column;align-items:flex-start;gap:6px}
+  .btn{white-space:normal}
+}
 
 /* ============================================================
    MOUSE TRACKING GLOW – WARM

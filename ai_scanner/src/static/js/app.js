@@ -1090,12 +1090,16 @@ function renderKeySetupGuide(keys){
     var badge=done
       ?'<span class="cloud-badge ok">CONFIGURED</span>'
       :'<span class="cloud-badge warn">'+missing.length+' KEY'+(missing.length>1?'S':'')+' MISSING</span>';
+    var selKey=done?g.keys[0]:(missing[0]||g.keys[0]);
+    var addBtn=done
+      ?'<button class="btn btn-outline btn-xs" style="font-size:0.48rem;padding:4px 7px" onclick="showAddKeyForm('+JSON.stringify(selKey)+')"><i class="lucide icon-edit"></i> UPDATE</button>'
+      :'<button class="btn btn-primary btn-xs" style="font-size:0.48rem;padding:4px 7px" onclick="showAddKeyForm('+JSON.stringify(selKey)+')"><i class="lucide icon-plus"></i> ADD</button>';
     return '<div class="toggle-row" style="align-items:flex-start">'+
       '<span style="display:flex;flex-direction:column;gap:2px"><span>'+g.icon+' '+g.label+'</span>'+
       '<span style="font-family:var(--font-mono);font-size:0.45rem;color:var(--text-tertiary);font-weight:400">'+g.tip+'</span></span>'+
       '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+badge+
       '<a href="'+g.get+'" target="_blank" rel="noopener" class="btn btn-outline btn-xs" style="font-size:0.48rem;padding:4px 7px"><i class="lucide icon-external-link"></i> GET KEY</a>'+
-      '<button class="btn btn-primary btn-xs" style="font-size:0.48rem;padding:4px 7px" onclick="showAddKeyForm('+JSON.stringify(g.keys[0])+')"><i class="lucide icon-plus"></i> ADD</button>'+
+      addBtn+
       '</div></div>';
   }).join('');
 }
@@ -1120,8 +1124,10 @@ function showAddKeyForm(preselect){
   });
   if(preselect&&KEY_META_UI[preselect])sel.value=preselect;
   document.getElementById('ak-value').value='';
-  document.getElementById('api-key-form').style.display='block';
+  var form=document.getElementById('api-key-form');
+  form.style.display='block';
   document.getElementById('btn-add-key').style.display='none';
+  form.scrollIntoView({behavior:'smooth',block:'nearest'});
   sel.focus();
 }
 function saveApiKey(){
