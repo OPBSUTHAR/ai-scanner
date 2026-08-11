@@ -15,10 +15,7 @@ class CloudSync:
         cfg = {"client_id": None, "client_secret": None, "redirect_uris": []}
         creds_path = os.getenv("GOOGLE_DRIVE_CREDENTIALS_FILE", "")
         if not creds_path:
-            local = os.path.join(os.path.dirname(__file__), "..", "..",
-                                 "credentials-google-drive.json")
-            if os.path.exists(local):
-                creds_path = local
+            creds_path = self._find_credentials_file()
         if creds_path and os.path.exists(creds_path):
             try:
                 with open(creds_path, "r", encoding="utf-8") as f:
@@ -35,6 +32,25 @@ class CloudSync:
             uri = os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "http://localhost:8080/")
             cfg["redirect_uris"] = [uri] if uri else []
         return cfg
+
+    def _find_credentials_file(self) -> Optional[str]:
+        root = os.path.join(os.path.dirname(__file__), "..", "..")
+        patterns = ("credentials-google-drive.json", "credentials.json",
+                    "google_drive_credentials.json", "google-credentials.json")
+        found = []
+        for name in patterns:
+            path = os.path.join(root, name)
+            if os.path.isfile(path):
+                found.append(path)
+        for name in os.listdir(root):
+            if name.startswith("client_secret_") and name.endswith(".json"):
+                found.append(os.path.join(root, name))
+        if not found:
+            return None
+        found.sort(key=os.path.getmtime, reverse=True)
+        if len(found) > 1:
+            print(f"[CloudSync] Multiple Google credentials files found, using newest: {found[0]}")
+        return found[0]
 
     def _resolve_drive_redirect_uri(self, redirect_uri: str = None) -> Optional[str]:
         registered = self._google_oauth_config().get("redirect_uris", [])
@@ -84,6 +100,8 @@ class CloudSync:
             )
             auth_url, _ = flow.authorization_url(prompt="consent")
             self._drive_flow = flow
+            print(f"[CloudSync] Google Drive auth URL generated (redirect sent to Google):")
+            print(f"[CloudSync]   {auth_url}")
             return auth_url
         except Exception:
             return None

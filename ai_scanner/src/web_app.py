@@ -1125,8 +1125,22 @@ def cloud_auth(provider):
         auth_url = scanner.cloud.get_onedrive_auth_url(redirect_uri)
 
     if auth_url:
-        return jsonify({"auth_url": auth_url})
+        cfg = scanner.cloud._google_oauth_config()
+        return jsonify({
+            "auth_url": auth_url,
+            "redirect_uri": (cfg["redirect_uris"] or [None])[0],
+        })
     return jsonify({"error": "Provider not configured or not supported"}), 400
+
+
+@app.route("/cloud/drive-check")
+def cloud_drive_check():
+    cfg = scanner.cloud._google_oauth_config()
+    return jsonify({
+        "client_id": cfg["client_id"],
+        "redirect_uris": cfg["redirect_uris"],
+        "connected": scanner.cloud.drive_service is not None,
+    })
 
 
 @app.route("/cloud/callback/<provider>")
