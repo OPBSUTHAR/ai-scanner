@@ -776,13 +776,21 @@ def _safe_name(name):
     return re.sub(r"[^A-Za-z0-9._-]", "_", name)[:60] or "doc"
 
 
+def _resolve_within(base_dir: Path, subpath: str) -> Path:
+    candidate = (base_dir / subpath).resolve()
+    base_resolved = base_dir.resolve()
+    if candidate != base_resolved and base_resolved not in candidate.parents:
+        return None
+    return candidate
+
+
 @app.route("/api/batch/temp/<job_id>/<filename>")
 def serve_batch_temp(job_id, filename):
-    full = BATCH_TEMP_DIR / job_id / filename
-    if not full.exists() or not full.is_file():
+    allowed = _resolve_within(BATCH_TEMP_DIR / job_id, filename)
+    if not allowed or not allowed.exists() or not allowed.is_file():
         return "Not found", 404
-    mime = mimetypes.guess_type(str(full))[0]
-    return send_file(str(full), mimetype=mime or "application/octet-stream")
+    mime = mimetypes.guess_type(str(allowed))[0]
+    return send_file(str(allowed), mimetype=mime or "application/octet-stream")
 
 
 @app.route("/api/batch/done", methods=["POST"])
@@ -1085,15 +1093,15 @@ def rename_doc(subpath):
 
 @app.route("/images/<path:subpath>")
 def serve_image(subpath):
-    full_path = DOCUMENTS_FOLDER / subpath
-    if not full_path.exists():
-        full_path = UPLOAD_FOLDER / subpath
-    if not full_path.exists():
+    allowed = _resolve_within(DOCUMENTS_FOLDER, subpath)
+    if not allowed or not allowed.exists():
+        allowed = _resolve_within(UPLOAD_FOLDER, subpath)
+    if not allowed or not allowed.exists():
         return "Not found", 404
-    mime = mimetypes.guess_type(str(full_path))[0]
+    mime = mimetypes.guess_type(str(allowed))[0]
     if mime:
-        return send_file(str(full_path), mimetype=mime)
-    return send_file(str(full_path))
+        return send_file(str(allowed), mimetype=mime)
+    return send_file(str(allowed))
 
 
 # ---------------------------------------------------------------------------
@@ -1129,8 +1137,7 @@ def cloud_callback(provider):
 
     success = False
     if provider == "google_drive":
-        redirect_uri = request.host_url.rstrip("/") + "/cloud/callback/google_drive"
-        success = scanner.cloud.handle_google_drive_callback(auth_code, redirect_uri)
+        success = scanner.cloud.handle_google_drive_callback(auth_code)
     elif provider == "dropbox":
         success = scanner.cloud.handle_dropbox_callback(auth_code)
     elif provider == "onedrive":
@@ -1139,6 +1146,14 @@ def cloud_callback(provider):
     if success:
         return "", 200
     return jsonify({"error": "Auth failed"}), 400
+
+
+@app.route("/auth/google/callback")
+def auth_google_callback():
+    code = request.args.get("code", "")
+    if code:
+        success = scanner.cloud.handle_google_drive_callback(code)
+    return redirect(url_for("index"))
 
 
 @app.route("/cloud/connect/<provider>", methods=["POST"])
@@ -1201,6 +1216,8 @@ def main():
     print(f"  Local:   http://localhost:{args.port}")
     print(f"  Network: http://{local_ip}:{args.port}")
     print(f"  Phone:   Use --ngrok for HTTPS (camera requires HTTPS on mobile)")
+    drive_uri = scanner.cloud._google_oauth_config().get("redirect_uris") or [None]
+    print(f"  Drive:   callback -> {drive_uri[0]}  (must match Google console)")
     print(f"  {'='*45}")
     print(f"  {'='*45}\n")
     if args.ngrok:

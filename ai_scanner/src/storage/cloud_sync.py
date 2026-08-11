@@ -11,11 +11,46 @@ class CloudSync:
         self.onedrive_token = None
         self.restore_session()
 
+    def _google_oauth_config(self) -> dict:
+        cfg = {"client_id": None, "client_secret": None, "redirect_uris": []}
+        creds_path = os.getenv("GOOGLE_DRIVE_CREDENTIALS_FILE", "")
+        if not creds_path:
+            local = os.path.join(os.path.dirname(__file__), "..", "..",
+                                 "credentials-google-drive.json")
+            if os.path.exists(local):
+                creds_path = local
+        if creds_path and os.path.exists(creds_path):
+            try:
+                with open(creds_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                web = data.get("web", data.get("installed", data))
+                cfg["client_id"] = web.get("client_id")
+                cfg["client_secret"] = web.get("client_secret")
+                cfg["redirect_uris"] = [u for u in web.get("redirect_uris", []) if u]
+            except Exception:
+                cfg = {"client_id": None, "client_secret": None, "redirect_uris": []}
+        if not cfg["client_id"]:
+            cfg["client_id"] = os.getenv("GOOGLE_DRIVE_CLIENT_ID")
+            cfg["client_secret"] = os.getenv("GOOGLE_DRIVE_CLIENT_SECRET")
+            uri = os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "http://localhost:8080/")
+            cfg["redirect_uris"] = [uri] if uri else []
+        return cfg
+
+    def _resolve_drive_redirect_uri(self, redirect_uri: str = None) -> Optional[str]:
+        registered = self._google_oauth_config().get("redirect_uris", [])
+        if redirect_uri and redirect_uri in registered:
+            return redirect_uri
+        if registered:
+            return registered[0]
+        return os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "http://localhost:8080/")
+
     def status(self) -> dict:
+        cfg = self._google_oauth_config()
         return {
             "google_drive": {
-                "configured": bool(os.getenv("GOOGLE_DRIVE_CLIENT_ID")),
+                "configured": bool(cfg["client_id"]),
                 "connected": self.drive_service is not None,
+                "redirect_uri": (cfg["redirect_uris"] or [None])[0],
             },
             "dropbox": {
                 "configured": bool(os.getenv("DROPBOX_ACCESS_TOKEN")),
@@ -32,18 +67,15 @@ class CloudSync:
     def get_google_drive_auth_url(self, redirect_uri: str = None) -> Optional[str]:
         try:
             from google_auth_oauthlib.flow import Flow
-            client_id = os.getenv("GOOGLE_DRIVE_CLIENT_ID")
-            client_secret = os.getenv("GOOGLE_DRIVE_CLIENT_SECRET")
-            if not client_id:
+            cfg = self._google_oauth_config()
+            if not cfg["client_id"]:
                 return None
-            if redirect_uri is None:
-                redirect_uri = os.getenv("GOOGLE_DRIVE_REDIRECT_URI",
-                                         "http://localhost:8080/")
+            redirect_uri = self._resolve_drive_redirect_uri(redirect_uri)
             flow = Flow.from_client_config(
                 {"web": {
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "redirect_uris": [redirect_uri],
+                    "client_id": cfg["client_id"],
+                    "client_secret": cfg["client_secret"],
+                    "redirect_uris": cfg["redirect_uris"] or [redirect_uri],
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
                 }},
@@ -62,18 +94,15 @@ class CloudSync:
             flow = getattr(self, "_drive_flow", None)
             if flow is None:
                 from google_auth_oauthlib.flow import Flow
-                client_id = os.getenv("GOOGLE_DRIVE_CLIENT_ID")
-                client_secret = os.getenv("GOOGLE_DRIVE_CLIENT_SECRET")
-                if not client_id:
+                cfg = self._google_oauth_config()
+                if not cfg["client_id"]:
                     return False
-                if redirect_uri is None:
-                    redirect_uri = os.getenv("GOOGLE_DRIVE_REDIRECT_URI",
-                                             "http://localhost:8080/")
+                redirect_uri = self._resolve_drive_redirect_uri(redirect_uri)
                 flow = Flow.from_client_config(
                     {"web": {
-                        "client_id": client_id,
-                        "client_secret": client_secret,
-                        "redirect_uris": [redirect_uri],
+                        "client_id": cfg["client_id"],
+                        "client_secret": cfg["client_secret"],
+                        "redirect_uris": cfg["redirect_uris"] or [redirect_uri],
                         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                         "token_uri": "https://oauth2.googleapis.com/token",
                     }},

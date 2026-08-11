@@ -42,6 +42,10 @@ server_*.log
 *.json
 !secrets/example.json
 
+# Google OAuth client credentials — NEVER commit
+credentials-google-drive.json
+client_secret_*.json
+
 # Virtual environment
 venv/
 .venv/

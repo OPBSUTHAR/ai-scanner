@@ -1005,12 +1005,31 @@ function cloudAuth(provider){
     }
     if(d.auth_url){
       window.open(d.auth_url,'_blank','width=600,height=700');
-      showPrompt('PASTE AUTHORIZATION CODE:',function(code){
-        if(code) fetch('/cloud/callback/'+provider+'?code='+encodeURIComponent(code))
-          .then(function(r){return r.json()}).then(function(d2){
-            if(d2.error)toast(d2.error,'err');else{toast('CONNECTED');loadCloudStatus()}
+      if(provider==='google_drive'){
+        toast('COMPLETE AUTHORIZATION IN THE POPUP...');
+        var tries=0;
+        var t=setInterval(function(){
+          tries++;
+          fetch('/cloud/status').then(function(r){return r.json()}).then(function(d2){
+            if(d2.providers&&d2.providers.google_drive&&d2.providers.google_drive.connected){
+              clearInterval(t);toast('GOOGLE DRIVE CONNECTED');loadCloudStatus();
+            }else if(tries>120){
+              clearInterval(t);
+              fetch('/cloud/status').then(function(r){return r.json()}).then(function(d2){
+                var uri=(d2.providers&&d2.providers.google_drive&&d2.providers.google_drive.redirect_uri)||'http://localhost:5000/auth/google/callback';
+                showConfirm('GOOGLE BLOCKED THE LOGIN. OPEN https://console.cloud.google.com/apis/credentials -> EDIT YOUR OAUTH CLIENT (client id 770914580417-...) -> AUTHORIZED REDIRECT URIs -> ADD EXACTLY:\n\n'+uri+'\n\n(NO trailing slash, port 5000. Save, then try CONNECT again.)',function(){loadCloudStatus()});
+              }).catch(function(){loadCloudStatus()});
+            }
           }).catch(function(){});
-      });
+        },1500);
+      }else{
+        showPrompt('PASTE AUTHORIZATION CODE:',function(code){
+          if(code) fetch('/cloud/callback/'+provider+'?code='+encodeURIComponent(code))
+            .then(function(r){return r.json()}).then(function(d2){
+              if(d2.error)toast(d2.error,'err');else{toast('CONNECTED');loadCloudStatus()}
+            }).catch(function(){});
+        });
+      }
     }
   }).catch(function(e){toast('AUTH FAILED: '+e.message,'err')});
 }
