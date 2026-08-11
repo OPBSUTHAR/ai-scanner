@@ -198,12 +198,17 @@ class CloudSync:
             if redirect_uri is None:
                 redirect_uri = "http://localhost:8080/"
             auth_flow = dropbox.DropboxOAuth2FlowNoRedirect(
-                app_key, use_pkce=True, token_access_type="offline"
+                app_key,
+                consumer_secret=os.getenv("DROPBOX_APP_SECRET"),
+                use_pkce=False,
+                token_access_type="offline",
             )
             auth_url = auth_flow.start()
             self._dropbox_flow = auth_flow
+            print("[CloudSync] Dropbox auth URL generated")
             return auth_url
-        except Exception:
+        except Exception as e:
+            print(f"[CloudSync] Dropbox auth URL error: {e!r}")
             return None
 
     def handle_dropbox_callback(self, code: str) -> bool:
@@ -216,7 +221,10 @@ class CloudSync:
                 if not app_key:
                     return False
                 flow = DropboxOAuth2FlowNoRedirect(
-                    app_key, use_pkce=True, token_access_type="offline"
+                    app_key,
+                    consumer_secret=os.getenv("DROPBOX_APP_SECRET"),
+                    use_pkce=False,
+                    token_access_type="offline",
                 )
             result = flow.finish(code)
             self.dropbox_client = dropbox.Dropbox(result.access_token)
@@ -226,7 +234,9 @@ class CloudSync:
             }))
             self._dropbox_flow = None
             return True
-        except Exception:
+        except Exception as e:
+            self._dropbox_last_error = repr(e)
+            print(f"[CloudSync] Dropbox callback error: {e!r}")
             return False
 
     def upload_to_dropbox(self, filepath: str, filename: str = None) -> Optional[str]:

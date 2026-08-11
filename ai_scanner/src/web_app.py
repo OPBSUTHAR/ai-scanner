@@ -1164,7 +1164,11 @@ def cloud_callback(provider):
 
     if success:
         return "", 200
-    return jsonify({"error": "Auth failed"}), 400
+    err = getattr(scanner.cloud, "_dropbox_last_error", None)
+    msg = "Auth failed"
+    if err:
+        msg += f" ({err})"
+    return jsonify({"error": msg}), 400
 
 
 @app.route("/auth/google/callback")
