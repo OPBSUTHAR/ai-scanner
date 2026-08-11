@@ -1069,7 +1069,7 @@ var KEY_SETUP_GUIDE=[
   {icon:'<i class="lucide icon-eye"></i>',label:'GOOGLE VISION OCR',keys:['google_vision_api_key'],
    get:'https://console.cloud.google.com/apis/credentials',tip:'Enables cloud OCR — enable the Cloud Vision API then create an API key'},
   {icon:'<i class="lucide icon-cloud"></i>',label:'GOOGLE DRIVE SYNC',keys:['google_drive_client_id','google_drive_client_secret'],
-   get:'https://console.cloud.google.com/apis/credentials',tip:'Backup scans to your own Drive (OAuth client ID + secret)'},
+   get:'https://console.cloud.google.com/apis/credentials',tip:'Backup scans to your own Drive. Requires an OAUTH CLIENT ID + SECRET (or the credentials JSON) — an API key will NOT work here'},
   {icon:'<i class="lucide icon-package"></i>',label:'DROPBOX SYNC',keys:['dropbox_app_key','dropbox_app_secret'],
    get:'https://www.dropbox.com/developers/apps',tip:'Create an app in the Dropbox Developer Console for full access'},
   {icon:'<i class="lucide icon-monitor"></i>',label:'ONEDRIVE SYNC',keys:['onedrive_client_id','onedrive_client_secret','onedrive_tenant_id'],

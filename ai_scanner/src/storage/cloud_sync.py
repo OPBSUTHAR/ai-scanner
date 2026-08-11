@@ -35,15 +35,14 @@ class CloudSync:
 
     def _find_credentials_file(self) -> Optional[str]:
         root = os.path.join(os.path.dirname(__file__), "..", "..")
-        patterns = ("credentials-google-drive.json", "credentials.json",
-                    "google_drive_credentials.json", "google-credentials.json")
         found = []
-        for name in patterns:
-            path = os.path.join(root, name)
-            if os.path.isfile(path):
-                found.append(path)
         for name in os.listdir(root):
-            if name.startswith("client_secret_") and name.endswith(".json"):
+            if not name.endswith(".json"):
+                continue
+            lower = name.lower()
+            if "credential" in lower or name.startswith("client_secret_"):
+                if "example" in lower:
+                    continue
                 found.append(os.path.join(root, name))
         if not found:
             return None

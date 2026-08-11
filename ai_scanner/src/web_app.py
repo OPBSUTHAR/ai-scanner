@@ -54,11 +54,14 @@ UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
 def _sync_keys_to_env():
-    for name, value in key_manager.get_all().items():
-        os.environ[name.upper()] = value
+    stored = key_manager.get_all()
+    for name in KEY_META:
+        env_name = name.upper()
+        if name in stored:
+            os.environ[env_name] = stored[name]
+        else:
+            os.environ.pop(env_name, None)
 
-
-_sync_keys_to_env()
 
 # ---------------------------------------------------------------------------
 #  Helpers
@@ -130,8 +133,8 @@ def _doc_info(fpath):
 # ---------------------------------------------------------------------------
 
 KEY_META = {
-    "google_drive_client_id": {"label": "Google Drive Client ID", "service": "google_drive"},
-    "google_drive_client_secret": {"label": "Google Drive Client Secret", "service": "google_drive", "secret": True},
+    "google_drive_client_id": {"label": "Google Drive OAuth Client ID", "service": "google_drive"},
+    "google_drive_client_secret": {"label": "Google Drive OAuth Secret (NOT an API key)", "service": "google_drive", "secret": True},
     "dropbox_app_key": {"label": "Dropbox App Key", "service": "dropbox"},
     "dropbox_app_secret": {"label": "Dropbox App Secret", "service": "dropbox", "secret": True},
     "dropbox_access_token": {"label": "Dropbox Access Token", "service": "dropbox", "secret": True},
@@ -145,6 +148,8 @@ KEY_META = {
     "azure_vision_key": {"label": "Azure Vision API Key", "service": "ocr", "secret": True},
     "azure_vision_endpoint": {"label": "Azure Vision Endpoint", "service": "ocr"},
 }
+
+_sync_keys_to_env()
 
 
 @app.route("/api/keys", methods=["GET"])
