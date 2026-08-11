@@ -1,15 +1,72 @@
 import os
 import json
+import re
+import threading
 from typing import Optional
 
 
 class CloudSync:
+    """Cloud provider sync with per-user sessions.
+
+    Each web user (identified by the session cookie) gets their own isolated
+    set of cloud clients and stored tokens. A thread-local holds the active
+    user for the current request; the web layer calls activate_user() first.
+    When the app is hosted, this means every user connects THEIR OWN Google
+    Drive / Dropbox / OneDrive account instead of sharing one global one.
+    """
+
     def __init__(self):
-        self.drive_service = None
-        self.dropbox_client = None
-        self.onedrive_client = None
-        self.onedrive_token = None
+        self._local = threading.local()
+        self._client_map = {}
+        self._drive_flows = {}
+        self._dropbox_flows = {}
+        self._onedrive_apps = {}
+        self._onedrive_redirect_uris = {}
         self.restore_session()
+
+    # ---- user session plumbing ----
+
+    def activate_user(self, user: str = "default"):
+        self._local.user = self._key(user)
+
+    def _key(self, user) -> str:
+        return re.sub(r"[^A-Za-z0-9._-]", "_", str(user or "default")).strip() or "default"
+
+    def _user_key(self) -> str:
+        return getattr(self._local, "user", "default")
+
+    def _clients(self, user: str = None) -> dict:
+        user = self._key(user) if user is not None else self._user_key()
+        if user not in self._client_map:
+            c = {"drive_service": None, "dropbox_client": None,
+                 "onedrive_client": None, "onedrive_token": None}
+            self._client_map[user] = c
+            self._restore_user(user, c)
+        return self._client_map[user]
+
+    def disconnect(self, provider: str, user: str = None):
+        c = self._clients(user)
+        if provider == "google_drive":
+            c["drive_service"] = None
+        elif provider == "dropbox":
+            c["dropbox_client"] = None
+        elif provider == "onedrive":
+            c["onedrive_client"] = None
+            c["onedrive_token"] = None
+        try:
+            u = self._key(user) if user is not None else self._user_key()
+            path = self._token_path(u, provider)
+            if os.path.exists(path):
+                os.remove(path)
+            if u == "default":
+                legacy = os.path.join(os.path.dirname(__file__), "..", "..",
+                                      "tokens", f"{provider}.json")
+                if os.path.exists(legacy):
+                    os.remove(legacy)
+        except Exception:
+            pass
+
+    # ---- Google credentials ----
 
     def _google_oauth_config(self) -> dict:
         cfg = {"client_id": None, "client_secret": None, "redirect_uris": []}
@@ -59,27 +116,28 @@ class CloudSync:
             return registered[0]
         return os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "http://localhost:8080/")
 
-    def status(self) -> dict:
+    def status(self, user: str = None) -> dict:
+        c = self._clients(user)
         cfg = self._google_oauth_config()
         return {
             "google_drive": {
                 "configured": bool(cfg["client_id"]),
-                "connected": self.drive_service is not None,
+                "connected": c["drive_service"] is not None,
                 "redirect_uri": (cfg["redirect_uris"] or [None])[0],
             },
             "dropbox": {
                 "configured": bool(os.getenv("DROPBOX_APP_KEY") or os.getenv("DROPBOX_ACCESS_TOKEN")),
-                "connected": self.dropbox_client is not None,
+                "connected": c["dropbox_client"] is not None,
             },
             "onedrive": {
                 "configured": bool(os.getenv("ONEDRIVE_CLIENT_ID")),
-                "connected": self.onedrive_client is not None,
+                "connected": c["onedrive_client"] is not None,
             },
         }
 
     # ---- Google Drive ----
 
-    def get_google_drive_auth_url(self, redirect_uri: str = None) -> Optional[str]:
+    def get_google_drive_auth_url(self, redirect_uri: str = None, user: str = None) -> Optional[str]:
         try:
             from google_auth_oauthlib.flow import Flow
             cfg = self._google_oauth_config()
@@ -98,17 +156,19 @@ class CloudSync:
                 redirect_uri=redirect_uri,
             )
             auth_url, _ = flow.authorization_url(prompt="consent")
-            self._drive_flow = flow
+            self._drive_flows[self._user_key()] = flow
             print(f"[CloudSync] Google Drive auth URL generated (redirect sent to Google):")
             print(f"[CloudSync]   {auth_url}")
             return auth_url
         except Exception:
             return None
 
-    def handle_google_drive_callback(self, code: str, redirect_uri: str = None) -> bool:
+    def handle_google_drive_callback(self, code: str, redirect_uri: str = None,
+                                     user: str = None) -> bool:
         try:
             from googleapiclient.discovery import build
-            flow = getattr(self, "_drive_flow", None)
+            u = self._key(user) if user is not None else self._user_key()
+            flow = self._drive_flows.get(u)
             if flow is None:
                 from google_auth_oauthlib.flow import Flow
                 cfg = self._google_oauth_config()
@@ -127,37 +187,39 @@ class CloudSync:
                     redirect_uri=redirect_uri,
                 )
             flow.fetch_token(code=code)
-            self.drive_service = build("drive", "v3", credentials=flow.credentials)
-            self._save_token("google_drive", flow.credentials.to_json())
-            self._drive_flow = None
+            self._clients(user)["drive_service"] = build("drive", "v3", credentials=flow.credentials)
+            self._save_token(user, "google_drive", flow.credentials.to_json())
+            self._drive_flows.pop(u, None)
             return True
         except Exception:
             return False
 
     def upload_to_drive(self, filepath: str, filename: str = None,
-                        folder_name: str = "AI_Scanner") -> Optional[str]:
-        if not self.drive_service:
+                        folder_name: str = "AI_Scanner", user: str = None) -> Optional[str]:
+        c = self._clients(user)
+        if not c["drive_service"]:
             return None
         try:
             from googleapiclient.http import MediaFileUpload
             if filename is None:
                 filename = os.path.basename(filepath)
-            folder_id = self._get_or_create_drive_folder(folder_name)
+            folder_id = self._get_or_create_drive_folder(folder_name, user)
             media = MediaFileUpload(filepath, resumable=True)
             file_metadata = {
                 "name": filename,
                 "parents": [folder_id] if folder_id else [],
             }
-            file = self.drive_service.files().create(
+            file = c["drive_service"].files().create(
                 body=file_metadata, media_body=media, fields="id,webViewLink"
             ).execute()
             return file.get("webViewLink")
         except Exception:
             return None
 
-    def _get_or_create_drive_folder(self, folder_name: str) -> Optional[str]:
+    def _get_or_create_drive_folder(self, folder_name: str, user: str = None) -> Optional[str]:
+        c = self._clients(user)
         try:
-            response = self.drive_service.files().list(
+            response = c["drive_service"].files().list(
                 q=f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false",
                 fields="files(id, name)",
             ).execute()
@@ -168,7 +230,7 @@ class CloudSync:
                 "name": folder_name,
                 "mimeType": "application/vnd.google-apps.folder",
             }
-            folder = self.drive_service.files().create(
+            folder = c["drive_service"].files().create(
                 body=file_metadata, fields="id"
             ).execute()
             return folder.get("id")
@@ -177,22 +239,23 @@ class CloudSync:
 
     # ---- Dropbox ----
 
-    def setup_dropbox(self) -> bool:
+    def setup_dropbox(self, user: str = None) -> bool:
         try:
             import dropbox
             token = os.getenv("DROPBOX_ACCESS_TOKEN")
             if not token:
                 return False
-            self.dropbox_client = dropbox.Dropbox(token)
-            self.dropbox_client.users_get_current_account()
-            self._save_token("dropbox", json.dumps({"access_token": token}))
+            client = dropbox.Dropbox(token)
+            client.users_get_current_account()
+            self._clients(user)["dropbox_client"] = client
+            self._save_token(user, "dropbox", json.dumps({"access_token": token}))
             return True
         except Exception as e:
             self._dropbox_last_error = repr(e)
             print(f"[CloudSync] Dropbox token validation failed: {e!r}")
             return False
 
-    def get_dropbox_auth_url(self, redirect_uri: str = None) -> Optional[str]:
+    def get_dropbox_auth_url(self, redirect_uri: str = None, user: str = None) -> Optional[str]:
         try:
             import dropbox
             app_key = os.getenv("DROPBOX_APP_KEY")
@@ -207,19 +270,20 @@ class CloudSync:
                 token_access_type="offline",
             )
             auth_url = auth_flow.start()
-            self._dropbox_flow = auth_flow
+            self._dropbox_flows[self._user_key()] = auth_flow
             print("[CloudSync] Dropbox auth URL generated")
             return auth_url
         except Exception as e:
             print(f"[CloudSync] Dropbox auth URL error: {e!r}")
             return None
 
-    def handle_dropbox_callback(self, code: str) -> bool:
+    def handle_dropbox_callback(self, code: str, user: str = None) -> bool:
         try:
             import dropbox
-            flow = getattr(self, "_dropbox_flow", None)
+            from dropbox import DropboxOAuth2FlowNoRedirect
+            u = self._key(user) if user is not None else self._user_key()
+            flow = self._dropbox_flows.get(u)
             if flow is None:
-                from dropbox import DropboxOAuth2FlowNoRedirect
                 app_key = os.getenv("DROPBOX_APP_KEY")
                 if not app_key:
                     return False
@@ -230,20 +294,21 @@ class CloudSync:
                     token_access_type="offline",
                 )
             result = flow.finish(code)
-            self.dropbox_client = dropbox.Dropbox(result.access_token)
-            self._save_token("dropbox", json.dumps({
+            self._clients(user)["dropbox_client"] = dropbox.Dropbox(result.access_token)
+            self._save_token(user, "dropbox", json.dumps({
                 "access_token": result.access_token,
                 "refresh_token": getattr(result, "refresh_token", None),
             }))
-            self._dropbox_flow = None
+            self._dropbox_flows.pop(u, None)
             return True
         except Exception as e:
             self._dropbox_last_error = repr(e)
             print(f"[CloudSync] Dropbox callback error: {e!r}")
             return False
 
-    def upload_to_dropbox(self, filepath: str, filename: str = None) -> Optional[str]:
-        if not self.dropbox_client:
+    def upload_to_dropbox(self, filepath: str, filename: str = None, user: str = None) -> Optional[str]:
+        c = self._clients(user)
+        if not c["dropbox_client"]:
             return None
         try:
             import dropbox
@@ -251,21 +316,22 @@ class CloudSync:
                 filename = os.path.basename(filepath)
             dest_path = f"/AI_Scanner/{filename}"
             with open(filepath, "rb") as f:
-                self.dropbox_client.files_upload(f.read(), dest_path,
-                                                  mode=dropbox.files.WriteMode("overwrite"))
-            shared = self.dropbox_client.sharing_create_shared_link_with_settings(dest_path)
+                c["dropbox_client"].files_upload(f.read(), dest_path,
+                                                 mode=dropbox.files.WriteMode("overwrite"))
+            shared = c["dropbox_client"].sharing_create_shared_link_with_settings(dest_path)
             return shared.url
         except Exception:
             return None
 
     # ---- OneDrive ----
 
-    def get_onedrive_auth_url(self, redirect_uri: str = None) -> Optional[str]:
+    def get_onedrive_auth_url(self, redirect_uri: str = None, user: str = None) -> Optional[str]:
         try:
             import msal
             client_id = os.getenv("ONEDRIVE_CLIENT_ID")
             if not client_id:
                 return None
+            u = self._key(user) if user is not None else self._user_key()
             tenant_id = os.getenv("ONEDRIVE_TENANT_ID", "common")
             if redirect_uri is None:
                 redirect_uri = os.getenv("ONEDRIVE_REDIRECT_URI", "http://localhost:8080/")
@@ -277,17 +343,18 @@ class CloudSync:
             auth_url = app.get_authorization_request_url(
                 ["Files.ReadWrite.All"], redirect_uri=redirect_uri,
             )
-            self._onedrive_app = app
-            self._onedrive_redirect_uri = redirect_uri
+            self._onedrive_apps[u] = app
+            self._onedrive_redirect_uris[u] = redirect_uri
             return auth_url
         except Exception:
             return None
 
-    def handle_onedrive_callback(self, code: str) -> bool:
+    def handle_onedrive_callback(self, code: str, user: str = None) -> bool:
         try:
-            app = getattr(self, "_onedrive_app", None)
-            redirect_uri = getattr(self, "_onedrive_redirect_uri",
-                                   os.getenv("ONEDRIVE_REDIRECT_URI", "http://localhost:8080/"))
+            u = self._key(user) if user is not None else self._user_key()
+            app = self._onedrive_apps.get(u)
+            redirect_uri = self._onedrive_redirect_uris.get(
+                u, os.getenv("ONEDRIVE_REDIRECT_URI", "http://localhost:8080/"))
             if app is None:
                 import msal
                 client_id = os.getenv("ONEDRIVE_CLIENT_ID")
@@ -304,26 +371,28 @@ class CloudSync:
                 redirect_uri=redirect_uri,
             )
             if "access_token" in result:
-                self.onedrive_token = result["access_token"]
-                self.onedrive_client = app
-                self._save_token("onedrive", result["access_token"])
-                self._onedrive_app = None
+                c = self._clients(user)
+                c["onedrive_token"] = result["access_token"]
+                c["onedrive_client"] = app
+                self._save_token(user, "onedrive", result["access_token"])
+                self._onedrive_apps.pop(u, None)
                 return True
             return False
         except Exception:
             return False
 
-    def upload_to_onedrive(self, filepath: str, filename: str = None) -> Optional[str]:
-        if not self.onedrive_token:
+    def upload_to_onedrive(self, filepath: str, filename: str = None, user: str = None) -> Optional[str]:
+        c = self._clients(user)
+        if not c["onedrive_token"]:
             return None
         try:
             import requests
             if filename is None:
                 filename = os.path.basename(filepath)
-            folder_id = self._get_or_create_onedrive_folder("AI_Scanner")
+            folder_id = self._get_or_create_onedrive_folder("AI_Scanner", user)
             url = f"https://graph.microsoft.com/v1.0/me/drive/items/{folder_id}:/{filename}:/content"
             headers = {
-                "Authorization": f"Bearer {self.onedrive_token}",
+                "Authorization": f"Bearer {c['onedrive_token']}",
                 "Content-Type": "application/octet-stream",
             }
             with open(filepath, "rb") as f:
@@ -335,10 +404,11 @@ class CloudSync:
         except Exception:
             return None
 
-    def _get_or_create_onedrive_folder(self, folder_name: str) -> Optional[str]:
+    def _get_or_create_onedrive_folder(self, folder_name: str, user: str = None) -> Optional[str]:
+        c = self._clients(user)
         try:
             import requests
-            headers = {"Authorization": f"Bearer {self.onedrive_token}"}
+            headers = {"Authorization": f"Bearer {c['onedrive_token']}"}
             resp = requests.get(
                 "https://graph.microsoft.com/v1.0/me/drive/root/children",
                 headers=headers,
@@ -362,27 +432,28 @@ class CloudSync:
 
     # ---- Multi ----
 
-    def get_usage_stats(self) -> dict:
+    def get_usage_stats(self, user: str = None) -> dict:
         usage = {}
-        usage["google_drive"] = self._get_drive_usage()
-        usage["dropbox"] = self._get_dropbox_usage()
-        usage["onedrive"] = self._get_onedrive_usage()
+        usage["google_drive"] = self._get_drive_usage(user)
+        usage["dropbox"] = self._get_dropbox_usage(user)
+        usage["onedrive"] = self._get_onedrive_usage(user)
         return usage
 
-    def _get_drive_usage(self) -> Optional[str]:
-        if not self.drive_service:
+    def _get_drive_usage(self, user: str = None) -> Optional[str]:
+        c = self._clients(user)
+        if not c["drive_service"]:
             return None
         try:
             total = 0
             page_token = None
             while True:
-                resp = self.drive_service.files().list(
+                resp = c["drive_service"].files().list(
                     q="name='AI_Scanner' and mimeType='application/vnd.google-apps.folder'",
                     fields="files(id)", pageToken=page_token
                 ).execute()
                 folders = resp.get("files", [])
                 for folder in folders:
-                    child_resp = self.drive_service.files().list(
+                    child_resp = c["drive_service"].files().list(
                         q=f"'{folder['id']}' in parents",
                         fields="files(size,name)", pageToken=page_token
                     ).execute()
@@ -397,16 +468,17 @@ class CloudSync:
         except Exception:
             return None
 
-    def _get_dropbox_usage(self) -> Optional[str]:
-        if not self.dropbox_client:
+    def _get_dropbox_usage(self, user: str = None) -> Optional[str]:
+        c = self._clients(user)
+        if not c["dropbox_client"]:
             return None
         try:
             total = 0
-            resp = self.dropbox_client.files_list_folder("/AI_Scanner")
+            resp = c["dropbox_client"].files_list_folder("/AI_Scanner")
             for entry in resp.entries:
                 total += entry.size if hasattr(entry, "size") else 0
             while resp.has_more:
-                resp = self.dropbox_client.files_list_folder_continue(resp.cursor)
+                resp = c["dropbox_client"].files_list_folder_continue(resp.cursor)
                 for entry in resp.entries:
                     total += entry.size if hasattr(entry, "size") else 0
             if total > 1048576:
@@ -415,12 +487,13 @@ class CloudSync:
         except Exception:
             return None
 
-    def _get_onedrive_usage(self) -> Optional[str]:
-        if not self.onedrive_token:
+    def _get_onedrive_usage(self, user: str = None) -> Optional[str]:
+        c = self._clients(user)
+        if not c["onedrive_token"]:
             return None
         try:
             import requests
-            headers = {"Authorization": f"Bearer {self.onedrive_token}"}
+            headers = {"Authorization": f"Bearer {c['onedrive_token']}"}
             resp = requests.get(
                 "https://graph.microsoft.com/v1.0/me/drive/root:/AI_Scanner:/children",
                 headers=headers,
@@ -434,45 +507,56 @@ class CloudSync:
         except Exception:
             return None
 
-    def upload_to_all(self, filepath: str, filename: str = None) -> dict:
+    def upload_to_all(self, filepath: str, filename: str = None, user: str = None) -> dict:
         results = {}
-        link = self.upload_to_drive(filepath, filename)
+        link = self.upload_to_drive(filepath, filename, user=user)
         if link:
             results["google_drive"] = link
-        link = self.upload_to_dropbox(filepath, filename)
+        link = self.upload_to_dropbox(filepath, filename, user=user)
         if link:
             results["dropbox"] = link
-        link = self.upload_to_onedrive(filepath, filename)
+        link = self.upload_to_onedrive(filepath, filename, user=user)
         if link:
             results["onedrive"] = link
         return results
 
     def upload_to_providers(self, filepath: str, providers: list,
-                            filename: str = None) -> dict:
+                            filename: str = None, user: str = None) -> dict:
         results = {}
         if "google_drive" in providers:
-            link = self.upload_to_drive(filepath, filename)
+            link = self.upload_to_drive(filepath, filename, user=user)
             if link:
                 results["google_drive"] = link
         if "dropbox" in providers:
-            link = self.upload_to_dropbox(filepath, filename)
+            link = self.upload_to_dropbox(filepath, filename, user=user)
             if link:
                 results["dropbox"] = link
         if "onedrive" in providers:
-            link = self.upload_to_onedrive(filepath, filename)
+            link = self.upload_to_onedrive(filepath, filename, user=user)
             if link:
                 results["onedrive"] = link
         return results
 
-    def _save_token(self, provider: str, token_data: str):
+    # ---- token storage (per user) ----
+
+    def _token_path(self, user: str, provider: str) -> str:
+        token_dir = os.path.join(os.path.dirname(__file__), "..", "..", "tokens")
+        return os.path.join(token_dir, f"{self._key(user)}.{provider}.json")
+
+    def _save_token(self, user: str | None, provider: str, token_data: str):
         token_dir = os.path.join(os.path.dirname(__file__), "..", "..", "tokens")
         os.makedirs(token_dir, exist_ok=True)
-        with open(os.path.join(token_dir, f"{provider}.json"), "w") as f:
+        path = self._token_path(user, provider)
+        with open(path, "w") as f:
             f.write(token_data)
 
-    def _load_token(self, provider: str) -> Optional[str]:
+    def _load_token(self, user: str | None, provider: str) -> Optional[str]:
         token_dir = os.path.join(os.path.dirname(__file__), "..", "..", "tokens")
-        path = os.path.join(token_dir, f"{provider}.json")
+        path = self._token_path(user, provider)
+        if not os.path.exists(path):
+            legacy = os.path.join(token_dir, f"{provider}.json")
+            if os.path.exists(legacy):
+                path = legacy
         if os.path.exists(path):
             try:
                 with open(path, "r") as f:
@@ -481,18 +565,18 @@ class CloudSync:
                 return None
         return None
 
-    def restore_session(self):
-        token_data = self._load_token("google_drive")
+    def _restore_user(self, user: str, c: dict):
+        token_data = self._load_token(user, "google_drive")
         if token_data:
             try:
                 from google.oauth2.credentials import Credentials
                 from googleapiclient.discovery import build
                 creds = Credentials.from_authorized_user_info(json.loads(token_data))
-                self.drive_service = build("drive", "v3", credentials=creds)
+                c["drive_service"] = build("drive", "v3", credentials=creds)
             except Exception:
-                self.drive_service = None
+                c["drive_service"] = None
 
-        token = self._load_token("dropbox")
+        token = self._load_token(user, "dropbox")
         if token:
             try:
                 import dropbox
@@ -503,29 +587,33 @@ class CloudSync:
                 except Exception:
                     access, refresh = token, None
                 if refresh:
-                    self.dropbox_client = dropbox.Dropbox(
+                    c["dropbox_client"] = dropbox.Dropbox(
                         oauth2_access_token=access,
                         oauth2_refresh_token=refresh,
                         app_key=os.getenv("DROPBOX_APP_KEY"),
                     )
                 else:
-                    self.dropbox_client = dropbox.Dropbox(access)
-                self.dropbox_client.users_get_current_account()
+                    c["dropbox_client"] = dropbox.Dropbox(access)
+                c["dropbox_client"].users_get_current_account()
             except Exception:
-                self.dropbox_client = None
+                c["dropbox_client"] = None
 
-        token = self._load_token("onedrive")
+        token = self._load_token(user, "onedrive")
         if token:
-            self.onedrive_token = token
+            c["onedrive_token"] = token
             try:
                 import msal
                 client_id = os.getenv("ONEDRIVE_CLIENT_ID")
                 tenant_id = os.getenv("ONEDRIVE_TENANT_ID", "common")
                 if client_id:
-                    self.onedrive_client = msal.ConfidentialClientApplication(
+                    c["onedrive_client"] = msal.ConfidentialClientApplication(
                         client_id,
                         authority=f"https://login.microsoftonline.com/{tenant_id}",
                         client_credential=os.getenv("ONEDRIVE_CLIENT_SECRET"),
                     )
             except Exception:
-                self.onedrive_client = None
+                c["onedrive_client"] = None
+
+    def restore_session(self):
+        """Legacy alias — the 'default' user session is restored on demand."""
+        self._clients("default")

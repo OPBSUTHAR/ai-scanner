@@ -1104,6 +1104,11 @@ function renderKeySetupGuide(keys){
       '</div></div>';
   }).join('');
 }
+function maskForDisplay(m){
+  m=m||'****';
+  if(m.length>34)return m.slice(0,8)+'…'+m.slice(-4);
+  return m;
+}
 function loadApiKeys(){
   fetch('/api/keys').then(function(r){return r.json()}).then(function(keys){
     renderKeySetupGuide(keys);
@@ -1111,9 +1116,9 @@ function loadApiKeys(){
     var configured=keys.filter(function(k){return k.configured});
     if(!configured.length){list.innerHTML='';return}
     list.innerHTML=configured.map(function(k){
-      return '<div class="toggle-row"><span>'+KEY_META_UI[k.name]?.icon+' '+KEY_META_UI[k.name]?.label+'</span>'+
-        '<div style="display:flex;gap:6px;align-items:center"><code class="code">'+(k.masked_value||'****')+'</code>'+
-        '<button class="btn btn-danger btn-xs" onclick="deleteApiKey(\''+k.name+'\')" style="padding:1px 6px"><i class="lucide icon-x"></i></button></div></div>';
+      return '<div class="toggle-row"><span style="flex:1;min-width:0;white-space:normal">'+KEY_META_UI[k.name]?.icon+' '+KEY_META_UI[k.name]?.label+'</span>'+
+        '<div style="display:flex;gap:6px;align-items:center;min-width:0;max-width:100%;flex-wrap:wrap"><code class="code" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(k.masked_value||'')+'">'+(k.configured?maskForDisplay(k.masked_value):'****')+'</code>'+
+        '<button class="btn btn-danger btn-xs" onclick="deleteApiKey(\''+k.name+'\')" style="padding:1px 6px;flex-shrink:0"><i class="lucide icon-x"></i></button></div></div>';
     }).join('');
   }).catch(function(){});
 }

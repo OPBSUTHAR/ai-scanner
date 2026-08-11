@@ -36,6 +36,12 @@ def _save_app_config(data):
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024
 
+
+@app.before_request
+def _bind_cloud_user():
+    user = request.cookies.get(SESSION_COOKIE, "").strip()
+    scanner.cloud.activate_user(user or "default")
+
 scanner = AIScanner()
 searcher = DocumentSearch()
 key_manager = KeyManager()
@@ -1144,10 +1150,11 @@ def cloud_auth(provider):
 @app.route("/cloud/drive-check")
 def cloud_drive_check():
     cfg = scanner.cloud._google_oauth_config()
+    status = scanner.cloud.status()
     return jsonify({
         "client_id": cfg["client_id"],
         "redirect_uris": cfg["redirect_uris"],
-        "connected": scanner.cloud.drive_service is not None,
+        "connected": status["google_drive"]["connected"],
     })
 
 
@@ -1209,13 +1216,7 @@ def cloud_connect(provider):
 
 @app.route("/cloud/disconnect/<provider>", methods=["POST"])
 def cloud_disconnect(provider):
-    if provider == "google_drive":
-        scanner.cloud.drive_service = None
-    elif provider == "dropbox":
-        scanner.cloud.dropbox_client = None
-    elif provider == "onedrive":
-        scanner.cloud.onedrive_client = None
-        scanner.cloud.onedrive_token = None
+    scanner.cloud.disconnect(provider)
     return jsonify({"disconnected": True})
 
 
