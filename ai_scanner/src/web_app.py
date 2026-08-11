@@ -1170,9 +1170,22 @@ def cloud_callback(provider):
 @app.route("/auth/google/callback")
 def auth_google_callback():
     code = request.args.get("code", "")
+    success = False
     if code:
         success = scanner.cloud.handle_google_drive_callback(code)
-    return redirect(url_for("index"))
+    msg, tone = ("CONNECTED! You can close this window.", "ok") if success \
+        else ("AUTH FAILED. Close this window and try again.", "err")
+    return f"""<!doctype html><html><head><meta charset="utf-8">
+<title>AI Scanner</title><style>
+body{{font-family:'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;
+height:90vh;margin:0;background:#f7f3ea;color:#3b2f22}}
+.card{{text-align:center;padding:28px 40px;background:#fff;border:1px solid #c9a96e;border-radius:10px}}
+.ok{{color:#3c7a3c}}.err{{color:#a33}}
+.icon{{font-size:34px}}</style></head><body><div class="card">
+<div class="icon {tone}">{"&#10004;" if success else "&#10007;"}</div>
+<div class="{tone}" style="font-weight:600">{msg}</div>
+<script>setTimeout(function(){{window.close();}},1200);</script>
+</div></body></html>"""
 
 
 @app.route("/cloud/connect/<provider>", methods=["POST"])
