@@ -1,0 +1,18 @@
+END OF DAY REPORT - 11 Aug 2026
+AI Document Scanner (WebEnoid Intern)
+App: http://localhost:5000 | Tests: 46/46 pass
+
+PRIOR WORK: cloud connect buttons (Drive/Dropbox/OneDrive), API keys onboarding, batch flow, sidebar archive status, storage path settings.
+
+NEW TODAY
+1. GOOGLE DRIVE SYNC (working end-to-end): auto-detect OAuth client JSON (any credentials*.json / client_secret_*.json in project root, newest wins). Fixed 400 redirect_uri_mismatch by resolving flows to the exact registered callback (http://localhost:5000/auth/google/callback) and adding a matching route. Popup now auto-closes after token exchange; main window polls /cloud/status. Guiding for consent "Testing mode" -> added test user.
+2. Dropbox: fixed status flag (configured now checks App Key). Replaced PKCE flow (rejected pasted codes when verifier lost) with stateless secret-based exchange, saved refresh tokens so sessions survive the 4hr expiry, and added direct access-token connect (paste sl. token in Settings => CONNECT validates instantly, no code step). Errors now visible in toast + server console.
+3. MULTI-USER FIX (hosting placeholder solved): rewrote CloudSync for per-user sessions. Thread-local active user bound per request from session cookie; tokens stored per user tokens/<user>.<provider>.json; OAuth flows isolated per user so concurrent users can't clobber each other. Every user connects their OWN accounts when hosted.
+4. SECURITY: blocked path traversal in /images and /api/batch/temp (was able to fetch ../../credentials-google-drive.json from the network); gitignored all OAuth credential files.
+5. SETTINGS UI: ADD button now reflects CONFIGURED state (ADD vs UPDATE), preselects first missing key, form scrolls into view; responsive CSS for <620px (rows stack, buttons stop shifting); long keys truncated to first8...last4 with hover tip.
+6. KEY SYNC FIX: deleting a key now removes its env var so Cloud Sync reflects UNCONFIGURED in real time.
+
+NOT DONE: hosted URL redirect config for Drive, Render deploy, cloud OCR backends, Mongo-backed token store.
+
+RUN: .\.venv\Scripts\python -m src.web_app
+NEXT: deploy https + register public Drive redirect, verify two-user isolation, per-item uploads.
