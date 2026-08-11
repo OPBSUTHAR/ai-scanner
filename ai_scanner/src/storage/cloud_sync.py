@@ -68,7 +68,7 @@ class CloudSync:
                 "redirect_uri": (cfg["redirect_uris"] or [None])[0],
             },
             "dropbox": {
-                "configured": bool(os.getenv("DROPBOX_ACCESS_TOKEN")),
+                "configured": bool(os.getenv("DROPBOX_APP_KEY") or os.getenv("DROPBOX_ACCESS_TOKEN")),
                 "connected": self.dropbox_client is not None,
             },
             "onedrive": {
@@ -220,7 +220,10 @@ class CloudSync:
                 )
             result = flow.finish(code)
             self.dropbox_client = dropbox.Dropbox(result.access_token)
-            self._save_token("dropbox", result.access_token)
+            self._save_token("dropbox", json.dumps({
+                "access_token": result.access_token,
+                "refresh_token": getattr(result, "refresh_token", None),
+            }))
             self._dropbox_flow = None
             return True
         except Exception:
@@ -480,7 +483,20 @@ class CloudSync:
         if token:
             try:
                 import dropbox
-                self.dropbox_client = dropbox.Dropbox(token)
+                try:
+                    data = json.loads(token)
+                    access = data.get("access_token")
+                    refresh = data.get("refresh_token")
+                except Exception:
+                    access, refresh = token, None
+                if refresh:
+                    self.dropbox_client = dropbox.Dropbox(
+                        oauth2_access_token=access,
+                        oauth2_refresh_token=refresh,
+                        app_key=os.getenv("DROPBOX_APP_KEY"),
+                    )
+                else:
+                    self.dropbox_client = dropbox.Dropbox(access)
                 self.dropbox_client.users_get_current_account()
             except Exception:
                 self.dropbox_client = None
