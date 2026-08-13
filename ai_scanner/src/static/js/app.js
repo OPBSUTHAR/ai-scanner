@@ -860,6 +860,19 @@ function loadGallery(){
     renderGallery();
   }).catch(function(){toast('VAULT LOAD ERROR','err')});
 }
+function aesc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _pathOf(el){
+  if(typeof el==='string')return el;
+  if(el&&el.getAttribute){
+    var p=el.getAttribute('data-path');
+    if(p)return p;
+    var c=el.closest?el.closest('.doc-card'):null;
+    if(c&&c.getAttribute)return c.getAttribute('data-path');
+  }
+  return null;
+}
 function renderGallery(){
   var c=document.getElementById('gallery-container');
   var docs=state.galleryDocs;
@@ -870,13 +883,13 @@ function renderGallery(){
   }
   c.innerHTML='<div class="doc-grid">'+docs.map(function(d){
     var s=state.selectedDocs.includes(d.path);
-    var sp=JSON.stringify(d.path);
-    return '<div class="doc-card '+(s?'selected':'')+'" onclick="toggleDoc('+sp+')">'+
+    var ap=aesc(d.path);
+    return '<div class="doc-card '+(s?'selected':'')+'" data-path="'+ap+'" onclick="toggleDoc(this)">'+
       '<div class="doc-thumb-wrap"><img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);opacity:.4;background:var(--bg-deep)\\\'><i class=\'lucide icon-image-off\'></i></div>\'">'+
-      '<label class="doc-check" title="Select / deselect" onclick="event.stopPropagation()"><input type="checkbox" '+(s?'checked':'')+' onchange="toggleDoc('+sp+')"><span><i class="lucide icon-check" style="font-size:11px;pointer-events:none"></i></span></label>'+
-      '<div class="doc-overlay"><button onclick="event.stopPropagation();openPreview('+sp+')"><i class="lucide icon-search"></i></button>'+
+      '<label class="doc-check" title="Select / deselect" data-path="'+ap+'" onclick="event.stopPropagation();toggleDoc(this)"><span><i class="lucide icon-check" style="font-size:11px;pointer-events:none"></i></span></label>'+
+      '<div class="doc-overlay"><button onclick="event.stopPropagation();openPreview(this)"><i class="lucide icon-search"></i></button>'+
       '<button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')"><i class="lucide icon-download"></i></button>'+
-      '<button onclick="event.stopPropagation();deleteDoc('+sp+')"><i class="lucide icon-trash-2"></i></button></div></div>'+
+      '<button onclick="event.stopPropagation();deleteDoc(this)"><i class="lucide icon-trash-2"></i></button></div></div>'+
       '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
   }).join('')+'</div>';
   updateMergeBar();
@@ -916,12 +929,16 @@ document.querySelectorAll('#filter-group button').forEach(function(b){
     this.classList.add('active');state.filter=this.dataset.filter;renderGallery();
   });
 });
-function toggleDoc(p){
+function toggleDoc(el){
+  var p=_pathOf(el);
+  if(p==null)return;
   var i=state.selectedDocs.indexOf(p);
   if(i>-1)state.selectedDocs.splice(i,1);else state.selectedDocs.push(p);
   renderGallery();
 }
-function openPreview(p){
+function openPreview(el){
+  var p=_pathOf(el);
+  if(p==null)return;
   var d=state.galleryDocs.find(function(x){return x.path===p||encodeURI(x.path)===p||x.path.replace(/\\/g,'/')===p.replace(/\\/g,'/')});
   if(!d)return;
   document.getElementById('modal-title').textContent=d.name+' // INSPECTOR';
@@ -957,7 +974,9 @@ function renameDoc(p){
     .then(function(d){if(d.renamed){toast('RENAMED');closeModal();loadGallery();loadDashboard()}else toast('RENAME FAILED','err')})
     .catch(function(){toast('ERROR','err')});
 }
-function deleteDoc(p){
+function deleteDoc(el){
+  var p=_pathOf(el);
+  if(p==null)return;
   showConfirm('DELETE THIS DOCUMENT?',function(){_deleteDoc(p)});
 }
 function _deleteDoc(p){
