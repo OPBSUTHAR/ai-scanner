@@ -1,0 +1,16 @@
+END OF DAY REPORT - 13 Aug 2026
+AI Document Scanner (WebEnoid Intern)
+App: http://localhost:5000 | Tests: 46/46 pass
+
+PRIOR WORK: per-user cloud sessions (Drive/Dropbox/OneDrive), API keys onboarding, batch flow, quick-login-by-name gate before the dashboard.
+
+NEW TODAY
+1. LOGIN / REGISTER ENTRY PAGE (same Archive parchment theme): replaced the bare single-field login with a tabbed card — LOGIN and REGISTER modes. Register is a placeholder (no user store yet) but records identity mode in a new user_mode cookie so the dashboard can tell registered keepers from visitors. Both flows reuse /api/login (mode-aware).
+2. GUEST / QUICK LOGIN (per-user random ID): added /api/guest endpoint that mints a unique ID (GUEST-XXXX, 8 chars, ambiguous chars stripped, secrets.choice) per visitor, sets the session + mode cookies, and returns the ID. Frontend reveals the temporary ID on the card before redirecting, with a local JS fallback generator if the server is unreachable. Placeholder for real auth — every person who taps EXPLORE AS GUEST gets their own identity.
+3. SIDEBAR IDENTITY: app.js now reads user_mode and labels the sidebar role — GUEST VISITOR // TEMP ID, REGISTERED // ARCHIVE KEEPER, or ARCHIVE KEEPER — and keeps the guest ID as the display name.
+4. SESSION COOKIES: /api/logout now clears both user_name and user_mode; /api/session returns {name, mode}.
+
+NOT DONE: real user store (password/DB), registration persistence, profile pages.
+
+RUN: .\.venv\Scripts\python -m src.web_app
+NEXT: persist registered users (file/DB), add optional password, per-user document folders.

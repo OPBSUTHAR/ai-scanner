@@ -1,4 +1,4 @@
-import os, sys, json, mimetypes, shutil, re, socket, uuid
+import os, sys, json, mimetypes, shutil, re, socket, uuid, secrets, string
 from pathlib import Path
 from datetime import datetime
 from io import BytesIO
@@ -252,11 +252,21 @@ def api_ocr_status():
     })
 
 # ---------------------------------------------------------------------------
-#  Quick Login (preferred name, no password)
+#  Quick Login / Register / Guest (preferred name, no password)
 # ---------------------------------------------------------------------------
 
 SESSION_COOKIE = "user_name"
+AUTH_COOKIE = "user_mode"
 SESSION_DAYS = 30
+GUEST_PREFIX = "GUEST"
+GUEST_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def _gen_guest_id():
+    # Unique random ID per user — placeholder identity until real auth exists.
+    return f"{GUEST_PREFIX}-" + "".join(
+        secrets.choice(GUEST_ALPHABET) for _ in range(8)
+    )
 
 
 @app.route("/login")
@@ -273,21 +283,39 @@ def api_login():
     if not name:
         return jsonify({"error": "Name required"}), 400
     name = name[:40]
-    resp = make_response(jsonify({"ok": True, "name": name}))
+    mode = "register" if data.get("mode") == "register" else "login"
+    resp = make_response(jsonify({"ok": True, "name": name, "mode": mode}))
     resp.set_cookie(SESSION_COOKIE, name, max_age=SESSION_DAYS * 24 * 3600,
+                    samesite="Lax")
+    resp.set_cookie(AUTH_COOKIE, mode, max_age=SESSION_DAYS * 24 * 3600,
+                    samesite="Lax")
+    return resp
+
+
+@app.route("/api/guest", methods=["POST"])
+def api_guest():
+    guest_id = _gen_guest_id()
+    resp = make_response(jsonify({"ok": True, "name": guest_id, "mode": "guest"}))
+    resp.set_cookie(SESSION_COOKIE, guest_id, max_age=SESSION_DAYS * 24 * 3600,
+                    samesite="Lax")
+    resp.set_cookie(AUTH_COOKIE, "guest", max_age=SESSION_DAYS * 24 * 3600,
                     samesite="Lax")
     return resp
 
 
 @app.route("/api/session", methods=["GET"])
 def api_session():
-    return jsonify({"name": request.cookies.get(SESSION_COOKIE, "")})
+    return jsonify({
+        "name": request.cookies.get(SESSION_COOKIE, ""),
+        "mode": request.cookies.get(AUTH_COOKIE, ""),
+    })
 
 
 @app.route("/api/logout", methods=["POST"])
 def api_logout():
     resp = make_response(jsonify({"ok": True}))
     resp.delete_cookie(SESSION_COOKIE)
+    resp.delete_cookie(AUTH_COOKIE)
     return resp
 
 

@@ -38,7 +38,13 @@
       <h1 class="login-title">The Archive</h1>
       <p class="login-sub">DOCUMENT SCANNER // v3.0</p>
       <div class="login-rule"></div>
-      <p class="login-invite">State thy name to enter the archive</p>
+
+      <div class="login-tabs" id="login-tabs">
+        <button type="button" class="login-tab active" data-mode="login">Login</button>
+        <button type="button" class="login-tab" data-mode="register">Register</button>
+      </div>
+
+      <p class="login-invite" id="login-invite">State thy name to enter the archive</p>
 
       <form class="login-form" id="login-form" autocomplete="off">
         <input type="text" id="login-name" class="login-input" placeholder="Your preferred name..." maxlength="40" autofocus>
@@ -47,6 +53,15 @@
           <span class="login-btn-arrow">→</span>
         </button>
       </form>
+
+      <div class="login-or">— OR —</div>
+
+      <button type="button" class="guest-btn" id="guest-btn">
+        <span class="guest-btn-icon">✦</span>
+        <span class="guest-btn-label">EXPLORE AS GUEST</span>
+        <span class="guest-btn-arrow">↪</span>
+      </button>
+      <p class="guest-hint" id="guest-hint">Temporary random identity — no name needed</p>
 
       <p class="login-note" id="login-note">Quick entry — no password needed</p>
     </div>

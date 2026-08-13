@@ -1290,8 +1290,11 @@ function getSessionCookie(name){
 function applySession(){
   var name=getSessionCookie('user_name');
   if(!name){window.location.href='/login';return}
+  var mode=getSessionCookie('user_mode');
   var label=document.getElementById('user-name');
   if(label)label.textContent=name;
+  var role=document.querySelector('.info .role');
+  if(role)role.textContent=(mode==='guest')?'GUEST VISITOR // TEMP ID':(mode==='register'?'REGISTERED // ARCHIVE KEEPER':'ARCHIVE KEEPER');
   document.title='AI SCANNER // '+name.toUpperCase();
   var av=document.getElementById('avatar-img');
   if(av){
