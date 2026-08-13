@@ -371,29 +371,20 @@
           <div id="cloud-status-list"></div>
         </div>
         <div class="ctrl-group" style="margin-bottom:10px">
-          <h4><i class="lucide icon-key"></i> API Keys <span id="api-key-badge" style="display:none;font-size:0.42rem;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:1px 6px;vertical-align:middle;letter-spacing:1px">ADMIN</span></h4>
-          <div id="api-key-locked" style="display:none">
-            <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);margin-bottom:8px"><i class="lucide icon-lock" style="color:var(--gold)"></i> Provider API keys are configured by the administrator. Cloud Connect below uses your own accounts — no keys needed.</p>
-            <button class="btn btn-outline btn-sm" onclick="unlockAdmin()"><i class="lucide icon-key"></i> Unlock Admin</button>
-          </div>
-          <div id="api-key-admin">
-            <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);margin-bottom:6px">Encrypted · never exposed — add the main keys below to unlock full OCR &amp; cloud sync</p>
-            <div id="setup-key-guide"></div>
-            <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);margin:8px 0 4px;letter-spacing:0.6px">ADDITIONAL SAVED KEYS</div>
-            <div id="api-keys-list"></div>
-            <div id="api-key-form" style="display:none;margin-top:6px;padding:8px;background:var(--cream);border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.1)">
-              <select id="ak-service" style="width:100%;padding:6px 8px;border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.12);background:var(--cream);color:var(--ink);font-family:var(--font-mono);font-size:0.55rem;margin-bottom:5px;outline:none"></select>
-              <input type="password" id="ak-value" placeholder="Paste API key" style="width:100%;padding:6px 8px;border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.12);background:var(--cream);color:var(--ink);font-family:var(--font-mono);font-size:0.55rem;margin-bottom:5px;outline:none">
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-primary btn-sm" onclick="saveApiKey()"><i class="lucide icon-save"></i> Save</button>
-                <button class="btn btn-outline btn-sm" onclick="document.getElementById('api-key-form').style.display='none';document.getElementById('btn-add-key').style.display=''">Cancel</button>
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
-              <button class="btn btn-primary btn-sm" id="btn-add-key" onclick="showAddKeyForm()"><i class="lucide icon-plus"></i> Add Key</button>
-              <button class="btn btn-outline btn-xs" onclick="lockAdmin()" style="font-size:0.48rem;padding:4px 7px"><i class="lucide icon-lock"></i> Lock</button>
+          <h4><i class="lucide icon-key"></i> API Keys</h4>
+          <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);margin-bottom:6px">Encrypted · never exposed — add the main keys below to unlock full OCR &amp; cloud sync</p>
+          <div id="setup-key-guide"></div>
+          <div style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);margin:8px 0 4px;letter-spacing:0.6px">ADDITIONAL SAVED KEYS</div>
+          <div id="api-keys-list"></div>
+          <div id="api-key-form" style="display:none;margin-top:6px;padding:8px;background:var(--cream);border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.1)">
+            <select id="ak-service" style="width:100%;padding:6px 8px;border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.12);background:var(--cream);color:var(--ink);font-family:var(--font-mono);font-size:0.55rem;margin-bottom:5px;outline:none"></select>
+            <input type="password" id="ak-value" placeholder="Paste API key" style="width:100%;padding:6px 8px;border-radius:var(--radius-sm);border:1px solid rgba(201,169,110,0.12);background:var(--cream);color:var(--ink);font-family:var(--font-mono);font-size:0.55rem;margin-bottom:5px;outline:none">
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-primary btn-sm" onclick="saveApiKey()"><i class="lucide icon-save"></i> Save</button>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('api-key-form').style.display='none';document.getElementById('btn-add-key').style.display=''">Cancel</button>
             </div>
           </div>
+          <button class="btn btn-primary btn-sm" id="btn-add-key" onclick="showAddKeyForm()" style="margin-top:4px"><i class="lucide icon-plus"></i> Add Key</button>
         </div>
         <div class="ctrl-group">
           <h4><i class="lucide icon-info"></i> About</h4>
