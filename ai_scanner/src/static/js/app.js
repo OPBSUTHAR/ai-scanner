@@ -144,11 +144,16 @@ function loadDashboard(){
     var rg=document.getElementById('recent-grid');
     if(!docs.length)rg.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-tertiary);font-family:var(--font-classic);font-size:0.7rem;font-style:italic">No scans yet — begin with the Scanner</div>';
     else rg.innerHTML=docs.slice(0,6).map(function(d){
-      return '<div class="doc-card" onclick="openPreview(\''+d.path+'\')">'+
-        '<img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;color:var(--text-tertiary);opacity:.4;background:var(--bg-deep)\\\'><i class=\\\'lucide icon-image-off\\\'></i></div>\'">'+
+      var ap=aesc(d.path);
+      var isPdf=(d.kind==='pdf')||/\.pdf$/i.test(d.name||'');
+      var thumb=isPdf
+        ?'<div class="doc-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--burgundy);font-size:30px"><i class="lucide icon-file-text"></i></div>'
+        :'<img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;color:var(--text-tertiary);opacity:.4;background:var(--bg-deep)\\\'><i class=\\\'lucide icon-image-off\\\'></i></div>\'">';
+      return '<div class="doc-card" data-path="'+ap+'" data-name="'+aesc(d.name)+'" data-url="'+aesc(d.image_url)+'" data-size="'+aesc(d.size)+'" data-folder="'+aesc(d.folder)+'" data-kind="'+((d.kind==='pdf')||isPdf?'pdf':'image')+'" onclick="openPreview(this)">'+
+        thumb+
         '<div class="doc-overlay"><button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')"><i class="lucide icon-download"></i></button>'+
-        '<button onclick="event.stopPropagation();openPreview(\''+d.path+'\')"><i class="lucide icon-eye"></i></button>'+
-        '<button onclick="event.stopPropagation();deleteDoc(\''+d.path+'\')"><i class="lucide icon-trash-2"></i></button></div>'+
+        '<button onclick="event.stopPropagation();openPreview(this)"><i class="lucide icon-eye"></i></button>'+
+        '<button onclick="event.stopPropagation();deleteDoc(this)"><i class="lucide icon-trash-2"></i></button></div>'+
         '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
     }).join('');
   }).catch(function(){});
@@ -857,6 +862,8 @@ function loadGallery(){
     state.galleryDocs=docs;
     document.getElementById('gallery-count').textContent=docs.length;
     document.getElementById('gallery-total').textContent=docs.length;
+    var mc=document.getElementById('merged-count');
+    if(mc)mc.textContent=docs.filter(function(d){return d.folder==='merged'}).length;
     renderGallery();
   }).catch(function(){toast('VAULT LOAD ERROR','err')});
 }
@@ -884,8 +891,11 @@ function renderGallery(){
   c.innerHTML='<div class="doc-grid">'+docs.map(function(d){
     var s=state.selectedDocs.includes(d.path);
     var ap=aesc(d.path);
+    var thumb=d.kind==='pdf'
+      ?'<div class="doc-thumb pdf-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--burgundy);font-size:30px"><i class="lucide icon-file-text"></i></div>'
+      :'<img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);opacity:.4;background:var(--bg-deep)\\\'><i class=\'lucide icon-image-off\'></i></div>\'">';
     return '<div class="doc-card '+(s?'selected':'')+'" data-path="'+ap+'" onclick="toggleDoc(this)">'+
-      '<div class="doc-thumb-wrap"><img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);opacity:.4;background:var(--bg-deep)\\\'><i class=\'lucide icon-image-off\'></i></div>\'">'+
+      '<div class="doc-thumb-wrap">'+thumb+
       '<label class="doc-check" title="Select / deselect" data-path="'+ap+'" onclick="event.stopPropagation();toggleDoc(this)"><span><i class="lucide icon-check" style="font-size:11px;pointer-events:none"></i></span></label>'+
       '<div class="doc-overlay"><button onclick="event.stopPropagation();openPreview(this)"><i class="lucide icon-search"></i></button>'+
       '<button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')"><i class="lucide icon-download"></i></button>'+
@@ -893,6 +903,12 @@ function renderGallery(){
       '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
   }).join('')+'</div>';
   updateMergeBar();
+}
+function showMergedGallery(){
+  state.filter='merged';
+  document.querySelectorAll('#filter-group button').forEach(function(b){b.classList.toggle('active',b.dataset.filter==='merged')});
+  switchView('gallery');
+  loadGallery();
 }
 function updateMergeBar(){
   var bar=document.getElementById('merge-bar');
@@ -940,11 +956,21 @@ function openPreview(el){
   var p=_pathOf(el);
   if(p==null)return;
   var d=state.galleryDocs.find(function(x){return x.path===p||encodeURI(x.path)===p||x.path.replace(/\\/g,'/')===p.replace(/\\/g,'/')});
+  if(!d&&el&&el.getAttribute){
+    var nm=el.getAttribute('data-name')||p.split('/').pop()||p;
+    d={path:p,name:nm,image_url:el.getAttribute('data-url')||('/images/'+p),
+       size:el.getAttribute('data-size')||'',folder:el.getAttribute('data-folder')||'document',
+       date:el.getAttribute('data-date')||'',kind:el.getAttribute('data-kind')||(/\.pdf$/i.test(p)?'pdf':'image')};
+  }
   if(!d)return;
+  var isPdf=(d.kind==='pdf')||/\.pdf$/i.test(d.name||'');
+  var viewHtml=isPdf
+    ?'<div class="preview-image"><iframe src="'+d.image_url+'" style="width:100%;height:100%;min-height:440px;border:none;background:#fff"></iframe></div>'
+    :'<div class="preview-image"><img src="'+d.image_url+'" alt="'+d.name+'"></div>';
   document.getElementById('modal-title').textContent=d.name+' // INSPECTOR';
   document.getElementById('modal-body').innerHTML=
     '<div class="preview-grid">'+
-    '<div class="preview-image"><img src="'+d.image_url+'" alt="'+d.name+'"></div>'+
+    viewHtml+
     '<div class="preview-side">'+
     '<h4>PROPERTIES</h4>'+
     '<div class="preview-prop"><span class="label">FILENAME</span><span class="value">'+d.name+'</span></div>'+
@@ -994,6 +1020,8 @@ function mergeToPdf(){
     .then(function(d){hideLoader();if(d.error){toast(d.error,'err');return}
       toast('PDF: '+d.name);
       state.selectedDocs=[];
+      state.filter='merged';
+      document.querySelectorAll('#filter-group button').forEach(function(b){b.classList.toggle('active',b.dataset.filter==='merged')});
       loadGallery();
       showMergeResult(d);
     })

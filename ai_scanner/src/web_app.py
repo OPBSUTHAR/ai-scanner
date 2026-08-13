@@ -144,6 +144,7 @@ def _doc_info(fpath):
         "size": _fmt_size(os.path.getsize(fpath)),
         "date": mtime,
         "folder": fpath.parent.name,
+        "kind": "pdf" if fpath.suffix.lower() == ".pdf" else "image",
         "image_url": url_for("serve_image", subpath=rel.replace("\\", "/")),
     }
 

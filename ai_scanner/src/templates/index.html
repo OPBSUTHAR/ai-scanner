@@ -61,9 +61,10 @@
       <span class="badge" id="gallery-count">0</span>
     </button>
     <div class="nav-section">Tools</div>
-    <button class="nav-item" onclick="switchView('gallery');setTimeout(function(){if(state.selectedDocs.length)mergeToPdf();else toast('SELECT DOCUMENTS IN VAULT FIRST','warn')},100)">
+    <button class="nav-item" onclick="showMergedGallery()">
       <span class="icon"><i class="lucide icon-file-stack"></i></span>
-      <span class="nav-label">Merge PDF</span>
+      <span class="nav-label">Merged PDFs</span>
+      <span class="badge" id="merged-count">0</span>
     </button>
     <button class="nav-item" data-view="settings" onclick="switchView('settings')">
       <span class="icon"><i class="lucide icon-settings"></i></span>
