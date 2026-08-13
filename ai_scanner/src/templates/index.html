@@ -344,11 +344,22 @@
           <button data-filter="receipt">Receipts</button>
           <button data-filter="id">IDs</button>
           <button data-filter="contract">Contracts</button>
+          <button data-filter="merged">Merged PDFs</button>
         </div>
         <div style="flex:1"></div>
-        <button class="btn btn-outline btn-sm" id="btn-merge" style="display:none" onclick="mergeToPdf()"><i class="lucide icon-file-stack"></i> Merge PDF (<span id="merge-n">0</span>)</button>
+        <button class="btn btn-outline btn-sm" id="btn-select-all" onclick="selectAllDocs()"><i class="lucide icon-list-check"></i> Select All</button>
       </div>
       <div id="gallery-container"></div>
+      <!-- Sticky selection / merge bar -->
+      <div id="merge-bar" style="display:none;position:sticky;bottom:12px;margin-top:12px;z-index:9;background:rgba(245,230,200,0.95);backdrop-filter:blur(8px);border:1px solid rgba(201,169,110,0.3);border-radius:10px;padding:8px 12px;box-shadow:0 -4px 16px rgba(0,0,0,0.18)">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-secondary)"><i class="lucide icon-check-square" style="vertical-align:-1px"></i> <span id="merge-bar-count">0</span> SELECTED</span>
+          <span id="merge-bar-hint" style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary)"></span>
+          <div style="flex:1"></div>
+          <button class="btn btn-outline btn-sm" onclick="clearSelection()"><i class="lucide icon-x"></i> CLEAR</button>
+          <button class="btn btn-primary btn-sm" id="btn-merge" style="display:none" onclick="mergeToPdf()"><i class="lucide icon-file-stack"></i> MERGE PDF (<span id="merge-n">0</span>)</button>
+        </div>
+      </div>
     </div>
 
     <!-- ===== SETTINGS / CONFIG ===== -->

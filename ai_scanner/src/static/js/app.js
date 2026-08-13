@@ -866,10 +866,8 @@ function renderGallery(){
   if(state.filter!=='all')docs=docs.filter(function(d){return d.folder===state.filter});
   if(!docs.length){
     c.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-tertiary)"><div style="font-size:48px;margin-bottom:8px;opacity:.15;font-family:var(--font-classic)"><i class="lucide icon-archive"></i></div><p style="font-family:var(--font-classic);font-size:0.7rem;font-style:italic">No documents found</p></div>';
-    document.getElementById('btn-merge').style.display='none';return;
+    updateMergeBar();return;
   }
-  document.getElementById('btn-merge').style.display=state.selectedDocs.length?'inline-flex':'none';
-  document.getElementById('merge-n').textContent=state.selectedDocs.length;
   c.innerHTML='<div class="doc-grid">'+docs.map(function(d){
     var s=state.selectedDocs.includes(d.path);
     var sp=JSON.stringify(d.path);
@@ -880,6 +878,36 @@ function renderGallery(){
       '<button onclick="event.stopPropagation();deleteDoc('+sp+')"><i class="lucide icon-trash-2"></i></button></div></div>'+
       '<div class="doc-meta"><div class="doc-name">'+d.name+'</div><div class="doc-sub"><span>'+d.folder+'</span><span>'+d.size+'</span></div></div></div>';
   }).join('')+'</div>';
+  updateMergeBar();
+}
+function updateMergeBar(){
+  var bar=document.getElementById('merge-bar');
+  var n=state.selectedDocs.length;
+  if(!bar)return;
+  bar.style.display=n?'block':'none';
+  var cnt=document.getElementById('merge-bar-count');
+  if(cnt)cnt.textContent=n;
+  var btn=document.getElementById('btn-merge');
+  if(btn)btn.style.display=n>=2?'inline-flex':'none';
+  var hint=document.getElementById('merge-bar-hint');
+  if(hint)hint.textContent=n===1?'SELECT 2+ TO MERGE INTO PDF':'';
+  var sa=document.getElementById('btn-select-all');
+  if(sa)sa.style.display=(state.filter==='all'||state.galleryDocs.length)?'inline-flex':'none';
+}
+function selectAllDocs(){
+  var docs=state.galleryDocs;
+  if(state.filter!=='all')docs=docs.filter(function(d){return d.folder===state.filter});
+  var allSelected=docs.length>0&&docs.every(function(d){return state.selectedDocs.includes(d.path)});
+  if(allSelected){
+    state.selectedDocs=state.selectedDocs.filter(function(p){return !docs.some(function(d){return d.path===p})});
+  }else{
+    docs.forEach(function(d){if(state.selectedDocs.indexOf(d.path)<0)state.selectedDocs.push(d.path)});
+  }
+  renderGallery();
+}
+function clearSelection(){
+  state.selectedDocs=[];
+  renderGallery();
 }
 document.querySelectorAll('#filter-group button').forEach(function(b){
   b.addEventListener('click',function(){
@@ -939,12 +967,65 @@ function _deleteDoc(p){
 
 /* ---- PDF MERGE ---- */
 function mergeToPdf(){
-  if(!state.selectedDocs.length){if(document.getElementById('view-gallery').classList.contains('active'))toast('SELECT DOCUMENTS FIRST','warn');return}
-  showLoader('GENERATING PDF...','MERGING DOCUMENTS');
+  if(state.selectedDocs.length<2){if(document.getElementById('view-gallery').classList.contains('active'))toast('SELECT 2+ DOCUMENTS TO MERGE','warn');return}
+  showLoader('GENERATING PDF...','MERGING '+state.selectedDocs.length+' DOCUMENTS');
   fetch('/pdf/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:state.selectedDocs})})
     .then(function(r){return r.json()})
-    .then(function(d){hideLoader();if(d.error){toast(d.error,'err');return}toast('PDF: '+d.name);window.location.href=d.url;state.selectedDocs=[];loadGallery()})
+    .then(function(d){hideLoader();if(d.error){toast(d.error,'err');return}
+      toast('PDF: '+d.name);
+      state.selectedDocs=[];
+      loadGallery();
+      showMergeResult(d);
+    })
     .catch(function(e){hideLoader();toast('PDF MERGE FAILED','err')});
+}
+function showMergeResult(d){
+  if(!d||!d.url)return;
+  var abs=window.location.origin+d.url;
+  document.getElementById('modal-title').textContent=d.name+' // MERGED PDF';
+  document.getElementById('modal-body').innerHTML=
+    '<div class="preview-grid">'+
+    '<div class="preview-image"><iframe src="'+d.url+'" style="width:100%;height:440px;border:none;border-radius:8px;background:#fff"></iframe></div>'+
+    '<div class="preview-side">'+
+    '<h4>MERGED PDF</h4>'+
+    '<div class="preview-prop"><span class="label">FILENAME</span><span class="value">'+esc(d.name)+'</span></div>'+
+    '<div class="preview-prop"><span class="label">SIZE</span><span class="value">'+esc(d.size||'--')+'</span></div>'+
+    '<div class="preview-prop"><span class="label">FOLDER</span><span class="value">merged</span></div>'+
+    '<h4 style="margin-top:14px">ACTIONS</h4>'+
+    '<div class="preview-actions">'+
+    '<button class="btn btn-primary" onclick="window.open(\''+d.url+'\',\'_blank\')"><i class="lucide icon-eye"></i> VIEW</button>'+
+    '<button class="btn btn-outline" onclick="window.location.href=\''+d.url+'\'"><i class="lucide icon-download"></i> DOWNLOAD</button>'+
+    '<button class="btn btn-outline" onclick="shareDoc(\''+esc(d.name)+'\',\''+d.url+'\')"><i class="lucide icon-share-2"></i> SHARE</button>'+
+    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'google_drive\')"><i class="lucide icon-cloud"></i> DRIVE</button>'+
+    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'dropbox\')"><i class="lucide icon-cloudy"></i> DROPBOX</button>'+
+    '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'onedrive\')"><i class="lucide icon-cloud-download"></i> ONEDRIVE</button>'+
+    '<button class="btn btn-danger" onclick="deleteDoc(\''+d.path+'\');closeModal()"><i class="lucide icon-trash-2"></i> DELETE</button>'+
+    '<button class="btn btn-outline" onclick="closeModal()"><i class="lucide icon-x"></i> CLOSE</button></div></div></div>';
+  document.getElementById('modal').classList.add('show');
+}
+function shareDoc(name,url){
+  var abs=window.location.origin+url;
+  if(navigator.share){
+    navigator.share({title:name||'Document',url:abs}).catch(function(){});
+    return;
+  }
+  var nameE=encodeURIComponent(name||'Document');
+  var textE=encodeURIComponent((name||'Document')+' - '+abs);
+  var linkE=encodeURIComponent(abs);
+  document.getElementById('modal-title').textContent='SHARE // '+name;
+  document.getElementById('modal-body').innerHTML=
+    '<div class="preview-grid"><div class="preview-side" style="max-width:100%">'+
+    '<h4>SHARE OPTIONS</h4>'+
+    '<div class="preview-actions">'+
+    '<button class="btn btn-primary" onclick="window.open(\'https://wa.me/?text='+textE+'\',\'_blank\')"><i class="lucide icon-message-circle"></i> WHATSAPP</button>'+
+    '<button class="btn btn-outline" onclick="window.open(\'https://t.me/share/url?url='+linkE+'&text='+nameE+'\',\'_blank\')"><i class="lucide icon-send"></i> TELEGRAM</button>'+
+    '<button class="btn btn-outline" onclick="window.open(\'mailto:?subject='+nameE+'&body='+textE+'\')"><i class="lucide icon-mail"></i> EMAIL</button>'+
+    '<button class="btn btn-outline" onclick="navigator.clipboard.writeText(\''+abs+'\').then(function(){toast(\'LINK COPIED\');closeModal()}).catch(function(){prompt(\'COPY LINK:\',\''+abs+'\')})"><i class="lucide icon-copy"></i> COPY LINK</button>'+
+    '<button class="btn btn-outline" onclick="closeModal()"><i class="lucide icon-x"></i> CLOSE</button></div>'+
+    '<div class="toggle-row" style="margin-top:10px"><span>LINK</span><span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);word-break:break-all">'+abs+'</span></div>'+
+    '<p style="font-family:var(--font-classic);font-size:0.55rem;font-style:italic;color:var(--text-tertiary);margin-top:8px">Tip: for sharing outside this machine, upload to DRIVE / DROPBOX / ONEDRIVE first — those produce public links.</p>'+
+    '</div></div>';
+  document.getElementById('modal').classList.add('show');
 }
 
 /* ---- SEARCH ---- */

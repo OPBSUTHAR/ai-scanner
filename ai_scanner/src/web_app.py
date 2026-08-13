@@ -1065,10 +1065,11 @@ def pdf_merge():
                 pass
     doc.build(elements)
 
-    rel = os.path.relpath(str(out_path), str(DOCUMENTS_FOLDER))
+    rel = os.path.relpath(str(out_path), str(DOCUMENTS_FOLDER)).replace("\\", "/")
     return jsonify({
-        "url": url_for("serve_image", subpath=rel.replace("\\", "/")),
+        "url": url_for("serve_image", subpath=rel),
         "name": out_name,
+        "path": rel,
         "size": _fmt_size(os.path.getsize(out_path)),
     })
 
