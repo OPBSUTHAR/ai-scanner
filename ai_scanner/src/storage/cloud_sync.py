@@ -271,21 +271,16 @@ class CloudSync:
             if not app_key:
                 return None
             u = self._key(user) if user is not None else self._user_key()
-            redirect_uri = self._dropbox_redirect_uri(redirect_uri)
             app_secret = os.getenv("DROPBOX_APP_SECRET")
-            session = {}
-            flow = dropbox.DropboxOAuth2Flow(
+            flow = dropbox.DropboxOAuth2FlowNoRedirect(
                 app_key,
                 consumer_secret=app_secret or None,
-                redirect_uri=redirect_uri,
-                session=session,
-                csrf_token_session_key=f"dropbox-auth-csrf-{u}",
                 token_access_type="offline",
                 use_pkce=not bool(app_secret),
             )
             auth_url = flow.start()
-            self._dropbox_flows[u] = (flow, session)
-            print(f"[CloudSync] Dropbox auth URL generated (redirect: {redirect_uri})")
+            self._dropbox_flows[u] = flow
+            print(f"[CloudSync] Dropbox auth-CODE URL generated (no redirect needed)")
             return auth_url
         except Exception as e:
             print(f"[CloudSync] Dropbox auth URL error: {e!r}")
@@ -294,25 +289,23 @@ class CloudSync:
     def handle_dropbox_callback(self, query_params: dict, user: str = None) -> bool:
         try:
             import dropbox
+            code = (query_params or {}).get("code", "")
+            if not code:
+                self._dropbox_last_error = "Missing auth code"
+                return False
             u = self._key(user) if user is not None else self._user_key()
-            entry = self._dropbox_flows.get(u)
-            if entry:
-                flow, session = entry
-            else:
+            flow = self._dropbox_flows.get(u)
+            if flow is None:
                 app_key = os.getenv("DROPBOX_APP_KEY")
                 if not app_key:
                     return False
-                session = {}
-                flow = dropbox.DropboxOAuth2Flow(
+                flow = dropbox.DropboxOAuth2FlowNoRedirect(
                     app_key,
                     consumer_secret=os.getenv("DROPBOX_APP_SECRET") or None,
-                    redirect_uri=self._dropbox_redirect_uri(),
-                    session=session,
-                    csrf_token_session_key=f"dropbox-auth-csrf-{u}",
                     token_access_type="offline",
                     use_pkce=not bool(os.getenv("DROPBOX_APP_SECRET")),
                 )
-            result = flow.finish(query_params)
+            result = flow.finish(code)
             self._clients(user)["dropbox_client"] = dropbox.Dropbox(
                 oauth2_access_token=result.access_token,
                 oauth2_refresh_token=getattr(result, "refresh_token", None),

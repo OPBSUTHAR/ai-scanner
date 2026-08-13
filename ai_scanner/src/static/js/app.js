@@ -999,7 +999,7 @@ function cloudAuth(provider){
     }
     if(d.auth_url){
       window.open(d.auth_url,'_blank','width=600,height=700');
-      if(provider==='google_drive'||provider==='onedrive'||provider==='dropbox'){
+      if(provider==='google_drive'||provider==='onedrive'){
         toast('COMPLETE AUTHORIZATION IN THE POPUP...');
         var tries=0;
         var t=setInterval(function(){
@@ -1027,10 +1027,12 @@ function cloudAuth(provider){
         },1500);
       }else{
         showPrompt('PASTE AUTHORIZATION CODE:',function(code){
-          if(code) fetch('/cloud/callback/'+provider+'?code='+encodeURIComponent(code))
-            .then(function(r){return r.json()}).then(function(d2){
-              if(d2.error)toast(d2.error,'err');else{toast('CONNECTED');loadCloudStatus()}
-            }).catch(function(){});
+          if(!code)return;
+          fetch('/cloud/callback/'+provider+'?code='+encodeURIComponent(code))
+            .then(function(r){
+              if(r.ok){toast('CONNECTED');loadCloudStatus();}
+              else{return r.json().then(function(d2){if(d2.error)toast(d2.error,'err')})}
+            }).catch(function(){toast('ERROR','err')});
         });
       }
     }
