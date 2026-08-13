@@ -130,8 +130,9 @@ class CloudSync:
                 "connected": c["dropbox_client"] is not None,
             },
             "onedrive": {
-                "configured": bool(os.getenv("ONEDRIVE_CLIENT_ID")),
+                "configured": bool(os.getenv("ONEDRIVE_CLIENT_ID") and os.getenv("ONEDRIVE_CLIENT_SECRET")),
                 "connected": c["onedrive_client"] is not None,
+                "redirect_uri": self._onedrive_redirect_uri(),
             },
         }
 
@@ -325,25 +326,83 @@ class CloudSync:
 
     # ---- OneDrive ----
 
+    ONEDRIVE_SCOPES = ["Files.ReadWrite.All"]
+    ONEDRIVE_DEFAULT_REDIRECT = "http://localhost:5000/cloud/callback/onedrive"
+
+    def _onedrive_redirect_uri(self, redirect_uri: str = None) -> str:
+        return redirect_uri or os.getenv(
+            "ONEDRIVE_REDIRECT_URI", self.ONEDRIVE_DEFAULT_REDIRECT)
+
+    def _onedrive_msal_app(self, user: str = None):
+        """Build a ConfidentialClientApplication with a persisted token cache.
+
+        Returns (app, cache, token_path) or (None, None, None) when the app
+        registration is not configured. The cache is loaded from disk so the
+        refresh token survives restarts and can be used silently.
+        """
+        import msal
+        client_id = os.getenv("ONEDRIVE_CLIENT_ID")
+        if not client_id:
+            return None, None, None
+        u = self._key(user) if user is not None else self._user_key()
+        tenant_id = os.getenv("ONEDRIVE_TENANT_ID", "common")
+        token_path = self._token_path(u, "onedrive")
+        cache = msal.SerializableTokenCache()
+        if os.path.exists(token_path):
+            try:
+                cache.deserialize(open(token_path, "r", encoding="utf-8").read())
+            except Exception:
+                cache = msal.SerializableTokenCache()
+        authority = f"https://login.microsoftonline.com/{tenant_id}"
+        app = msal.ConfidentialClientApplication(
+            client_id,
+            authority=authority,
+            client_credential=os.getenv("ONEDRIVE_CLIENT_SECRET"),
+            token_cache=cache,
+        )
+        return app, cache, token_path
+
+    def _persist_onedrive_cache(self, cache, token_path: str):
+        try:
+            if cache.has_state_changed:
+                os.makedirs(os.path.dirname(token_path), exist_ok=True)
+                with open(token_path, "w", encoding="utf-8") as f:
+                    f.write(cache.serialize())
+        except Exception:
+            pass
+
+    def _ensure_onedrive_token(self, user: str = None) -> bool:
+        """Refresh the OneDrive access token silently when needed."""
+        c = self._clients(user)
+        app = c.get("onedrive_client")
+        if app is None:
+            return bool(c.get("onedrive_token"))
+        try:
+            accounts = app.get_accounts()
+            if accounts:
+                result = app.acquire_token_silent(self.ONEDRIVE_SCOPES, account=accounts[0])
+                if result and "access_token" in result:
+                    c["onedrive_token"] = result["access_token"]
+                    cache = c.get("onedrive_cache")
+                    if cache is not None:
+                        token_path = c.get("onedrive_token_path")
+                        if token_path:
+                            self._persist_onedrive_cache(cache, token_path)
+                    return True
+        except Exception:
+            pass
+        return bool(c.get("onedrive_token"))
+
     def get_onedrive_auth_url(self, redirect_uri: str = None, user: str = None) -> Optional[str]:
         try:
-            import msal
-            client_id = os.getenv("ONEDRIVE_CLIENT_ID")
-            if not client_id:
-                return None
             u = self._key(user) if user is not None else self._user_key()
-            tenant_id = os.getenv("ONEDRIVE_TENANT_ID", "common")
-            if redirect_uri is None:
-                redirect_uri = os.getenv("ONEDRIVE_REDIRECT_URI", "http://localhost:8080/")
-            authority = f"https://login.microsoftonline.com/{tenant_id}"
-            app = msal.ConfidentialClientApplication(
-                client_id, authority=authority,
-                client_credential=os.getenv("ONEDRIVE_CLIENT_SECRET"),
-            )
+            app, cache, token_path = self._onedrive_msal_app(u)
+            if app is None:
+                return None
+            redirect_uri = self._onedrive_redirect_uri(redirect_uri)
             auth_url = app.get_authorization_request_url(
-                ["Files.ReadWrite.All"], redirect_uri=redirect_uri,
-            )
-            self._onedrive_apps[u] = app
+                self.ONEDRIVE_SCOPES, redirect_uri=redirect_uri)
+            self._onedrive_apps[u] = (app, cache, token_path)
             self._onedrive_redirect_uris[u] = redirect_uri
             return auth_url
         except Exception:
@@ -352,29 +411,26 @@ class CloudSync:
     def handle_onedrive_callback(self, code: str, user: str = None) -> bool:
         try:
             u = self._key(user) if user is not None else self._user_key()
-            app = self._onedrive_apps.get(u)
-            redirect_uri = self._onedrive_redirect_uris.get(
-                u, os.getenv("ONEDRIVE_REDIRECT_URI", "http://localhost:8080/"))
-            if app is None:
-                import msal
-                client_id = os.getenv("ONEDRIVE_CLIENT_ID")
-                tenant_id = os.getenv("ONEDRIVE_TENANT_ID", "common")
-                if not client_id:
+            entry = self._onedrive_apps.get(u)
+            if entry:
+                app, cache, token_path = entry
+            else:
+                app, cache, token_path = self._onedrive_msal_app(u)
+                if app is None:
                     return False
-                app = msal.ConfidentialClientApplication(
-                    client_id,
-                    authority=f"https://login.microsoftonline.com/{tenant_id}",
-                    client_credential=os.getenv("ONEDRIVE_CLIENT_SECRET"),
-                )
+            redirect_uri = self._onedrive_redirect_uris.get(
+                u, self._onedrive_redirect_uri())
             result = app.acquire_token_by_authorization_code(
-                code, scopes=["Files.ReadWrite.All"],
+                code, scopes=self.ONEDRIVE_SCOPES,
                 redirect_uri=redirect_uri,
             )
             if "access_token" in result:
                 c = self._clients(user)
-                c["onedrive_token"] = result["access_token"]
                 c["onedrive_client"] = app
-                self._save_token(user, "onedrive", result["access_token"])
+                c["onedrive_cache"] = cache
+                c["onedrive_token_path"] = token_path
+                c["onedrive_token"] = result["access_token"]
+                self._persist_onedrive_cache(cache, token_path)
                 self._onedrive_apps.pop(u, None)
                 return True
             return False
@@ -383,7 +439,7 @@ class CloudSync:
 
     def upload_to_onedrive(self, filepath: str, filename: str = None, user: str = None) -> Optional[str]:
         c = self._clients(user)
-        if not c["onedrive_token"]:
+        if not self._ensure_onedrive_token(user) or not c.get("onedrive_token"):
             return None
         try:
             import requests
@@ -406,6 +462,8 @@ class CloudSync:
 
     def _get_or_create_onedrive_folder(self, folder_name: str, user: str = None) -> Optional[str]:
         c = self._clients(user)
+        if not self._ensure_onedrive_token(user) or not c.get("onedrive_token"):
+            return None
         try:
             import requests
             headers = {"Authorization": f"Bearer {c['onedrive_token']}"}
@@ -600,19 +658,27 @@ class CloudSync:
 
         token = self._load_token(user, "onedrive")
         if token:
-            c["onedrive_token"] = token
             try:
-                import msal
-                client_id = os.getenv("ONEDRIVE_CLIENT_ID")
-                tenant_id = os.getenv("ONEDRIVE_TENANT_ID", "common")
-                if client_id:
-                    c["onedrive_client"] = msal.ConfidentialClientApplication(
-                        client_id,
-                        authority=f"https://login.microsoftonline.com/{tenant_id}",
-                        client_credential=os.getenv("ONEDRIVE_CLIENT_SECRET"),
-                    )
+                app, cache, token_path = self._onedrive_msal_app(user)
+                if app is None:
+                    raise ValueError("OneDrive app not configured")
+                accounts = app.get_accounts()
+                restored = False
+                if accounts:
+                    result = app.acquire_token_silent(
+                        self.ONEDRIVE_SCOPES, account=accounts[0])
+                    if result and "access_token" in result:
+                        c["onedrive_client"] = app
+                        c["onedrive_cache"] = cache
+                        c["onedrive_token_path"] = token_path
+                        c["onedrive_token"] = result["access_token"]
+                        restored = True
+                if not restored:
+                    # Legacy plain access-token store (pre-refresh support)
+                    c["onedrive_token"] = token.strip()
             except Exception:
                 c["onedrive_client"] = None
+                c["onedrive_token"] = token.strip()
 
     def restore_session(self):
         """Legacy alias — the 'default' user session is restored on demand."""

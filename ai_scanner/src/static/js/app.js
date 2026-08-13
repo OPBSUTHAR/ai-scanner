@@ -1006,19 +1006,25 @@ function cloudAuth(provider){
     }
     if(d.auth_url){
       window.open(d.auth_url,'_blank','width=600,height=700');
-      if(provider==='google_drive'){
+      if(provider==='google_drive'||provider==='onedrive'){
         toast('COMPLETE AUTHORIZATION IN THE POPUP...');
         var tries=0;
         var t=setInterval(function(){
           tries++;
           fetch('/cloud/status').then(function(r){return r.json()}).then(function(d2){
-            if(d2.providers&&d2.providers.google_drive&&d2.providers.google_drive.connected){
-              clearInterval(t);toast('GOOGLE DRIVE CONNECTED');loadCloudStatus();
+            if(d2.providers&&d2.providers[provider]&&d2.providers[provider].connected){
+              clearInterval(t);toast(labelsFor(provider)+' CONNECTED');loadCloudStatus();
             }else if(tries>120){
               clearInterval(t);
               fetch('/cloud/status').then(function(r){return r.json()}).then(function(d2){
-                var uri=(d2.providers&&d2.providers.google_drive&&d2.providers.google_drive.redirect_uri)||'http://localhost:5000/auth/google/callback';
-                showConfirm('GOOGLE BLOCKED THE LOGIN. OPEN https://console.cloud.google.com/apis/credentials -> EDIT YOUR OAUTH CLIENT (client id 770914580417-...) -> AUTHORIZED REDIRECT URIs -> ADD EXACTLY:\n\n'+uri+'\n\n(NO trailing slash, port 5000. Save, then try CONNECT again.)',function(){loadCloudStatus()});
+                var uri=(d2.providers&&d2.providers[provider]&&d2.providers[provider].redirect_uri)||'';
+                if(provider==='google_drive'){
+                  uri=uri||'http://localhost:5000/auth/google/callback';
+                  showConfirm('GOOGLE BLOCKED THE LOGIN. OPEN https://console.cloud.google.com/apis/credentials -> EDIT YOUR OAUTH CLIENT -> AUTHORIZED REDIRECT URIs -> ADD EXACTLY:\n\n'+uri+'\n\n(NO trailing slash, port 5000. Save, then try CONNECT again.)',function(){loadCloudStatus()});
+                }else{
+                  uri=uri||'http://localhost:5000/cloud/callback/onedrive';
+                  showConfirm('ONEDRIVE BLOCKED THE LOGIN. OPEN https://portal.azure.com -> App registrations -> your app -> Authentication -> Web redirect URIs -> ADD EXACTLY:\n\n'+uri+'\n\nThen save and try CONNECT again.',function(){loadCloudStatus()});
+                }
               }).catch(function(){loadCloudStatus()});
             }
           }).catch(function(){});

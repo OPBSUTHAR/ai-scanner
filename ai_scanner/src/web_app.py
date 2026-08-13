@@ -5,6 +5,12 @@ from io import BytesIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
+
 from flask import (
     Flask, request, jsonify, render_template,
     send_file, url_for, Response, redirect, make_response
@@ -60,11 +66,18 @@ UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
 def _sync_keys_to_env():
+    try:
+        from dotenv import dotenv_values
+        env_file = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
+    except Exception:
+        env_file = {}
     stored = key_manager.get_all()
     for name in KEY_META:
         env_name = name.upper()
         if name in stored:
             os.environ[env_name] = stored[name]
+        elif env_file.get(env_name):
+            os.environ[env_name] = env_file[env_name]
         else:
             os.environ.pop(env_name, None)
 
@@ -1154,24 +1167,27 @@ def cloud_status():
 
 @app.route("/cloud/auth/<provider>")
 def cloud_auth(provider):
-    redirect_uri = request.args.get("redirect_uri", request.host_url.rstrip("/") + "/cloud/callback/" + provider)
+    explicit = request.args.get("redirect_uri")
     auth_url = None
+    redir = None
     if provider == "google_drive":
-        auth_url = scanner.cloud.get_google_drive_auth_url(redirect_uri)
+        auth_url = scanner.cloud.get_google_drive_auth_url(explicit)
     elif provider == "dropbox":
         if os.getenv("DROPBOX_ACCESS_TOKEN"):
             if scanner.cloud.setup_dropbox():
                 return jsonify({"connected": True, "provider": "dropbox"})
-        auth_url = scanner.cloud.get_dropbox_auth_url(redirect_uri)
+        auth_url = scanner.cloud.get_dropbox_auth_url(explicit)
     elif provider == "onedrive":
-        auth_url = scanner.cloud.get_onedrive_auth_url(redirect_uri)
+        auth_url = scanner.cloud.get_onedrive_auth_url(explicit)
+        redir = scanner.cloud._onedrive_redirect_uri()
 
     if auth_url:
-        cfg = scanner.cloud._google_oauth_config()
-        return jsonify({
-            "auth_url": auth_url,
-            "redirect_uri": (cfg["redirect_uris"] or [None])[0],
-        })
+        if provider == "google_drive":
+            cfg = scanner.cloud._google_oauth_config()
+            redir = (cfg["redirect_uris"] or [None])[0]
+        elif provider == "dropbox":
+            redir = "http://localhost:8080/"
+        return jsonify({"auth_url": auth_url, "redirect_uri": redir})
     return jsonify({"error": "Provider not configured or not supported"}), 400
 
 
@@ -1201,12 +1217,31 @@ def cloud_callback(provider):
         success = scanner.cloud.handle_onedrive_callback(auth_code)
 
     if success:
-        return "", 200
+        return _oauth_result_page(True, provider)
     err = getattr(scanner.cloud, "_dropbox_last_error", None)
     msg = "Auth failed"
     if err:
         msg += f" ({err})"
-    return jsonify({"error": msg}), 400
+    return _oauth_result_page(False, provider, msg)
+
+
+def _oauth_result_page(success: bool, provider: str, msg: str = ""):
+    label = provider.replace("_", " ").upper()
+    text = f"{label} CONNECTED! You can close this window." if success else \
+        (msg or "AUTH FAILED. Close this window and try again.")
+    tone = "ok" if success else "err"
+    icon = "&#10004;" if success else "&#10007;"
+    return f"""<!doctype html><html><head><meta charset="utf-8">
+<title>AI Scanner</title><style>
+body{{font-family:'Segoe UI',Arial,sans-serif;display:flex;align-items:center;justify-content:center;
+height:90vh;margin:0;background:#f7f3ea;color:#3b2f22}}
+.card{{text-align:center;padding:28px 40px;background:#fff;border:1px solid #c9a96e;border-radius:10px}}
+.ok{{color:#3c7a3c}}.err{{color:#a33}}
+.icon{{font-size:34px}}</style></head><body><div class="card">
+<div class="icon {tone}">{icon}</div>
+<div class="{tone}" style="font-weight:600">{text}</div>
+<script>setTimeout(function(){{window.close();}},1200);</script>
+</div></body></html>"""
 
 
 @app.route("/auth/google/callback")
