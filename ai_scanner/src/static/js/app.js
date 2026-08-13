@@ -873,6 +873,7 @@ function renderGallery(){
     var sp=JSON.stringify(d.path);
     return '<div class="doc-card '+(s?'selected':'')+'" onclick="toggleDoc('+sp+')">'+
       '<div class="doc-thumb-wrap"><img class="doc-thumb" src="'+d.image_url+'" loading="lazy" onerror="this.outerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);opacity:.4;background:var(--bg-deep)\\\'><i class=\'lucide icon-image-off\'></i></div>\'">'+
+      '<label class="doc-check" title="Select / deselect" onclick="event.stopPropagation()"><input type="checkbox" '+(s?'checked':'')+' onchange="toggleDoc('+sp+')"><span><i class="lucide icon-check" style="font-size:11px;pointer-events:none"></i></span></label>'+
       '<div class="doc-overlay"><button onclick="event.stopPropagation();openPreview('+sp+')"><i class="lucide icon-search"></i></button>'+
       '<button onclick="event.stopPropagation();window.open(\''+d.image_url+'\',\'_blank\')"><i class="lucide icon-download"></i></button>'+
       '<button onclick="event.stopPropagation();deleteDoc('+sp+')"><i class="lucide icon-trash-2"></i></button></div></div>'+
