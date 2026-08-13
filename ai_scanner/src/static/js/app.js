@@ -1111,8 +1111,40 @@ function maskForDisplay(m){
   if(m.length>34)return m.slice(0,8)+'…'+m.slice(-4);
   return m;
 }
+function renderApiKeyLocked(){
+  var b=document.getElementById('api-key-badge');if(b)b.style.display='none';
+  var f=document.getElementById('api-key-form');if(f)f.style.display='none';
+  var a=document.getElementById('api-key-admin');if(a)a.style.display='none';
+  var l=document.getElementById('api-key-locked');if(l)l.style.display='';
+}
+function renderApiKeyAdmin(){
+  var a=document.getElementById('api-key-admin');if(a)a.style.display='';
+  var l=document.getElementById('api-key-locked');if(l)l.style.display='none';
+}
+function unlockAdmin(){
+  showPrompt('ADMIN PASSWORD',function(pw){
+    if(!pw){toast('PASSWORD REQUIRED','warn');return}
+    fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(d.error){toast(d.error,'err');return}
+        toast('ADMIN UNLOCKED');
+        var b=document.getElementById('api-key-badge');if(b)b.style.display='';
+        loadApiKeys();
+      }).catch(function(){toast('LOGIN ERROR','err')});
+  });
+}
+function lockAdmin(){
+  fetch('/api/admin/logout',{method:'POST'}).then(function(r){return r.json()})
+    .then(function(){toast('ADMIN LOCKED');loadApiKeys()}).catch(function(){});
+}
 function loadApiKeys(){
-  fetch('/api/keys').then(function(r){return r.json()}).then(function(keys){
+  fetch('/api/keys').then(function(r){
+    if(r.status===403){renderApiKeyLocked();return null}
+    return r.json();
+  }).then(function(keys){
+    if(!keys)return;
+    renderApiKeyAdmin();
     renderKeySetupGuide(keys);
     var list=document.getElementById('api-keys-list');
     var configured=keys.filter(function(k){return k.configured});

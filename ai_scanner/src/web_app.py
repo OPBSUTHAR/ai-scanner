@@ -1,4 +1,4 @@
-import os, sys, json, mimetypes, shutil, re, socket, uuid, secrets, string
+import os, sys, json, mimetypes, shutil, re, socket, uuid, secrets, string, functools
 from pathlib import Path
 from datetime import datetime
 from io import BytesIO
@@ -13,7 +13,7 @@ except ImportError:
 
 from flask import (
     Flask, request, jsonify, render_template,
-    send_file, url_for, Response, redirect, make_response
+    send_file, url_for, Response, redirect, make_response, session
 )
 import cv2
 import numpy as np
@@ -41,6 +41,23 @@ def _save_app_config(data):
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024
+app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "").strip()
+
+
+def _is_admin():
+    return bool(session.get("is_admin"))
+
+
+def _admin_required(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        if ADMIN_PASSWORD and not _is_admin():
+            return jsonify({"error": "admin_required",
+                            "message": "Provider API keys are managed by the administrator"}), 403
+        return fn(*args, **kwargs)
+    return wrapper
 
 
 @app.before_request
@@ -171,7 +188,31 @@ KEY_META = {
 _sync_keys_to_env()
 
 
+@app.route("/api/admin/check")
+def api_admin_check():
+    return jsonify({"admin": _is_admin(), "configured": bool(ADMIN_PASSWORD)})
+
+
+@app.route("/api/admin/login", methods=["POST"])
+def api_admin_login():
+    data = request.json or {}
+    if not ADMIN_PASSWORD:
+        session["is_admin"] = True
+        return jsonify({"ok": True, "admin": True})
+    if data.get("password") == ADMIN_PASSWORD:
+        session["is_admin"] = True
+        return jsonify({"ok": True, "admin": True})
+    return jsonify({"error": "Wrong password"}), 401
+
+
+@app.route("/api/admin/logout", methods=["POST"])
+def api_admin_logout():
+    session.pop("is_admin", None)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/keys", methods=["GET"])
+@_admin_required
 def api_list_keys():
     stored = key_manager.list_keys()
     result = []
@@ -188,6 +229,7 @@ def api_list_keys():
 
 
 @app.route("/api/keys", methods=["POST"])
+@_admin_required
 def api_save_key():
     data = request.json or {}
     name = data.get("name", "").strip()
@@ -202,6 +244,7 @@ def api_save_key():
 
 
 @app.route("/api/keys/<name>", methods=["DELETE"])
+@_admin_required
 def api_delete_key(name):
     if name not in KEY_META:
         return jsonify({"error": f"Unknown key: {name}"}), 400
