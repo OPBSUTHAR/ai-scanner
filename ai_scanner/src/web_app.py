@@ -1180,9 +1180,6 @@ def cloud_auth(provider):
     if provider == "google_drive":
         auth_url = scanner.cloud.get_google_drive_auth_url(explicit)
     elif provider == "dropbox":
-        if os.getenv("DROPBOX_ACCESS_TOKEN"):
-            if scanner.cloud.setup_dropbox():
-                return jsonify({"connected": True, "provider": "dropbox"})
         auth_url = scanner.cloud.get_dropbox_auth_url(explicit)
         redir = scanner.cloud._dropbox_redirect_uri()
     elif provider == "onedrive":
@@ -1346,7 +1343,7 @@ def main():
         except ImportError:
             print(f"  ⚠ ngrok requested but pyngrok not installed.")
             print(f"  Install: pip install pyngrok\n")
-    app.run(host=args.host, port=args.port, debug=args.debug)
+    app.run(host=args.host, port=args.port, debug=args.debug, threaded=True)
 
 if __name__ == "__main__":
     main()

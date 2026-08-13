@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 import threading
 from typing import Optional
 
@@ -22,6 +23,7 @@ class CloudSync:
         self._dropbox_flows = {}
         self._onedrive_apps = {}
         self._onedrive_redirect_uris = {}
+        self._usage_cache = {}
         self.restore_session()
 
     # ---- user session plumbing ----
@@ -254,7 +256,6 @@ class CloudSync:
             if not token:
                 return False
             client = dropbox.Dropbox(token)
-            client.users_get_current_account()
             self._clients(user)["dropbox_client"] = client
             self._save_token(user, "dropbox", json.dumps({"access_token": token}))
             return True
@@ -551,10 +552,18 @@ class CloudSync:
         return None
 
     def get_usage_stats(self, user: str = None) -> dict:
-        usage = {}
-        usage["google_drive"] = self._get_drive_usage(user)
-        usage["dropbox"] = self._get_dropbox_usage(user)
-        usage["onedrive"] = self._get_onedrive_usage(user)
+        key = self._key(user) if user is not None else self._user_key()
+        cache_key = f"usage:{key}"
+        now = time.time()
+        cached = self._usage_cache.get(cache_key)
+        if cached and now - cached[0] < 30:
+            return cached[1]
+        usage = {
+            "google_drive": self._get_drive_usage(user),
+            "dropbox": self._get_dropbox_usage(user),
+            "onedrive": self._get_onedrive_usage(user),
+        }
+        self._usage_cache[cache_key] = (now, usage)
         return usage
 
     def _get_drive_usage(self, user: str = None) -> Optional[str]:
@@ -712,7 +721,6 @@ class CloudSync:
                     )
                 else:
                     c["dropbox_client"] = dropbox.Dropbox(access)
-                c["dropbox_client"].users_get_current_account()
             except Exception:
                 c["dropbox_client"] = None
 
@@ -722,20 +730,10 @@ class CloudSync:
                 app, cache, token_path = self._onedrive_msal_app(user)
                 if app is None:
                     raise ValueError("OneDrive app not configured")
-                accounts = app.get_accounts()
-                restored = False
-                if accounts:
-                    result = app.acquire_token_silent(
-                        self.ONEDRIVE_SCOPES, account=accounts[0])
-                    if result and "access_token" in result:
-                        c["onedrive_client"] = app
-                        c["onedrive_cache"] = cache
-                        c["onedrive_token_path"] = token_path
-                        c["onedrive_token"] = result["access_token"]
-                        restored = True
-                if not restored:
-                    # Legacy plain access-token store (pre-refresh support)
-                    c["onedrive_token"] = token.strip()
+                c["onedrive_client"] = app
+                c["onedrive_cache"] = cache
+                c["onedrive_token_path"] = token_path
+                c["onedrive_token"] = token.strip()
             except Exception:
                 c["onedrive_client"] = None
                 c["onedrive_token"] = token.strip()
