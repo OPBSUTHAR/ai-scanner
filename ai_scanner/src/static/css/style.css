@@ -1135,6 +1135,7 @@ body{
 .cloud-badge.ok{background:rgba(45,74,59,0.12);color:var(--emerald);border:1px solid rgba(45,74,59,0.35);box-shadow:0 0 8px rgba(45,74,59,0.2)}
 .cloud-badge.warn{background:rgba(212,170,84,0.1);color:var(--gold);border:1px solid rgba(212,170,84,0.3)}
 .cloud-badge.no{background:rgba(168,50,50,0.08);color:var(--crimson);border:1px solid rgba(168,50,50,0.12)}
+.cloud-usage{font-family:var(--font-mono);font-size:0.5rem;color:var(--gold);background:rgba(212,170,84,0.08);border:1px solid rgba(212,170,84,0.2);padding:2px 7px;border-radius:3px;white-space:nowrap}
 
 .code{font-family:var(--font-mono);font-size:0.55rem;background:rgba(201,169,110,0.06);padding:2px 5px;border-radius:3px;color:var(--text-secondary)}
 

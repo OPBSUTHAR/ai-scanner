@@ -1162,7 +1162,14 @@ def serve_image(subpath):
 
 @app.route("/cloud/status")
 def cloud_status():
-    return jsonify({"providers": scanner.cloud.status()})
+    providers = scanner.cloud.status()
+    usage = scanner.cloud.get_usage_stats()
+    for prov in providers:
+        if providers[prov]["connected"]:
+            providers[prov]["usage"] = usage.get(prov) or "0 KB"
+        else:
+            providers[prov]["usage"] = None
+    return jsonify({"providers": providers})
 
 
 @app.route("/cloud/auth/<provider>")
@@ -1177,6 +1184,7 @@ def cloud_auth(provider):
             if scanner.cloud.setup_dropbox():
                 return jsonify({"connected": True, "provider": "dropbox"})
         auth_url = scanner.cloud.get_dropbox_auth_url(explicit)
+        redir = scanner.cloud._dropbox_redirect_uri()
     elif provider == "onedrive":
         auth_url = scanner.cloud.get_onedrive_auth_url(explicit)
         redir = scanner.cloud._onedrive_redirect_uri()
@@ -1185,8 +1193,6 @@ def cloud_auth(provider):
         if provider == "google_drive":
             cfg = scanner.cloud._google_oauth_config()
             redir = (cfg["redirect_uris"] or [None])[0]
-        elif provider == "dropbox":
-            redir = "http://localhost:8080/"
         return jsonify({"auth_url": auth_url, "redirect_uri": redir})
     return jsonify({"error": "Provider not configured or not supported"}), 400
 
@@ -1212,7 +1218,7 @@ def cloud_callback(provider):
     if provider == "google_drive":
         success = scanner.cloud.handle_google_drive_callback(auth_code)
     elif provider == "dropbox":
-        success = scanner.cloud.handle_dropbox_callback(auth_code)
+        success = scanner.cloud.handle_dropbox_callback(request.args)
     elif provider == "onedrive":
         success = scanner.cloud.handle_onedrive_callback(auth_code)
 
@@ -1281,6 +1287,14 @@ def cloud_connect(provider):
 def cloud_disconnect(provider):
     scanner.cloud.disconnect(provider)
     return jsonify({"disconnected": True})
+
+
+@app.route("/cloud/folder/<provider>")
+def cloud_folder(provider):
+    url = scanner.cloud.get_folder_url(provider)
+    if not url:
+        return jsonify({"error": "Provider not connected"}), 400
+    return jsonify({"url": url})
 
 
 @app.route("/cloud/upload/<path:subpath>", methods=["POST"])

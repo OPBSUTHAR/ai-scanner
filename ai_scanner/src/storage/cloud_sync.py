@@ -128,6 +128,7 @@ class CloudSync:
             "dropbox": {
                 "configured": bool(os.getenv("DROPBOX_APP_KEY") or os.getenv("DROPBOX_ACCESS_TOKEN")),
                 "connected": c["dropbox_client"] is not None,
+                "redirect_uri": self._dropbox_redirect_uri(),
             },
             "onedrive": {
                 "configured": bool(os.getenv("ONEDRIVE_CLIENT_ID") and os.getenv("ONEDRIVE_CLIENT_SECRET")),
@@ -240,6 +241,12 @@ class CloudSync:
 
     # ---- Dropbox ----
 
+    DROPBOX_DEFAULT_REDIRECT = "http://localhost:5000/cloud/callback/dropbox"
+
+    def _dropbox_redirect_uri(self, redirect_uri: str = None) -> str:
+        return redirect_uri or os.getenv(
+            "DROPBOX_REDIRECT_URI", self.DROPBOX_DEFAULT_REDIRECT)
+
     def setup_dropbox(self, user: str = None) -> bool:
         try:
             import dropbox
@@ -262,40 +269,54 @@ class CloudSync:
             app_key = os.getenv("DROPBOX_APP_KEY")
             if not app_key:
                 return None
-            if redirect_uri is None:
-                redirect_uri = "http://localhost:8080/"
-            auth_flow = dropbox.DropboxOAuth2FlowNoRedirect(
+            u = self._key(user) if user is not None else self._user_key()
+            redirect_uri = self._dropbox_redirect_uri(redirect_uri)
+            app_secret = os.getenv("DROPBOX_APP_SECRET")
+            session = {}
+            flow = dropbox.DropboxOAuth2Flow(
                 app_key,
-                consumer_secret=os.getenv("DROPBOX_APP_SECRET"),
-                use_pkce=False,
+                consumer_secret=app_secret or None,
+                redirect_uri=redirect_uri,
+                session=session,
+                csrf_token_session_key=f"dropbox-auth-csrf-{u}",
                 token_access_type="offline",
+                use_pkce=not bool(app_secret),
             )
-            auth_url = auth_flow.start()
-            self._dropbox_flows[self._user_key()] = auth_flow
-            print("[CloudSync] Dropbox auth URL generated")
+            auth_url = flow.start()
+            self._dropbox_flows[u] = (flow, session)
+            print(f"[CloudSync] Dropbox auth URL generated (redirect: {redirect_uri})")
             return auth_url
         except Exception as e:
             print(f"[CloudSync] Dropbox auth URL error: {e!r}")
             return None
 
-    def handle_dropbox_callback(self, code: str, user: str = None) -> bool:
+    def handle_dropbox_callback(self, query_params: dict, user: str = None) -> bool:
         try:
             import dropbox
-            from dropbox import DropboxOAuth2FlowNoRedirect
             u = self._key(user) if user is not None else self._user_key()
-            flow = self._dropbox_flows.get(u)
-            if flow is None:
+            entry = self._dropbox_flows.get(u)
+            if entry:
+                flow, session = entry
+            else:
                 app_key = os.getenv("DROPBOX_APP_KEY")
                 if not app_key:
                     return False
-                flow = DropboxOAuth2FlowNoRedirect(
+                session = {}
+                flow = dropbox.DropboxOAuth2Flow(
                     app_key,
-                    consumer_secret=os.getenv("DROPBOX_APP_SECRET"),
-                    use_pkce=False,
+                    consumer_secret=os.getenv("DROPBOX_APP_SECRET") or None,
+                    redirect_uri=self._dropbox_redirect_uri(),
+                    session=session,
+                    csrf_token_session_key=f"dropbox-auth-csrf-{u}",
                     token_access_type="offline",
+                    use_pkce=not bool(os.getenv("DROPBOX_APP_SECRET")),
                 )
-            result = flow.finish(code)
-            self._clients(user)["dropbox_client"] = dropbox.Dropbox(result.access_token)
+            result = flow.finish(query_params)
+            self._clients(user)["dropbox_client"] = dropbox.Dropbox(
+                oauth2_access_token=result.access_token,
+                oauth2_refresh_token=getattr(result, "refresh_token", None),
+                app_key=os.getenv("DROPBOX_APP_KEY"),
+            )
             self._save_token(user, "dropbox", json.dumps({
                 "access_token": result.access_token,
                 "refresh_token": getattr(result, "refresh_token", None),
@@ -489,6 +510,45 @@ class CloudSync:
             return None
 
     # ---- Multi ----
+
+    def get_folder_url(self, provider: str, user: str = None) -> Optional[str]:
+        """Browser URL to open the app's AI_Scanner folder on a connected provider."""
+        if provider == "google_drive":
+            c = self._clients(user)
+            if not c["drive_service"]:
+                return None
+            try:
+                folder_id = self._get_or_create_drive_folder("AI_Scanner", user)
+                if folder_id:
+                    return f"https://drive.google.com/drive/folders/{folder_id}"
+            except Exception:
+                return None
+        elif provider == "dropbox":
+            if not self._clients(user).get("dropbox_client"):
+                return None
+            return "https://www.dropbox.com/home/AI_Scanner"
+        elif provider == "onedrive":
+            c = self._clients(user)
+            if not c.get("onedrive_client") and not c.get("onedrive_token"):
+                return None
+            try:
+                import requests
+                if not self._ensure_onedrive_token(user):
+                    return None
+                folder_id = self._get_or_create_onedrive_folder("AI_Scanner", user)
+                if not folder_id:
+                    return None
+                headers = {"Authorization": f"Bearer {c['onedrive_token']}"}
+                resp = requests.get(
+                    f"https://graph.microsoft.com/v1.0/me/drive/items/{folder_id}",
+                    params={"select": "webUrl"},
+                    headers=headers,
+                )
+                if resp.status_code == 200:
+                    return resp.json().get("webUrl")
+            except Exception:
+                return None
+        return None
 
     def get_usage_stats(self, user: str = None) -> dict:
         usage = {}

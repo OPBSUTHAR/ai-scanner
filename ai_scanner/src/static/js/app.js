@@ -969,29 +969,22 @@ function loadCloudStatus(){
     list.innerHTML=Object.entries(d.providers).map(function(x){
       var k=x[0],v=x[1];
       var usageHtml='';
-      if(v.usage) usageHtml='<span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary)">'+v.usage+'</span>';
+      if(v.connected) usageHtml='<span class="cloud-usage">'+((v.usage)||'0 KB')+'</span>';
+      var folderBtn=v.connected?'<button class="btn btn-outline btn-xs" onclick="cloudFolder(\''+k+'\')" title="Open AI_Scanner folder"><i class="lucide icon-folder-open"></i> VIEW FOLDER</button>':'';
       return '<div class="toggle-row"><span>'+icons[k]+' '+labels[k]+'</span>'+
         '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+
-        usageHtml+
+        usageHtml+folderBtn+
         (v.connected?'<span class="cloud-badge ok">CONFIGURED</span><button class="btn btn-outline btn-xs" onclick="cloudDisconnect(\''+k+'\')">DISCONNECT</button>'
         :v.configured?'<span class="cloud-badge warn">OFFLINE</span><button class="btn btn-primary btn-xs" onclick="cloudAuth(\''+k+'\')">CONNECT</button>'
         :'<span class="cloud-badge no">UNCONFIGURED</span><button class="btn btn-primary btn-xs" onclick="cloudAuth(\''+k+'\')"><i class="lucide icon-plug"></i> CONNECT</button>')+'</div></div>';
     }).join('');
-    list.innerHTML+='<div style="margin-top:6px;text-align:center"><button class="btn btn-outline btn-xs" onclick="checkCloudUsage()" style="font-size:0.5rem"><i class="lucide icon-bar-chart-3"></i> CHECK CLOUD USAGE</button></div>';
   }).catch(function(){});
 }
-function checkCloudUsage(){
-  showLoader('CHECKING...','QUERYING CLOUD STORAGE');
-  fetch('/api/cloud/usage').then(function(r){return r.json()}).then(function(d){
-    hideLoader();
-    var lines=[];
-    if(d.google_drive) lines.push('DRIVE: '+d.google_drive);
-    if(d.dropbox) lines.push('DROPBOX: '+d.dropbox);
-    if(d.onedrive) lines.push('ONEDRIVE: '+d.onedrive);
-    if(lines.length) toast(lines.join(' | '));
-    else toast('No connected cloud services');
-    loadCloudStatus();
-  }).catch(function(){hideLoader();toast('Failed to check usage','err')});
+function cloudFolder(provider){
+  fetch('/cloud/folder/'+provider).then(function(r){return r.json()}).then(function(d){
+    if(d.url) window.open(d.url,'_blank');
+    else toast('FOLDER NOT AVAILABLE','warn');
+  }).catch(function(){toast('FOLDER LOOKUP FAILED','err')});
 }
 function cloudAuth(provider){
   fetch('/cloud/auth/'+provider).then(function(r){return r.json()}).then(function(d){
@@ -1006,7 +999,7 @@ function cloudAuth(provider){
     }
     if(d.auth_url){
       window.open(d.auth_url,'_blank','width=600,height=700');
-      if(provider==='google_drive'||provider==='onedrive'){
+      if(provider==='google_drive'||provider==='onedrive'||provider==='dropbox'){
         toast('COMPLETE AUTHORIZATION IN THE POPUP...');
         var tries=0;
         var t=setInterval(function(){
@@ -1021,9 +1014,12 @@ function cloudAuth(provider){
                 if(provider==='google_drive'){
                   uri=uri||'http://localhost:5000/auth/google/callback';
                   showConfirm('GOOGLE BLOCKED THE LOGIN. OPEN https://console.cloud.google.com/apis/credentials -> EDIT YOUR OAUTH CLIENT -> AUTHORIZED REDIRECT URIs -> ADD EXACTLY:\n\n'+uri+'\n\n(NO trailing slash, port 5000. Save, then try CONNECT again.)',function(){loadCloudStatus()});
-                }else{
+                }else if(provider==='onedrive'){
                   uri=uri||'http://localhost:5000/cloud/callback/onedrive';
                   showConfirm('ONEDRIVE BLOCKED THE LOGIN. OPEN https://portal.azure.com -> App registrations -> your app -> Authentication -> Web redirect URIs -> ADD EXACTLY:\n\n'+uri+'\n\nThen save and try CONNECT again.',function(){loadCloudStatus()});
+                }else{
+                  uri=uri||'http://localhost:5000/cloud/callback/dropbox';
+                  showConfirm('DROPBOX BLOCKED THE LOGIN. OPEN https://www.dropbox.com/developers/apps -> your app -> Permissions -> Redirect URIs -> ADD EXACTLY:\n\n'+uri+'\n\nSave, then try CONNECT again.',function(){loadCloudStatus()});
                 }
               }).catch(function(){loadCloudStatus()});
             }
@@ -1249,6 +1245,11 @@ realtimeIntervals.push(setInterval(function(){
     loadGallery();
   }
 }, isTouchDevice?40000:12000));
+realtimeIntervals.push(setInterval(function(){
+  if(document.getElementById('view-settings').classList.contains('active')){
+    loadCloudStatus();
+  }
+}, pollInterval));
 
 /* ---- KEYBOARD SHORTCUTS ---- */
 document.addEventListener('keydown',function(e){
