@@ -1373,7 +1373,8 @@ def bluetooth_create_pairing():
         "interval": float(data.get("interval", 2.0))
     }
 
-    connect_url = f"{base_url}/bt/cam/{token}"
+    scheme = "https" if request.is_secure else "http"
+    connect_url = f"{scheme}://{local_ip}:{port}/bt/cam/{token}"
     qr_code = create_url_qr_base64(connect_url)
 
     _bt_sessions[token] = {
