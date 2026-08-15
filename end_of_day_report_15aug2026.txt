@@ -1,0 +1,28 @@
+END OF DAY REPORT - 15 Aug 2026
+AI Document Scanner | Tests: 56/56 pass
+
+PRIOR: Multi-cloud (GDrive/Dropbox/OneDrive), batch capture/merge, VAULT gallery, per-user sessions, guest login.
+
+NEW TODAY
+1. BLUETOOTH CAMERA QR-FIRST PAIRING: Click "Bluetooth Camera" → modal QR → scan on phone → opens /bt/cam/<token> → device camera auto-starts → live feed streams to scanner.
+2. MODAL FIX: Moved #bluetooth-modal outside .view containers (was nested in view-scanner with display:none); now works like #modal/#dialog.
+3. DEVICE CAMERA PAGE (bt_cam.html) — CROSS-PLATFORM:
+   - HTTPS detection via window.isSecureContext; auto-starts camera only on secure origins
+   - Permission state query with clear UI for denied/not-found/busy/insecure
+   - Controls: OPEN / CLOSE / FLIP / REOPEN
+   - Scanner command polling (/control) 1.5s for stop/start
+   - Frame capture @ 300ms (JPEG 0.7) → POST /frame
+   - Secure-notice banner when HTTPS required
+4. FLASK HTTPS SUPPORT:
+   - --ssl: auto-generates self-signed cert (365 days, SAN: localhost + LAN IP)
+   - --cert/--key for custom certs
+   - Pairing connect_url uses https:// when request.is_secure
+
+VERIFICATION: pytest 56/56, node --check clean, CDP headless modal+QR works, HTTPS server runs, pairing flow tested via curl.
+
+FILES: index.html (modal moved), bt_cam.html (rewrite), web_app.py (--ssl/--cert/--key, HTTPS connect_url)
+
+NOT DONE: True BLE (current is HTTP QR), production TLS cert, iOS Safari gesture requirement covered by OPEN button.
+
+RUN: python -m src.web_app --ssl --port 5000 --debug
+NEXT: BLE fallback, production TLS, per-user device history
