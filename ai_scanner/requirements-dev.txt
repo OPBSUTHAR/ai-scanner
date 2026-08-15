@@ -1,2 +1,4 @@
 # Development/test dependencies (install: pip install -r requirements-dev.txt)
 pytest>=8.0.0
+bleak>=0.21.0
+qrcode>=7.4.0

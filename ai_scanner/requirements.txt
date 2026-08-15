@@ -25,6 +25,10 @@ requests>=2.31.0
 
 # QR/Barcode
 pyzbar>=0.1.9
+qrcode>=7.4.0
+
+# Bluetooth
+bleak>=0.21.0
 
 # PDF Generation
 reportlab>=4.0.0

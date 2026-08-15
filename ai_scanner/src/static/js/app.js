@@ -1465,6 +1465,281 @@ function logoutSession(){
   });
 }
 
+/* ---- BLUETOOTH CAMERA ---- */
+var bluetoothScanTimer=null;
+var bluetoothSelectedDevice=null;
+
+function openBluetoothPanel(){
+  var panel=document.getElementById('bluetooth-panel');
+  if(panel)panel.style.display='block';
+  checkBluetoothStatus();
+}
+
+function closeBluetoothPanel(){
+  var panel=document.getElementById('bluetooth-panel');
+  if(panel)panel.style.display='none';
+  stopBluetoothScan();
+}
+
+function checkBluetoothStatus(){
+  fetch('/api/bluetooth/status')
+    .then(function(r){return r.json()})
+    .then(function(data){
+      var statusEl=document.getElementById('bt-status-text');
+      if(statusEl){
+        if(!data.available){
+          statusEl.textContent='Bluetooth not available (bleak not installed on server)';
+          statusEl.style.color='var(--crimson)';
+        }else if(data.connected){
+          statusEl.textContent='Connected to '+data.device.name;
+          statusEl.style.color='var(--emerald)';
+          showBluetoothConnected(data.device);
+        }else{
+          statusEl.textContent='Ready to scan for Bluetooth cameras';
+          statusEl.style.color='var(--text-secondary)';
+        }
+      }
+    })
+    .catch(function(){
+      var statusEl=document.getElementById('bt-status-text');
+      if(statusEl)statusEl.textContent='Error checking Bluetooth status';
+    });
+}
+
+function scanBluetoothDevices(){
+  var btn=document.getElementById('btn-bt-scan');
+  var stopBtn=document.getElementById('btn-bt-stop-scan');
+  var devicesEl=document.getElementById('bluetooth-devices');
+  
+  if(btn)btn.style.display='none';
+  if(stopBtn)stopBtn.style.display='';
+  if(devicesEl)devicesEl.innerHTML='<div style="padding:12px;text-align:center;color:var(--gold)"><i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> Scanning...</div>';
+  
+  fetch('/api/bluetooth/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duration:10})})
+    .then(function(r){return r.json()})
+    .then(function(data){
+      if(btn)btn.style.display='';
+      if(stopBtn)stopBtn.style.display='none';
+      
+      if(data.error){
+        if(devicesEl)devicesEl.innerHTML='<div style="padding:12px;text-align:center;color:var(--crimson)">Error: '+data.error+'</div>';
+        toast('SCAN FAILED: '+data.error,'err');
+        return;
+      }
+      
+      var devices=data.devices||[];
+      if(devices.length===0){
+        if(devicesEl)devicesEl.innerHTML='<div style="padding:12px;text-align:center;color:var(--text-tertiary);font-family:var(--font-classic);font-size:0.65rem;font-style:italic">No Bluetooth cameras found</div>';
+        toast('NO DEVICES FOUND');
+        return;
+      }
+      
+      if(devicesEl){
+        devicesEl.innerHTML=devices.map(function(d){
+          var isCamera=d.is_camera;
+          return '<div class="bt-device" data-address="'+d.address+'" data-name="'+esc(d.name)+'" onclick="selectBluetoothDevice(this)" style="padding:10px;border-bottom:1px solid rgba(201,169,110,0.05);cursor:pointer;display:flex;align-items:center;gap:8px">'+
+            '<i class="lucide '+(isCamera?'icon-camera':'icon-bluetooth')+'" style="color:'+(isCamera?'var(--emerald)':'var(--gold)')+';font-size:1.2rem"></i>'+
+            '<div style="flex:1">'+
+              '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600">'+esc(d.name)+'</div>'+
+              '<div style="font-family:var(--font-mono);font-size:0.45rem;color:var(--text-tertiary)">'+d.address+' | RSSI: '+d.rssi+'dBm'+(d.battery!==null?' | Battery: '+d.battery+'%':'')+'</div>'+
+              '<div style="font-family:var(--font-mono);font-size:0.4rem;color:var(--text-tertiary)">'+(d.services&&d.services.length?'Services: '+d.services.slice(0,3).join(', '):'')+'</div>'+
+            '</div>'+
+            '<span class="badge '+(isCamera?'badge-green':'badge-gray')+'" style="font-size:0.45rem">'+(isCamera?'CAMERA':'DEVICE')+'</span>'+
+          '</div>';
+        }).join('');
+      }
+      toast('FOUND '+devices.length+' DEVICE(S)');
+    })
+    .catch(function(e){
+      if(btn)btn.style.display='';
+      if(stopBtn)stopBtn.style.display='none';
+      if(devicesEl)devicesEl.innerHTML='<div style="padding:12px;text-align:center;color:var(--crimson)">Error: '+e.message+'</div>';
+      toast('SCAN ERROR: '+e.message,'err');
+    });
+}
+
+function stopBluetoothScan(){
+  var btn=document.getElementById('btn-bt-scan');
+  var stopBtn=document.getElementById('btn-bt-stop-scan');
+  if(btn)btn.style.display='';
+  if(stopBtn)stopBtn.style.display='none';
+}
+
+function selectBluetoothDevice(el){
+  document.querySelectorAll('.bt-device').forEach(function(d){d.style.background=''});
+  el.style.background='rgba(0,242,254,0.08)';
+  bluetoothSelectedDevice={
+    address:el.dataset.address,
+    name:el.dataset.name
+  };
+  toast('SELECTED: '+bluetoothSelectedDevice.name);
+}
+
+function connectBluetoothCamera(){
+  if(!bluetoothSelectedDevice){
+    toast('SELECT A DEVICE FIRST','warn');
+    return;
+  }
+  
+  var btn=event.target;
+  var originalText=btn.innerHTML;
+  btn.innerHTML='<i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> CONNECTING...';
+  btn.disabled=true;
+  
+  fetch('/api/bluetooth/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bluetoothSelectedDevice)})
+    .then(function(r){return r.json()})
+    .then(function(data){
+      btn.innerHTML=originalText;
+      btn.disabled=false;
+      if(data.error){
+        toast('CONNECT FAILED: '+data.error,'err');
+        return;
+      }
+      toast('CONNECTED TO '+data.device.name);
+      checkBluetoothStatus();
+    })
+    .catch(function(e){
+      btn.innerHTML=originalText;
+      btn.disabled=false;
+      toast('CONNECT ERROR: '+e.message,'err');
+    });
+}
+
+function disconnectBluetooth(){
+  fetch('/api/bluetooth/disconnect',{method:'POST'})
+    .then(function(r){return r.json()})
+    .then(function(){
+      bluetoothSelectedDevice=null;
+      toast('DISCONNECTED');
+      checkBluetoothStatus();
+    })
+    .catch(function(e){
+      toast('DISCONNECT ERROR: '+e.message,'err');
+    });
+}
+
+function showBluetoothConnected(device){
+  var connectedEl=document.getElementById('bluetooth-connected');
+  var nameEl=document.getElementById('bt-connected-name');
+  if(connectedEl)connectedEl.style.display='block';
+  if(nameEl)nameEl.textContent=device.name;
+}
+
+function captureBluetoothFrame(){
+  showLoader('CAPTURING...','REQUESTING FRAME FROM BLUETOOTH CAMERA');
+  fetch('/api/bluetooth/capture',{method:'POST'})
+    .then(function(r){return r.json()})
+    .then(function(data){
+      hideLoader();
+      if(data.error){
+        toast('CAPTURE FAILED: '+data.error,'err');
+        return;
+      }
+      if(data.image){
+        handleBluetoothImage(data.image);
+        toast('CAPTURED FROM BLUETOOTH CAMERA');
+      }
+    })
+    .catch(function(e){
+      hideLoader();
+      toast('CAPTURE ERROR: '+e.message,'err');
+    });
+}
+
+function startBluetoothStream(){
+  var btn=event.target;
+  var originalText=btn.innerHTML;
+  btn.innerHTML='<i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> STARTING...';
+  btn.disabled=true;
+  
+  fetch('/api/bluetooth/stream/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({interval:2})})
+    .then(function(r){return r.json()})
+    .then(function(data){
+      btn.innerHTML=originalText;
+      btn.disabled=false;
+      if(data.error){
+        toast('STREAM FAILED: '+data.error,'err');
+        return;
+      }
+      if(data.image){
+        handleBluetoothImage(data.image);
+      }
+      toast('STREAM STARTED');
+    })
+    .catch(function(e){
+      btn.innerHTML=originalText;
+      btn.disabled=false;
+      toast('STREAM ERROR: '+e.message,'err');
+    });
+}
+
+function stopBluetoothStream(){
+  fetch('/api/bluetooth/stream/stop',{method:'POST'})
+    .then(function(r){return r.json()})
+    .then(function(){
+      toast('STREAM STOPPED');
+    })
+    .catch(function(e){
+      toast('STOP ERROR: '+e.message,'err');
+    });
+}
+
+function handleBluetoothImage(dataUrl){
+  var img=new Image();
+  img.onload=function(){
+    var canvas=document.createElement('canvas');
+    canvas.width=img.width;
+    canvas.height=img.height;
+    canvas.getContext('2d').drawImage(img,0,0);
+    canvas.toBlob(function(blob){
+      state.capturedBlobs.push(blob);
+      state.capturedBlob=blob;
+      addFilmstripThumb(blob,state.capturedBlobs.length);
+      document.getElementById('dz-placeholder').style.display='none';
+      document.getElementById('btn-process').disabled=false;
+      document.getElementById('done-bar').style.display='flex';
+      document.getElementById('done-bar').classList.add('origin');
+      updateBatch();
+    },'image/jpeg',0.85);
+  };
+  img.src=dataUrl;
+}
+
+function showBluetoothQR(){
+  if(!bluetoothSelectedDevice){
+    toast('CONNECT TO A DEVICE FIRST','warn');
+    return;
+  }
+  
+  showLoader('GENERATING QR...','CREATING PAIRING CODE');
+  fetch('/api/bluetooth/qr/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    width:640,height:480,quality:85,auto_capture:true,interval:2
+  })})
+    .then(function(r){return r.json()})
+    .then(function(data){
+      hideLoader();
+      if(data.error){
+        toast('QR GENERATION FAILED: '+data.error,'err');
+        return;
+      }
+      var qrImg=document.getElementById('bluetooth-qr-image');
+      var qrModal=document.getElementById('bluetooth-qr-modal');
+      if(qrImg && qrModal){
+        qrImg.src=data.qr_code;
+        qrModal.style.display='block';
+      }
+    })
+    .catch(function(e){
+      hideLoader();
+      toast('QR ERROR: '+e.message,'err');
+    });
+}
+
+function closeBluetoothQR(){
+  var qrModal=document.getElementById('bluetooth-qr-modal');
+  if(qrModal)qrModal.style.display='none';
+}
+
 /* ---- INIT ---- */
 applySession();
 restoreState();

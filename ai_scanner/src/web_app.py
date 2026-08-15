@@ -1,7 +1,8 @@
-import os, sys, json, mimetypes, shutil, re, socket, uuid, secrets, string
+import os, sys, json, mimetypes, shutil, re, socket, uuid, secrets, string, asyncio
 from pathlib import Path
 from datetime import datetime
 from io import BytesIO
+from typing import Optional, List, Dict, Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -24,6 +25,16 @@ from src.storage.local_storage import LocalStorage
 from src.utils.search import DocumentSearch
 from src.utils.key_manager import KeyManager
 from src.utils.doc_converter import is_office_file, convert_to_pdf, merge_pdfs
+from src.camera.bluetooth_camera import (
+    BluetoothCameraManager,
+    BluetoothDevice,
+    BluetoothCameraConfig,
+    ConnectionState,
+    generate_pairing_qr_code_base64,
+    scan_bluetooth_cameras,
+    BLEAK_AVAILABLE
+)
+from src.utils.bluetooth_qr import create_bluetooth_qr_for_device
 
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "config" / "app_config.json"
 
@@ -1306,6 +1317,341 @@ def cloud_upload(subpath):
     filename = request.json.get("filename") if request.json else None
     results = scanner.cloud.upload_to_providers(str(full), providers, filename)
     return jsonify({"results": results})
+
+
+# ---------------------------------------------------------------------------
+#  Bluetooth Camera API
+# ---------------------------------------------------------------------------
+
+_bluetooth_manager: Optional[BluetoothCameraManager] = None
+_bluetooth_device: Optional[BluetoothDevice] = None
+_bluetooth_streaming = False
+
+
+def _get_bluetooth_manager() -> BluetoothCameraManager:
+    global _bluetooth_manager
+    if _bluetooth_manager is None:
+        _bluetooth_manager = BluetoothCameraManager()
+    return _bluetooth_manager
+
+
+@app.route("/api/bluetooth/status")
+def bluetooth_status():
+    return jsonify({
+        "available": BLEAK_AVAILABLE,
+        "connected": _bluetooth_device is not None,
+        "device": {
+            "address": _bluetooth_device.address,
+            "name": _bluetooth_device.name,
+            "rssi": _bluetooth_device.rssi,
+            "battery": _bluetooth_device.battery_level,
+            "is_camera": _bluetooth_device.is_camera
+        } if _bluetooth_device else None,
+        "streaming": _bluetooth_streaming
+    })
+
+
+@app.route("/api/bluetooth/scan", methods=["POST"])
+def bluetooth_scan():
+    if not BLEAK_AVAILABLE:
+        return jsonify({"error": "Bluetooth not available (bleak not installed)"}), 503
+    
+    data = request.json or {}
+    duration = float(data.get("duration", 10.0))
+    
+    async def do_scan():
+        manager = _get_bluetooth_manager()
+        devices = await manager.scan_for_devices(duration=duration, filter_camera_only=True)
+        return devices
+    
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        devices = loop.run_until_complete(do_scan())
+        loop.close()
+        
+        return jsonify({
+            "devices": [
+                {
+                    "address": d.address,
+                    "name": d.name,
+                    "rssi": d.rssi,
+                    "services": d.services,
+                    "is_camera": d.is_camera,
+                    "battery": d.battery_level
+                }
+                for d in devices
+            ]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/bluetooth/connect", methods=["POST"])
+def bluetooth_connect():
+    if not BLEAK_AVAILABLE:
+        return jsonify({"error": "Bluetooth not available (bleak not installed)"}), 503
+    
+    data = request.json or {}
+    address = data.get("address", "").strip()
+    name = data.get("name", "").strip()
+    
+    if not address:
+        return jsonify({"error": "Device address required"}), 400
+    
+    device = BluetoothDevice(address=address, name=name or "Unknown", is_camera=True)
+    
+    async def do_connect():
+        manager = _get_bluetooth_manager()
+        connected = await manager.connect(device)
+        return connected, manager
+    
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        connected, manager = loop.run_until_complete(do_connect())
+        loop.close()
+        
+        if connected:
+            global _bluetooth_device
+            _bluetooth_device = device
+            return jsonify({
+                "connected": True,
+                "device": {
+                    "address": device.address,
+                    "name": device.name
+                }
+            })
+        else:
+            return jsonify({"error": "Failed to connect to device"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/bluetooth/disconnect", methods=["POST"])
+def bluetooth_disconnect():
+    global _bluetooth_device, _bluetooth_streaming
+    
+    if _bluetooth_manager:
+        async def do_disconnect():
+            await _bluetooth_manager.disconnect()
+        
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(do_disconnect())
+            loop.close()
+        except Exception:
+            pass
+    
+    _bluetooth_device = None
+    _bluetooth_streaming = False
+    
+    return jsonify({"disconnected": True})
+
+
+@app.route("/api/bluetooth/configure", methods=["POST"])
+def bluetooth_configure():
+    if not _bluetooth_manager or not _bluetooth_device:
+        return jsonify({"error": "No device connected"}), 400
+    
+    data = request.json or {}
+    config = BluetoothCameraConfig(
+        device_address=_bluetooth_device.address,
+        device_name=_bluetooth_device.name,
+        image_width=int(data.get("width", 640)),
+        image_height=int(data.get("height", 480)),
+        jpeg_quality=int(data.get("quality", 85)),
+        auto_capture=bool(data.get("auto_capture", False)),
+        capture_interval=float(data.get("interval", 2.0))
+    )
+    
+    async def do_configure():
+        return await _bluetooth_manager.configure_camera(config)
+    
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        configured = loop.run_until_complete(do_configure())
+        loop.close()
+        
+        return jsonify({"configured": configured})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/bluetooth/capture", methods=["POST"])
+def bluetooth_capture():
+    if not _bluetooth_manager or not _bluetooth_device:
+        return jsonify({"error": "No device connected"}), 400
+    
+    async def do_capture():
+        return await _bluetooth_manager.capture_single()
+    
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        frame = loop.run_until_complete(do_capture())
+        loop.close()
+        
+        if frame is not None:
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            import base64
+            img_base64 = base64.b64encode(buffer).decode()
+            return jsonify({
+                "captured": True,
+                "image": f"data:image/jpeg;base64,{img_base64}",
+                "width": frame.shape[1],
+                "height": frame.shape[0]
+            })
+        else:
+            return jsonify({"error": "Failed to capture image"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/bluetooth/stream/start", methods=["POST"])
+def bluetooth_stream_start():
+    global _bluetooth_streaming
+    
+    if not _bluetooth_manager or not _bluetooth_device:
+        return jsonify({"error": "No device connected"}), 400
+    
+    if _bluetooth_streaming:
+        return jsonify({"streaming": True})
+    
+    data = request.json or {}
+    interval = float(data.get("interval", 2.0))
+    
+    async def do_stream():
+        global _bluetooth_streaming
+        _bluetooth_streaming = True
+        
+        frames = []
+        
+        def frame_callback(frame):
+            frames.append(frame)
+            if len(frames) > 10:
+                frames.pop(0)
+        
+        await _bluetooth_manager.start_streaming(frame_callback)
+        await asyncio.sleep(interval * 3)
+        await _bluetooth_manager.stop_streaming()
+        _bluetooth_streaming = False
+        return frames[-1] if frames else None
+    
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        frame = loop.run_until_complete(do_stream())
+        loop.close()
+        
+        if frame is not None:
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            import base64
+            img_base64 = base64.b64encode(buffer).decode()
+            return jsonify({
+                "streaming": True,
+                "image": f"data:image/jpeg;base64,{img_base64}",
+                "width": frame.shape[1],
+                "height": frame.shape[0]
+            })
+        else:
+            _bluetooth_streaming = False
+            return jsonify({"error": "Failed to get frame from stream"}), 500
+    except Exception as e:
+        _bluetooth_streaming = False
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/bluetooth/stream/stop", methods=["POST"])
+def bluetooth_stream_stop():
+    global _bluetooth_streaming
+    
+    if _bluetooth_manager:
+        async def do_stop():
+            await _bluetooth_manager.stop_streaming()
+        
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(do_stop())
+            loop.close()
+        except Exception:
+            pass
+    
+    _bluetooth_streaming = False
+    return jsonify({"streaming": False})
+
+
+@app.route("/api/bluetooth/qr/generate", methods=["POST"])
+def bluetooth_generate_qr():
+    if not _bluetooth_device:
+        return jsonify({"error": "No device selected"}), 400
+    
+    data = request.json or {}
+    config = {
+        "width": int(data.get("width", 640)),
+        "height": int(data.get("height", 480)),
+        "quality": int(data.get("quality", 85)),
+        "auto_capture": bool(data.get("auto_capture", True)),
+        "interval": float(data.get("interval", 2.0))
+    }
+    
+    qr_base64 = create_bluetooth_qr_for_device(
+        device_id=_bluetooth_device.address.replace(":", ""),
+        device_name=_bluetooth_device.name,
+        device_address=_bluetooth_device.address,
+        config=config
+    )
+    
+    pairing_data = {
+        "type": "bluetooth_camera_pairing",
+        "version": "1.0",
+        "device": {
+            "address": _bluetooth_device.address,
+            "name": _bluetooth_device.name,
+            "is_camera": True
+        },
+        "config": config
+    }
+    
+    import json
+    qr_data = json.dumps(pairing_data, separators=(',', ':'))
+    
+    return jsonify({
+        "qr_code": qr_base64,
+        "qr_data": qr_data,
+        "device": {
+            "address": _bluetooth_device.address,
+            "name": _bluetooth_device.name
+        }
+    })
+
+
+@app.route("/api/bluetooth/qr/parse", methods=["POST"])
+def bluetooth_parse_qr():
+    data = request.json or {}
+    qr_data = data.get("qr_data", "").strip()
+    
+    if not qr_data:
+        return jsonify({"error": "QR data required"}), 400
+    
+    try:
+        pairing = json.loads(qr_data)
+        if pairing.get("type") != "bluetooth_camera_pairing":
+            return jsonify({"error": "Invalid QR code type"}), 400
+        
+        device_info = pairing.get("device", {})
+        config = pairing.get("config", {})
+        
+        return jsonify({
+            "valid": True,
+            "device": device_info,
+            "config": config
+        })
+    except Exception as e:
+        return jsonify({"error": f"Invalid QR data: {str(e)}"}), 400
 
 
 # ---------------------------------------------------------------------------

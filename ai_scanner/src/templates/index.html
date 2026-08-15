@@ -188,6 +188,9 @@
                   <button class="btn btn-primary btn-lg" onclick="event.stopPropagation();phoneCameraCapture()" style="background:var(--burgundy);border-color:var(--rust);color:var(--cream)">
                     <i class="lucide icon-smartphone"></i> Phone Camera
                   </button>
+                  <button class="btn btn-primary btn-lg" id="btn-bluetooth-cam" onclick="event.stopPropagation();openBluetoothPanel()" style="background:var(--blue);border-color:var(--blue-dark);color:var(--cream)">
+                    <i class="lucide icon-bluetooth"></i> Bluetooth Camera
+                  </button>
                   <div class="btn btn-primary btn-lg" style="background:var(--emerald);cursor:default;opacity:0.9;font-size:0.62rem;line-height:1.5">
                     <i class="lucide icon-eye"></i> SHOWS ORIGINAL —<br>PROCESS CHANGES, THEN DONE
                   </div>
@@ -273,6 +276,49 @@
                 <button class="btn btn-primary btn-sm" onclick="saveProcessedResults()"><i class="lucide icon-folder-down"></i> Save to Vault</button>
                 <button class="btn btn-outline btn-sm" onclick="downloadLastResult()"><i class="lucide icon-download"></i> Download</button>
                 <button class="btn btn-outline btn-sm" onclick="resetScanner()"><i class="lucide icon-refresh-cw"></i> New Scan</button>
+              </div>
+            </div>
+</div>
+          
+          <!-- Bluetooth Camera Panel -->
+          <div class="bluetooth-panel" id="bluetooth-panel" style="display:none">
+            <div class="card">
+              <div class="card-header">
+                <h3><i class="lucide icon-bluetooth"></i> Bluetooth Camera</h3>
+                <button class="modal-close" onclick="closeBluetoothPanel()"><i class="lucide icon-x"></i></button>
+              </div>
+              <div class="card-body">
+                <div id="bluetooth-status" style="margin-bottom:12px;padding:8px;background:var(--cream);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.55rem">
+                  <span id="bt-status-text">Ready to scan for Bluetooth cameras</span>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:12px">
+                  <button class="btn btn-primary btn-sm" id="btn-bt-scan" onclick="scanBluetoothDevices()"><i class="lucide icon-search"></i> Scan Devices</button>
+                  <button class="btn btn-outline btn-sm" id="btn-bt-stop-scan" onclick="stopBluetoothScan()" style="display:none"><i class="lucide icon-x"></i> Stop</button>
+                </div>
+                <div id="bluetooth-devices" style="max-height:200px;overflow-y:auto;margin-bottom:12px;border:1px solid rgba(201,169,110,0.1);border-radius:var(--radius-sm);background:var(--bg-deep)">
+                  <div style="padding:12px;text-align:center;color:var(--text-tertiary);font-family:var(--font-classic);font-size:0.65rem;font-style:italic">No devices found — tap Scan</div>
+                </div>
+                <div id="bluetooth-connected" style="display:none;padding:10px;background:rgba(45,74,59,0.1);border:1px solid var(--emerald);border-radius:var(--radius-sm)">
+                  <div style="font-family:var(--font-mono);font-size:0.55rem;color:var(--emerald);margin-bottom:8px">
+                    <i class="lucide icon-check-circle" style="vertical-align:-1px"></i> Connected to <span id="bt-connected-name">--</span>
+                  </div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <button class="btn btn-primary btn-xs" onclick="connectBluetoothCamera()"><i class="lucide icon-camera"></i> Connect Camera</button>
+                    <button class="btn btn-outline btn-xs" onclick="captureBluetoothFrame()"><i class="lucide icon-aperture"></i> Capture</button>
+                    <button class="btn btn-outline btn-xs" onclick="startBluetoothStream()"><i class="lucide icon-play"></i> Stream</button>
+                    <button class="btn btn-outline btn-xs" onclick="stopBluetoothStream()"><i class="lucide icon-stop"></i> Stop</button>
+                    <button class="btn btn-outline btn-xs" onclick="showBluetoothQR()"><i class="lucide icon-qr-code"></i> QR Code</button>
+                    <button class="btn btn-outline btn-xs" onclick="disconnectBluetooth()"><i class="lucide icon-bluetooth-off"></i> Disconnect</button>
+                  </div>
+                </div>
+                <div id="bluetooth-qr-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;background:var(--bg-card);border:1px solid var(--gold);border-radius:var(--radius);padding:16px;max-width:90vw;max-height:90vh;overflow:auto">
+                  <div style="text-align:center">
+                    <h4 style="margin-bottom:8px">Scan to Pair</h4>
+                    <img id="bluetooth-qr-image" style="max-width:280px;max-height:280px;border:1px solid rgba(201,169,110,0.2);border-radius:4px;background:white">
+                    <p style="margin-top:8px;font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary)">Scan with your Bluetooth camera app</p>
+                    <button class="btn btn-primary btn-sm" onclick="closeBluetoothQR()" style="margin-top:8px"><i class="lucide icon-x"></i> Close</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
