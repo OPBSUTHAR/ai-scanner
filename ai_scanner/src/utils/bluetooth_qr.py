@@ -203,3 +203,27 @@ def create_bluetooth_qr_file(
         config=config,
         output_path=output_path
     )
+
+
+def create_url_qr_base64(url: str, box_size: int = 10, border: int = 4) -> str:
+    """Generate a QR code (base64 data URL) that simply encodes a URL.
+
+    Used for the QR-first pairing flow: the scanner page shows a code that the
+    user scans with their Bluetooth device, which opens the connection URL.
+    """
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=box_size,
+        border=border,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+    return f"data:image/png;base64,{img_base64}"

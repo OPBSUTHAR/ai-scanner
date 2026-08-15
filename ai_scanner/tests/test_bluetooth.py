@@ -18,7 +18,8 @@ from src.utils.bluetooth_qr import (
     BluetoothQRGenerator,
     BluetoothPairingData,
     create_bluetooth_qr_for_device,
-    create_bluetooth_qr_file
+    create_bluetooth_qr_file,
+    create_url_qr_base64
 )
 
 
@@ -144,6 +145,12 @@ class TestBluetoothIntegration:
         assert pairing.version == "1.0"
         assert pairing.device_name == "Test Camera"
         assert pairing.config["width"] == 640
+
+    def test_url_qr_base64(self):
+        """QR-first pairing encodes a connect URL."""
+        qr = create_url_qr_base64("http://192.168.1.50:5000/bt/cam/abc123")
+        assert qr.startswith("data:image/png;base64,")
+        assert len(qr) > 100
 
 
 if __name__ == "__main__":

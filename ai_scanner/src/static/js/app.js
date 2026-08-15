@@ -1467,43 +1467,190 @@ function logoutSession(){
 
 /* ---- BLUETOOTH CAMERA ---- */
 var bluetoothScanTimer=null;
+/* ---- BLUETOOTH CAMERA (QR-FIRST PAIRING) ---- */
 var bluetoothSelectedDevice=null;
+var bluetoothSessionToken=null;
+var bluetoothPollTimer=null;
+var bluetoothLiveTimer=null;
 
 function openBluetoothPanel(){
   var panel=document.getElementById('bluetooth-panel');
   if(panel)panel.style.display='block';
-  checkBluetoothStatus();
+  // Step 1: generate a fresh pairing QR automatically
+  regenerateBluetoothQR();
 }
 
 function closeBluetoothPanel(){
   var panel=document.getElementById('bluetooth-panel');
   if(panel)panel.style.display='none';
+  stopBluetoothPolling();
+  stopBluetoothLive();
   stopBluetoothScan();
 }
 
-function checkBluetoothStatus(){
-  fetch('/api/bluetooth/status')
+function setBtStatus(msg,color){
+  var el=document.getElementById('bt-status-text');
+  if(el){
+    el.textContent=msg;
+    el.style.color=color||'var(--text-secondary)';
+  }
+}
+
+function regenerateBluetoothQR(){
+  var qrImg=document.getElementById('bt-qr-img');
+  var qrLoading=document.getElementById('bt-qr-loading');
+  var qrMeta=document.getElementById('bt-qr-meta');
+  if(qrImg)qrImg.style.display='none';
+  if(qrLoading)qrLoading.style.display='block';
+  if(qrMeta)qrMeta.style.display='none';
+  setBtStatus('Generating pairing code...','var(--gold)');
+
+  stopBluetoothPolling();
+  stopBluetoothLive();
+
+  fetch('/api/bluetooth/pairing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    width:640,height:480,quality:85,auto_capture:true,interval:2
+  })})
     .then(function(r){return r.json()})
     .then(function(data){
-      var statusEl=document.getElementById('bt-status-text');
-      if(statusEl){
-        if(!data.available){
-          statusEl.textContent='Bluetooth not available (bleak not installed on server)';
-          statusEl.style.color='var(--crimson)';
-        }else if(data.connected){
-          statusEl.textContent='Connected to '+data.device.name;
-          statusEl.style.color='var(--emerald)';
-          showBluetoothConnected(data.device);
-        }else{
-          statusEl.textContent='Ready to scan for Bluetooth cameras';
-          statusEl.style.color='var(--text-secondary)';
-        }
+      if(data.error){
+        setBtStatus('FAILED: '+data.error,'var(--crimson)');
+        if(qrLoading)qrLoading.innerHTML='<span style="color:var(--crimson)">'+esc(data.error)+'</span>';
+        return;
       }
+      bluetoothSessionToken=data.token;
+      var pidEl=document.getElementById('bt-pair-id');
+      var expEl=document.getElementById('bt-qr-expiry');
+      if(pidEl)pidEl.textContent=data.pairing_id;
+      if(expEl)expEl.textContent=Math.floor(data.expires_in/60)+' min';
+      if(qrImg){qrImg.src=data.qr_code;qrImg.style.display='block'}
+      if(qrLoading)qrLoading.style.display='none';
+      if(qrMeta)qrMeta.style.display='block';
+      setBtStatus('Waiting for device to scan the code...','var(--emerald)');
+      startBluetoothPolling();
     })
-    .catch(function(){
-      var statusEl=document.getElementById('bt-status-text');
-      if(statusEl)statusEl.textContent='Error checking Bluetooth status';
+    .catch(function(e){
+      setBtStatus('QR ERROR: '+e.message,'var(--crimson)');
+      if(qrLoading)qrLoading.innerHTML='<span style="color:var(--crimson)">'+esc(e.message)+'</span>';
     });
+}
+
+function startBluetoothPolling(){
+  stopBluetoothPolling();
+  bluetoothPollTimer=setInterval(function(){
+    if(!bluetoothSessionToken)return;
+    fetch('/api/bluetooth/pairing/'+bluetoothSessionToken)
+      .then(function(r){return r.json()})
+      .then(function(data){
+        if(data.error){
+          setBtStatus(data.error,'var(--crimson)');
+          stopBluetoothPolling();
+          return;
+        }
+        var pairStep=document.getElementById('bt-pair-step');
+        var connectedState=document.getElementById('bt-connected-state');
+        if(data.connected){
+          if(pairStep)pairStep.style.display='none';
+          if(connectedState)connectedState.style.display='block';
+          var nameEl=document.getElementById('bt-connected-name');
+          var idEl=document.getElementById('bt-connected-id');
+          if(nameEl)nameEl.textContent=data.device_name||'Bluetooth device';
+          if(idEl)idEl.textContent=data.pairing_id;
+          setBtStatus('Connected to '+data.device_name+' — feed live','var(--emerald)');
+          stopBluetoothPolling();
+        }else{
+          setBtStatus('Waiting for device to scan the code... (expires in '+data.expires_in+'s)','var(--emerald)');
+        }
+      })
+      .catch(function(){});
+  },2000);
+}
+
+function stopBluetoothPolling(){
+  if(bluetoothPollTimer){clearInterval(bluetoothPollTimer);bluetoothPollTimer=null}
+}
+
+function toggleBtLivePreview(){
+  var btn=document.getElementById('btn-bt-live');
+  var preview=document.getElementById('bt-live-preview');
+  if(bluetoothLiveTimer){
+    stopBluetoothLive();
+    if(btn)btn.innerHTML='<i class="lucide icon-eye"></i> Live';
+    return;
+  }
+  if(!bluetoothSessionToken){toast('PAIR A DEVICE FIRST','warn');return}
+  if(btn)btn.innerHTML='<i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> LIVE...';
+  if(preview)preview.style.display='block';
+  bluetoothLiveTimer=setInterval(function(){
+    fetch('/api/bluetooth/pairing/'+bluetoothSessionToken+'/frame')
+      .then(function(r){return r.json()})
+      .then(function(data){
+        var img=document.getElementById('bt-live-img');
+        if(data && data.image && img){img.src=data.image}
+      })
+      .catch(function(){});
+  },500);
+}
+
+function stopBluetoothLive(){
+  if(bluetoothLiveTimer){clearInterval(bluetoothLiveTimer);bluetoothLiveTimer=null}
+  var preview=document.getElementById('bt-live-preview');
+  if(preview)preview.style.display='none';
+  var btn=document.getElementById('btn-bt-live');
+  if(btn)btn.innerHTML='<i class="lucide icon-eye"></i> Live';
+}
+
+function toggleBtAdvanced(){
+  var adv=document.getElementById('bt-advanced');
+  if(adv){
+    var show=adv.style.display==='none';
+    adv.style.display=show?'block':'none';
+  }
+}
+
+function captureBluetoothFrame(){
+  if(!bluetoothSessionToken){
+    toast('NO DEVICE PAIRED','warn');
+    return;
+  }
+  showLoader('CAPTURING...','REQUESTING FRAME FROM BLUETOOTH CAMERA');
+  fetch('/api/bluetooth/pairing/'+bluetoothSessionToken+'/frame')
+    .then(function(r){return r.json()})
+    .then(function(data){
+      hideLoader();
+      if(data.error){
+        toast('CAPTURE FAILED: '+data.error,'err');
+        return;
+      }
+      if(!data.image){
+        toast('NO FRAME YET — IS THE DEVICE SENDING?','warn');
+        return;
+      }
+      handleBluetoothImage(data.image);
+      toast('CAPTURED FROM BLUETOOTH CAMERA');
+    })
+    .catch(function(e){
+      hideLoader();
+      toast('CAPTURE ERROR: '+e.message,'err');
+    });
+}
+
+function disconnectBluetooth(){
+  if(bluetoothSessionToken){
+    fetch('/api/bluetooth/pairing/'+bluetoothSessionToken,{method:'DELETE'})
+      .catch(function(){});
+  }
+  bluetoothSessionToken=null;
+  bluetoothSelectedDevice=null;
+  stopBluetoothPolling();
+  stopBluetoothLive();
+
+  var connectedState=document.getElementById('bt-connected-state');
+  var pairStep=document.getElementById('bt-pair-step');
+  if(connectedState)connectedState.style.display='none';
+  if(pairStep)pairStep.style.display='block';
+  setBtStatus('Disconnected');
+  toast('DISCONNECTED');
 }
 
 function scanBluetoothDevices(){
@@ -1566,122 +1713,13 @@ function stopBluetoothScan(){
 }
 
 function selectBluetoothDevice(el){
-  document.querySelectorAll('.bt-device').forEach(function(d){d.style.background=''});
-  el.style.background='rgba(0,242,254,0.08)';
+  document.querySelectorAll('.bt-device').forEach(function(d){d.classList.remove('selected')});
+  el.classList.add('selected');
   bluetoothSelectedDevice={
     address:el.dataset.address,
     name:el.dataset.name
   };
   toast('SELECTED: '+bluetoothSelectedDevice.name);
-}
-
-function connectBluetoothCamera(){
-  if(!bluetoothSelectedDevice){
-    toast('SELECT A DEVICE FIRST','warn');
-    return;
-  }
-  
-  var btn=event.target;
-  var originalText=btn.innerHTML;
-  btn.innerHTML='<i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> CONNECTING...';
-  btn.disabled=true;
-  
-  fetch('/api/bluetooth/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bluetoothSelectedDevice)})
-    .then(function(r){return r.json()})
-    .then(function(data){
-      btn.innerHTML=originalText;
-      btn.disabled=false;
-      if(data.error){
-        toast('CONNECT FAILED: '+data.error,'err');
-        return;
-      }
-      toast('CONNECTED TO '+data.device.name);
-      checkBluetoothStatus();
-    })
-    .catch(function(e){
-      btn.innerHTML=originalText;
-      btn.disabled=false;
-      toast('CONNECT ERROR: '+e.message,'err');
-    });
-}
-
-function disconnectBluetooth(){
-  fetch('/api/bluetooth/disconnect',{method:'POST'})
-    .then(function(r){return r.json()})
-    .then(function(){
-      bluetoothSelectedDevice=null;
-      toast('DISCONNECTED');
-      checkBluetoothStatus();
-    })
-    .catch(function(e){
-      toast('DISCONNECT ERROR: '+e.message,'err');
-    });
-}
-
-function showBluetoothConnected(device){
-  var connectedEl=document.getElementById('bluetooth-connected');
-  var nameEl=document.getElementById('bt-connected-name');
-  if(connectedEl)connectedEl.style.display='block';
-  if(nameEl)nameEl.textContent=device.name;
-}
-
-function captureBluetoothFrame(){
-  showLoader('CAPTURING...','REQUESTING FRAME FROM BLUETOOTH CAMERA');
-  fetch('/api/bluetooth/capture',{method:'POST'})
-    .then(function(r){return r.json()})
-    .then(function(data){
-      hideLoader();
-      if(data.error){
-        toast('CAPTURE FAILED: '+data.error,'err');
-        return;
-      }
-      if(data.image){
-        handleBluetoothImage(data.image);
-        toast('CAPTURED FROM BLUETOOTH CAMERA');
-      }
-    })
-    .catch(function(e){
-      hideLoader();
-      toast('CAPTURE ERROR: '+e.message,'err');
-    });
-}
-
-function startBluetoothStream(){
-  var btn=event.target;
-  var originalText=btn.innerHTML;
-  btn.innerHTML='<i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> STARTING...';
-  btn.disabled=true;
-  
-  fetch('/api/bluetooth/stream/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({interval:2})})
-    .then(function(r){return r.json()})
-    .then(function(data){
-      btn.innerHTML=originalText;
-      btn.disabled=false;
-      if(data.error){
-        toast('STREAM FAILED: '+data.error,'err');
-        return;
-      }
-      if(data.image){
-        handleBluetoothImage(data.image);
-      }
-      toast('STREAM STARTED');
-    })
-    .catch(function(e){
-      btn.innerHTML=originalText;
-      btn.disabled=false;
-      toast('STREAM ERROR: '+e.message,'err');
-    });
-}
-
-function stopBluetoothStream(){
-  fetch('/api/bluetooth/stream/stop',{method:'POST'})
-    .then(function(r){return r.json()})
-    .then(function(){
-      toast('STREAM STOPPED');
-    })
-    .catch(function(e){
-      toast('STOP ERROR: '+e.message,'err');
-    });
 }
 
 function handleBluetoothImage(dataUrl){
@@ -1703,41 +1741,6 @@ function handleBluetoothImage(dataUrl){
     },'image/jpeg',0.85);
   };
   img.src=dataUrl;
-}
-
-function showBluetoothQR(){
-  if(!bluetoothSelectedDevice){
-    toast('CONNECT TO A DEVICE FIRST','warn');
-    return;
-  }
-  
-  showLoader('GENERATING QR...','CREATING PAIRING CODE');
-  fetch('/api/bluetooth/qr/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    width:640,height:480,quality:85,auto_capture:true,interval:2
-  })})
-    .then(function(r){return r.json()})
-    .then(function(data){
-      hideLoader();
-      if(data.error){
-        toast('QR GENERATION FAILED: '+data.error,'err');
-        return;
-      }
-      var qrImg=document.getElementById('bluetooth-qr-image');
-      var qrModal=document.getElementById('bluetooth-qr-modal');
-      if(qrImg && qrModal){
-        qrImg.src=data.qr_code;
-        qrModal.style.display='block';
-      }
-    })
-    .catch(function(e){
-      hideLoader();
-      toast('QR ERROR: '+e.message,'err');
-    });
-}
-
-function closeBluetoothQR(){
-  var qrModal=document.getElementById('bluetooth-qr-modal');
-  if(qrModal)qrModal.style.display='none';
 }
 
 /* ---- INIT ---- */

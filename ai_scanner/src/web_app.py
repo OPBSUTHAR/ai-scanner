@@ -1,4 +1,4 @@
-import os, sys, json, mimetypes, shutil, re, socket, uuid, secrets, string, asyncio
+import os, sys, json, mimetypes, shutil, re, socket, uuid, secrets, string, asyncio, time
 from pathlib import Path
 from datetime import datetime
 from io import BytesIO
@@ -34,7 +34,7 @@ from src.camera.bluetooth_camera import (
     scan_bluetooth_cameras,
     BLEAK_AVAILABLE
 )
-from src.utils.bluetooth_qr import create_bluetooth_qr_for_device
+from src.utils.bluetooth_qr import create_bluetooth_qr_for_device, create_url_qr_base64
 
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "config" / "app_config.json"
 
@@ -1327,6 +1327,10 @@ _bluetooth_manager: Optional[BluetoothCameraManager] = None
 _bluetooth_device: Optional[BluetoothDevice] = None
 _bluetooth_streaming = False
 
+# QR pairing sessions: token -> {created, expiry, device_name, connected, last_frame}
+BT_SESSION_TTL = 900
+_bt_sessions: Dict[str, Dict[str, Any]] = {}
+
 
 def _get_bluetooth_manager() -> BluetoothCameraManager:
     global _bluetooth_manager
@@ -1335,8 +1339,143 @@ def _get_bluetooth_manager() -> BluetoothCameraManager:
     return _bluetooth_manager
 
 
+def _new_bt_token() -> str:
+    return secrets.token_hex(8)
+
+
+def _clean_bt_sessions():
+    now = time.time()
+    expired = [t for t, s in _bt_sessions.items() if now > s.get("expiry", 0)]
+    for t in expired:
+        _bt_sessions.pop(t, None)
+
+
+@app.route("/api/bluetooth/pairing", methods=["POST"])
+def bluetooth_create_pairing():
+    """QR-first pairing: create a session and return a QR code the user's
+    Bluetooth device scans to open the mobile camera page."""
+    _clean_bt_sessions()
+
+    token = _new_bt_token()
+    pairing_id = "BT-" + token[:6].upper()
+
+    local_ip = socket.gethostbyname(socket.gethostname())
+    port = request.host.split(":")[1] if ":" in request.host else "80"
+    base_url = f"http://{local_ip}:{port}"
+
+    data = request.get_json(silent=True) or {}
+    device_name = data.get("device_name", "Scanner")
+    config = {
+        "width": int(data.get("width", 640)),
+        "height": int(data.get("height", 480)),
+        "quality": int(data.get("quality", 85)),
+        "auto_capture": bool(data.get("auto_capture", True)),
+        "interval": float(data.get("interval", 2.0))
+    }
+
+    connect_url = f"{base_url}/bt/cam/{token}"
+    qr_code = create_url_qr_base64(connect_url)
+
+    _bt_sessions[token] = {
+        "pairing_id": pairing_id,
+        "created": time.time(),
+        "expiry": time.time() + BT_SESSION_TTL,
+        "device_name": None,
+        "connected": False,
+        "last_frame": None,
+        "connect_url": connect_url,
+        "config": config,
+    }
+
+    return jsonify({
+        "token": token,
+        "pairing_id": pairing_id,
+        "qr_code": qr_code,
+        "connect_url": connect_url,
+        "expires_in": BT_SESSION_TTL,
+        "config": config,
+    })
+
+
+@app.route("/api/bluetooth/pairing/<token>", methods=["GET"])
+def bluetooth_pairing_status(token):
+    _clean_bt_sessions()
+    session = _bt_sessions.get(token)
+    if not session:
+        return jsonify({"error": "Pairing session not found or expired"}), 404
+    return jsonify({
+        "pairing_id": session["pairing_id"],
+        "connected": session["connected"],
+        "device_name": session["device_name"],
+        "expires_in": max(0, int(session["expiry"] - time.time())),
+    })
+
+
+@app.route("/api/bluetooth/pairing/<token>/frame", methods=["POST"])
+def bluetooth_pairing_frame(token):
+    """Mobile camera page posts JPEG frames here."""
+    _clean_bt_sessions()
+    session = _bt_sessions.get(token)
+    if not session:
+        return jsonify({"error": "Pairing session not found or expired"}), 404
+
+    data = request.json or {}
+    if data.get("image"):
+        session["last_frame"] = data["image"]
+        if not session["connected"]:
+            session["connected"] = True
+        if data.get("device_name"):
+            session["device_name"] = data["device_name"]
+        session["last_seen"] = time.time()
+        return jsonify({"ok": True})
+
+    return jsonify({"error": "No image provided"}), 400
+
+
+@app.route("/api/bluetooth/pairing/<token>/frame", methods=["GET"])
+def bluetooth_pairing_frame_get(token):
+    """Scanner UI polls this to preview the live Bluetooth camera feed."""
+    _clean_bt_sessions()
+    session = _bt_sessions.get(token)
+    if not session:
+        return jsonify({"error": "Pairing session not found or expired"}), 404
+    return jsonify({
+        "connected": session["connected"],
+        "device_name": session["device_name"],
+        "image": session["last_frame"],
+    })
+
+
+@app.route("/bt/cam/<token>")
+def bluetooth_mobile_cam(token):
+    """Minimal mobile page that the scanned Bluetooth device opens to access
+    its camera and stream frames back to this scanner."""
+    _clean_bt_sessions()
+    session = _bt_sessions.get(token)
+    if not session:
+        return "Pairing session expired. Please scan a fresh code.", 410
+    return render_template("bt_cam.html", token=token, pairing_id=session["pairing_id"])
+
+
+@app.route("/api/bluetooth/pairing/<token>", methods=["DELETE"])
+def bluetooth_pairing_delete(token):
+    _bt_sessions.pop(token, None)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/bluetooth/status")
 def bluetooth_status():
+    _clean_bt_sessions()
+    active_sessions = [
+        {
+            "token": t,
+            "pairing_id": s.get("pairing_id"),
+            "device_name": s.get("device_name"),
+            "connected": s.get("connected", False),
+            "expires_in": max(0, int(s.get("expiry", 0) - time.time())),
+        }
+        for t, s in _bt_sessions.items()
+    ]
     return jsonify({
         "available": BLEAK_AVAILABLE,
         "connected": _bluetooth_device is not None,
@@ -1347,7 +1486,8 @@ def bluetooth_status():
             "battery": _bluetooth_device.battery_level,
             "is_camera": _bluetooth_device.is_camera
         } if _bluetooth_device else None,
-        "streaming": _bluetooth_streaming
+        "streaming": _bluetooth_streaming,
+        "sessions": active_sessions,
     })
 
 
