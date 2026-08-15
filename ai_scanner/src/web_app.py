@@ -1385,6 +1385,7 @@ def bluetooth_create_pairing():
         "last_frame": None,
         "connect_url": connect_url,
         "config": config,
+        "command": None,
     }
 
     return jsonify({
@@ -1408,6 +1409,7 @@ def bluetooth_pairing_status(token):
         "connected": session["connected"],
         "device_name": session["device_name"],
         "expires_in": max(0, int(session["expiry"] - time.time())),
+        "command": session.get("command"),
     })
 
 
@@ -1419,11 +1421,11 @@ def bluetooth_pairing_frame(token):
     if not session:
         return jsonify({"error": "Pairing session not found or expired"}), 404
 
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     if data.get("image"):
         session["last_frame"] = data["image"]
-        if not session["connected"]:
-            session["connected"] = True
+        session["connected"] = True
+        session["command"] = None
         if data.get("device_name"):
             session["device_name"] = data["device_name"]
         session["last_seen"] = time.time()
@@ -1443,6 +1445,39 @@ def bluetooth_pairing_frame_get(token):
         "connected": session["connected"],
         "device_name": session["device_name"],
         "image": session["last_frame"],
+    })
+
+
+@app.route("/api/bluetooth/pairing/<token>/control", methods=["POST"])
+def bluetooth_pairing_control(token):
+    """Scanner → device control: stop closes the camera app on the paired
+    device, start reopens it."""
+    _clean_bt_sessions()
+    session = _bt_sessions.get(token)
+    if not session:
+        return jsonify({"error": "Pairing session not found or expired"}), 404
+
+    data = request.get_json(silent=True) or {}
+    cmd = data.get("command")
+    if cmd not in ("stop", "start"):
+        return jsonify({"error": "Invalid command"}), 400
+
+    session["command"] = cmd
+    if cmd == "stop":
+        session["connected"] = False
+    return jsonify({"ok": True, "command": cmd})
+
+
+@app.route("/api/bluetooth/pairing/<token>/control", methods=["GET"])
+def bluetooth_pairing_control_get(token):
+    """The device camera page polls this to react to scanner commands."""
+    _clean_bt_sessions()
+    session = _bt_sessions.get(token)
+    if not session:
+        return jsonify({"error": "Pairing session not found or expired"}), 404
+    return jsonify({
+        "command": session.get("command"),
+        "connected": session["connected"],
     })
 
 

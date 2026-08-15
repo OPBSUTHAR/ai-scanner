@@ -4,98 +4,104 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#1a0f0a">
-<title>Bluetooth Scanner — Pair {{ pairing_id }}</title>
+<title>Scanner Camera — {{ pairing_id }}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:#1a0f0a;color:#f5e6c8;min-height:100vh;display:flex;flex-direction:column;align-items:center}
-  .topbar{width:100%;padding:14px 16px;text-align:center;background:rgba(201,169,110,0.08);border-bottom:1px solid rgba(201,169,110,0.15)}
-  .topbar h1{font-size:0.9rem;font-weight:600;letter-spacing:1px;color:#c9a96e}
-  .topbar p{font-size:0.7rem;color:#a08c74;margin-top:3px}
-  .badge{display:inline-block;margin-top:6px;padding:3px 10px;font-size:0.6rem;font-weight:700;letter-spacing:1px;border-radius:20px}
+  .topbar{width:100%;padding:12px 16px;text-align:center;background:rgba(201,169,110,0.08);border-bottom:1px solid rgba(201,169,110,0.15)}
+  .topbar h1{font-size:0.85rem;font-weight:600;letter-spacing:1px;color:#c9a96e}
+  .topbar p{font-size:0.65rem;color:#a08c74;margin-top:2px}
+  .badge{display:inline-block;margin-top:5px;padding:3px 10px;font-size:0.6rem;font-weight:700;letter-spacing:1px;border-radius:20px}
   .badge.pending{background:rgba(201,169,110,0.15);color:#c9a96e;border:1px solid rgba(201,169,110,0.4)}
   .badge.live{background:rgba(45,74,59,0.25);color:#6fcf97;border:1px solid #6fcf97}
-  .stage{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:18px}
+  .badge.off{background:rgba(168,50,50,0.2);color:#e08b8b;border:1px solid #e08b8b}
+  .stage{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:14px}
   video{width:100%;max-width:420px;border-radius:12px;border:2px solid rgba(201,169,110,0.3);background:#000;display:none}
   video.live{display:block;box-shadow:0 0 30px rgba(111,207,151,0.15)}
   .placeholder{width:100%;max-width:420px;aspect-ratio:3/4;border-radius:12px;border:2px dashed rgba(201,169,110,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px}
-  .placeholder .icon{font-size:2.6rem;opacity:0.6}
-  .placeholder h2{font-size:0.95rem;color:#c9a96e;font-weight:600}
-  .placeholder p{font-size:0.75rem;color:#a08c74;line-height:1.5}
+  .placeholder .icon{font-size:2.4rem;opacity:0.6}
+  .placeholder h2{font-size:0.9rem;color:#c9a96e;font-weight:600}
+  .placeholder p{font-size:0.7rem;color:#a08c74;line-height:1.5}
   .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
   button{border:none;padding:13px 24px;border-radius:10px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s}
-  .btn-start{background:#c9a96e;color:#1a0f0a}
-  .btn-start:active{transform:scale(0.96)}
   .btn-cam{background:#6fcf97;color:#0d1f16}
   .btn-stop{background:#a83232;color:#fff}
+  .btn-open{background:#c9a96e;color:#1a0f0a}
   button:disabled{opacity:0.4;cursor:not-allowed}
-  input{background:rgba(245,230,200,0.08);border:1px solid rgba(201,169,110,0.3);color:#f5e6c8;padding:12px 14px;border-radius:10px;font-size:0.8rem;width:100%;max-width:280px;text-align:center}
   .footer{width:100%;padding:10px;text-align:center;font-size:0.6rem;color:#6e5c4a}
   .loading{width:26px;height:26px;border:3px solid rgba(201,169,110,0.2);border-top-color:#c9a96e;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto}
   @keyframes spin{to{transform:rotate(360deg)}}
+  .status-line{font-family:ui-monospace,Menlo,monospace;font-size:0.6rem;color:#a08c74;text-align:center}
 </style>
 </head>
 <body>
   <div class="topbar">
-    <h1>SCANNER — BLUETOOTH CAMERA</h1>
+    <h1>SCANNER CAMERA</h1>
     <p>Pairing <span style="color:#f5e6c8;font-weight:600">{{ pairing_id }}</span></p>
-    <span class="badge pending" id="status-badge">CONNECTING...</span>
+    <span class="badge pending" id="status-badge">OPENING CAMERA...</span>
   </div>
 
   <div class="stage">
     <video id="video" autoplay playsinline muted></video>
     <div class="placeholder" id="placeholder">
       <div class="icon">📷</div>
-      <h2>YOUR CAMERA = SCANNER INPUT</h2>
-      <p>This page is paired with the scanner.<br>Press START to send your camera feed.</p>
-      <button class="btn-start" id="btn-start" onclick="startCamera()">START CAMERA</button>
+      <h2 id="ph-title">CAMERA LINKED TO SCANNER</h2>
+      <p id="ph-sub">Your camera feed is being sent to the scanner.</p>
+      <button class="btn-open" id="btn-open" onclick="startCamera()">OPEN CAMERA</button>
     </div>
     <div class="row">
-      <button class="btn-stop" id="btn-stop" style="display:none" onclick="stopCamera()">STOP</button>
-      <button class="btn-cam" id="btn-switch" style="display:none" onclick="switchCamera()">FLIP CAMERA</button>
+      <button class="btn-cam" id="btn-start" style="display:none" onclick="startCamera()">REOPEN CAMERA</button>
+      <button class="btn-stop" id="btn-stop" style="display:none" onclick="stopCamera()">CLOSE CAMERA</button>
     </div>
+    <div class="status-line" id="status-line"></div>
   </div>
 
-  <div class="footer">AI Document Scanner · Bluetooth Pairing</div>
+  <div class="footer">AI Document Scanner · Live Camera Link</div>
 
 <script>
   var TOKEN="{{ token }}";
   var PAIRING_ID="{{ pairing_id }}";
   var stream=null;
   var sendTimer=null;
-  var currentTrack=null;
+  var ctrlTimer=null;
   var facing="environment";
+  var closedByScanner=false;
 
   function setBadge(text,klass){
     var b=document.getElementById('status-badge');
     b.textContent=text;
     b.className='badge '+(klass||'pending');
   }
+  function setLine(t){var el=document.getElementById('status-line');if(el)el.textContent=t}
 
   function startCamera(){
-    var constraints={
-      video:{facingMode:facing,width:{ideal:1280},height:{ideal:960}},
-      audio:false
-    };
+    closedByScanner=false;
+    var constraints={video:{facingMode:facing,width:{ideal:1280},height:{ideal:960}},audio:false};
     setBadge('REQUESTING CAMERA...');
-    document.getElementById('btn-start').disabled=true;
+    document.getElementById('btn-open').disabled=true;
+    document.getElementById('btn-start').style.display='none';
 
     navigator.mediaDevices.getUserMedia(constraints).then(function(s){
       stream=s;
-      currentTrack=s.getVideoTracks()[0];
       var v=document.getElementById('video');
       v.srcObject=s;
       v.classList.add('live');
       document.getElementById('placeholder').style.display='none';
       document.getElementById('btn-stop').style.display='inline-block';
-      document.getElementById('btn-switch').style.display='inline-block';
       document.getElementById('btn-start').disabled=false;
-      setBadge('CONNECTED — SENDING', 'live');
+      setBadge('CAMERA LIVE — SENDING','live');
+      setLine('Feed streaming to scanner · Pairing '+PAIRING_ID);
       sendTimer=setInterval(sendFrame,300);
     }).catch(function(e){
-      setBadge('CAMERA DENIED');
-      document.getElementById('btn-start').disabled=false;
-      if(e.name==='NotAllowedError'){
-        alert('Camera permission denied. Enable camera access and try again.');
+      document.getElementById('btn-open').disabled=false;
+      if(closedByScanner){
+        setBadge('CLOSED BY SCANNER','off');
+      }else{
+        setBadge('CAMERA BLOCKED','off');
+        document.getElementById('btn-start').style.display='inline-block';
+        if(e.name==='NotAllowedError'){
+          setLine('Permission denied — allow camera access then tap REOPEN');
+        }
       }
     });
   }
@@ -111,13 +117,27 @@
     v.classList.remove('live');
     document.getElementById('placeholder').style.display='flex';
     document.getElementById('btn-stop').style.display='none';
-    document.getElementById('btn-switch').style.display='none';
-    setBadge('CONNECTING...');
+    document.getElementById('btn-start').style.display='inline-block';
+    setBadge('CAMERA CLOSED','off');
+    setLine('Camera is off. Tap REOPEN to send the feed again.');
   }
 
-  function switchCamera(){
-    facing=(facing==='environment')?'user':'environment';
-    if(stream){stopCamera();startCamera()}
+  function closeByScanner(){
+    closedByScanner=true;
+    if(stream){
+      stream.getTracks().forEach(function(t){t.stop()});
+      stream=null;
+    }
+    if(sendTimer){clearInterval(sendTimer);sendTimer=null}
+    var v=document.getElementById('video');
+    if(v){v.srcObject=null;v.classList.remove('live')}
+    document.getElementById('placeholder').style.display='flex';
+    document.getElementById('ph-title').textContent='CAMERA CLOSED BY SCANNER';
+    document.getElementById('ph-sub').textContent='The scanner stopped the live view. Tap OPEN CAMERA to restart.';
+    document.getElementById('btn-stop').style.display='none';
+    document.getElementById('btn-start').style.display='none';
+    setBadge('CLOSED BY SCANNER','off');
+    setLine('Scanner ended the live view.');
   }
 
   function sendFrame(){
@@ -132,11 +152,29 @@
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({image:dataUrl,device_name:navigator.platform+' camera'})
-    }).catch(function(){setBadge('LINK LOST — RETRYING')});
+    }).catch(function(){});
   }
+
+  function pollControl(){
+    fetch('/api/bluetooth/pairing/'+TOKEN+'/control')
+      .then(function(r){return r.json()})
+      .then(function(data){
+        if(data && data.command==='stop' && !closedByScanner){
+          closeByScanner();
+        }else if(data && data.command==='start' && closedByScanner){
+          startCamera();
+        }
+      })
+      .catch(function(){});
+  }
+
+  // Auto-open camera immediately so the device's camera app appears right away.
+  startCamera();
+  ctrlTimer=setInterval(pollControl,1500);
 
   window.addEventListener('beforeunload',function(){
     if(sendTimer)clearInterval(sendTimer);
+    if(ctrlTimer)clearInterval(ctrlTimer);
   });
 </script>
 </body>

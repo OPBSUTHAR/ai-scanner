@@ -1305,7 +1305,7 @@ body{
 }
 
 /* ============================================================
-   BLUETOOTH CAMERA – THEMED (no undefined colors)
+   BLUETOOTH CAMERA – QR POPUP + LIVE FEED (no undefined colors)
    ============================================================ */
 #btn-bluetooth-cam{
   background:var(--emerald);
@@ -1316,17 +1316,17 @@ body{
   background:#3C6E55;
   box-shadow:0 4px 12px rgba(45,74,59,0.35);
 }
-.bluetooth-panel .card{
+#bluetooth-modal .modal{
+  background:linear-gradient(135deg, rgba(245,230,200,0.99), rgba(237,224,212,0.97));
   border-color:rgba(45,74,59,0.3);
-  background:linear-gradient(135deg, rgba(245,230,200,0.97), rgba(237,224,212,0.94));
 }
-.bluetooth-panel .card-header{
+#bluetooth-modal .modal-head{
   border-bottom:1px solid rgba(45,74,59,0.12);
 }
-.bluetooth-panel .card-header h3{
+#bluetooth-modal .modal-head h3{
   color:var(--emerald);
 }
-.bluetooth-panel .card-header h3 i.lucide{
+#bluetooth-modal .modal-head h3 i.lucide{
   color:var(--emerald);
 }
 #bt-qr-box{
@@ -1349,12 +1349,8 @@ body{
 #bt-live-img{
   transition:opacity 0.2s ease;
 }
-#bt-live-preview.live-active #bt-live-img{
-  animation:btPulse 1.2s ease-in-out infinite;
-}
-@keyframes btPulse{
-  0%,100%{opacity:1}
-  50%{opacity:0.88}
+#bt-live-feed{
+  animation:pageFadeIn 0.3s ease;
 }
 #bt-connected-state{
   animation:pageFadeIn 0.3s ease;

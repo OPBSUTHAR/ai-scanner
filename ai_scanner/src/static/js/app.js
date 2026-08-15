@@ -1474,15 +1474,16 @@ var bluetoothPollTimer=null;
 var bluetoothLiveTimer=null;
 
 function openBluetoothPanel(){
-  var panel=document.getElementById('bluetooth-panel');
-  if(panel)panel.style.display='block';
-  // Step 1: generate a fresh pairing QR automatically
+  // Show the QR pairing popup
+  var modal=document.getElementById('bluetooth-modal');
+  if(modal)modal.classList.add('show');
   regenerateBluetoothQR();
 }
 
-function closeBluetoothPanel(){
-  var panel=document.getElementById('bluetooth-panel');
-  if(panel)panel.style.display='none';
+function closeBluetoothModal(){
+  var modal=document.getElementById('bluetooth-modal');
+  if(modal)modal.classList.remove('show');
+  // Leaving the popup also stops the live view on the device
   stopBluetoothPolling();
   stopBluetoothLive();
   stopBluetoothScan();
@@ -1556,8 +1557,9 @@ function startBluetoothPolling(){
           var idEl=document.getElementById('bt-connected-id');
           if(nameEl)nameEl.textContent=data.device_name||'Bluetooth device';
           if(idEl)idEl.textContent=data.pairing_id;
-          setBtStatus('Connected to '+data.device_name+' — feed live','var(--emerald)');
+          setBtStatus('Connected to '+data.device_name+' — showing live feed','var(--emerald)');
           stopBluetoothPolling();
+          showBtLiveFeed();
         }else{
           setBtStatus('Waiting for device to scan the code... (expires in '+data.expires_in+'s)','var(--emerald)');
         }
@@ -1570,34 +1572,33 @@ function stopBluetoothPolling(){
   if(bluetoothPollTimer){clearInterval(bluetoothPollTimer);bluetoothPollTimer=null}
 }
 
-function toggleBtLivePreview(){
-  var btn=document.getElementById('btn-bt-live');
-  var preview=document.getElementById('bt-live-preview');
-  if(bluetoothLiveTimer){
-    stopBluetoothLive();
-    if(btn)btn.innerHTML='<i class="lucide icon-eye"></i> Live';
-    return;
-  }
-  if(!bluetoothSessionToken){toast('PAIR A DEVICE FIRST','warn');return}
-  if(btn)btn.innerHTML='<i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> LIVE...';
-  if(preview)preview.style.display='block';
+function showBtLiveFeed(){
+  var feed=document.getElementById('bt-live-feed');
+  if(!feed)return;
+  feed.style.display='block';
+  var nameEl=document.getElementById('bt-live-name');
+  if(nameEl)nameEl.textContent=bluetoothSessionToken?('paired'):'device';
+  stopBluetoothLive();
   bluetoothLiveTimer=setInterval(function(){
+    if(!bluetoothSessionToken)return;
     fetch('/api/bluetooth/pairing/'+bluetoothSessionToken+'/frame')
       .then(function(r){return r.json()})
       .then(function(data){
         var img=document.getElementById('bt-live-img');
-        if(data && data.image && img){img.src=data.image}
+        if(data && data.image && img){
+          img.src=data.image;
+          var nm=document.getElementById('bt-live-name');
+          if(nm && data.device_name)nm.textContent=data.device_name;
+        }
       })
       .catch(function(){});
-  },500);
+  },400);
 }
 
 function stopBluetoothLive(){
   if(bluetoothLiveTimer){clearInterval(bluetoothLiveTimer);bluetoothLiveTimer=null}
-  var preview=document.getElementById('bt-live-preview');
-  if(preview)preview.style.display='none';
-  var btn=document.getElementById('btn-bt-live');
-  if(btn)btn.innerHTML='<i class="lucide icon-eye"></i> Live';
+  var feed=document.getElementById('bt-live-feed');
+  if(feed)feed.style.display='none';
 }
 
 function toggleBtAdvanced(){
@@ -1606,6 +1607,17 @@ function toggleBtAdvanced(){
     var show=adv.style.display==='none';
     adv.style.display=show?'block':'none';
   }
+}
+
+function stopBtCamera(){
+  // Tell the device to close its camera app, then hide the live view
+  if(bluetoothSessionToken){
+    fetch('/api/bluetooth/pairing/'+bluetoothSessionToken+'/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'stop'})})
+      .catch(function(){});
+  }
+  stopBluetoothLive();
+  toast('DEVICE CAMERA CLOSED');
+  setBtStatus('Device camera closed — scan again to reconnect','var(--gold)');
 }
 
 function captureBluetoothFrame(){
@@ -1636,9 +1648,15 @@ function captureBluetoothFrame(){
 }
 
 function disconnectBluetooth(){
+  // Closing the connection must also close the camera app on the device
   if(bluetoothSessionToken){
-    fetch('/api/bluetooth/pairing/'+bluetoothSessionToken,{method:'DELETE'})
-      .catch(function(){});
+    fetch('/api/bluetooth/pairing/'+bluetoothSessionToken+'/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'stop'})})
+      .then(function(){
+        return fetch('/api/bluetooth/pairing/'+bluetoothSessionToken,{method:'DELETE'});
+      })
+      .catch(function(){
+        fetch('/api/bluetooth/pairing/'+bluetoothSessionToken,{method:'DELETE'}).catch(function(){});
+      });
   }
   bluetoothSessionToken=null;
   bluetoothSelectedDevice=null;
