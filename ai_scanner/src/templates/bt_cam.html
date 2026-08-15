@@ -15,6 +15,7 @@
   .badge.pending{background:rgba(201,169,110,0.15);color:#c9a96e;border:1px solid rgba(201,169,110,0.4)}
   .badge.live{background:rgba(45,74,59,0.25);color:#6fcf97;border:1px solid #6fcf97}
   .badge.off{background:rgba(168,50,50,0.2);color:#e08b8b;border:1px solid #e08b8b}
+  .badge.warn{background:rgba(230,180,60,0.2);color:#f5d97e;border:1px solid #e6b43c}
   .stage{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:14px}
   video{width:100%;max-width:420px;border-radius:12px;border:2px solid rgba(201,169,110,0.3);background:#000;display:none}
   video.live{display:block;box-shadow:0 0 30px rgba(111,207,151,0.15)}
@@ -22,23 +23,31 @@
   .placeholder .icon{font-size:2.4rem;opacity:0.6}
   .placeholder h2{font-size:0.9rem;color:#c9a96e;font-weight:600}
   .placeholder p{font-size:0.7rem;color:#a08c74;line-height:1.5}
+  .placeholder .hint{font-size:0.6rem;color:#8a7a68;margin-top:8px;padding:0 16px}
   .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
   button{border:none;padding:13px 24px;border-radius:10px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s}
   .btn-cam{background:#6fcf97;color:#0d1f16}
   .btn-stop{background:#a83232;color:#fff}
   .btn-open{background:#c9a96e;color:#1a0f0a}
+  .btn-flip{background:#5a7a9a;color:#fff}
   button:disabled{opacity:0.4;cursor:not-allowed}
   .footer{width:100%;padding:10px;text-align:center;font-size:0.6rem;color:#6e5c4a}
   .loading{width:26px;height:26px;border:3px solid rgba(201,169,110,0.2);border-top-color:#c9a96e;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto}
   @keyframes spin{to{transform:rotate(360deg)}}
   .status-line{font-family:ui-monospace,Menlo,monospace;font-size:0.6rem;color:#a08c74;text-align:center}
+  .secure-notice{font-size:0.55rem;color:#e6b43c;background:rgba(230,180,60,0.1);border:1px solid rgba(230,180,60,0.3);padding:8px 12px;border-radius:8px;margin:8px 16px;text-align:center;display:none}
 </style>
 </head>
 <body>
   <div class="topbar">
     <h1>SCANNER CAMERA</h1>
     <p>Pairing <span style="color:#f5e6c8;font-weight:600">{{ pairing_id }}</span></p>
-    <span class="badge pending" id="status-badge">OPENING CAMERA...</span>
+    <span class="badge pending" id="status-badge">CHECKING SECURE CONTEXT...</span>
+  </div>
+
+  <div class="secure-notice" id="secure-notice">
+    ⚠ Camera access requires <b>HTTPS</b> (or localhost).<br>
+    If on LAN, access via <a href="#" id="https-link" style="color:#6fcf97">HTTPS tunnel</a> or enable "Insecure localhost" in browser flags.
   </div>
 
   <div class="stage">
@@ -48,9 +57,11 @@
       <h2 id="ph-title">CAMERA LINKED TO SCANNER</h2>
       <p id="ph-sub">Your camera feed is being sent to the scanner.</p>
       <button class="btn-open" id="btn-open" onclick="startCamera()">OPEN CAMERA</button>
+      <div class="hint" id="ph-hint" style="display:none">Tap to request camera permission</div>
     </div>
     <div class="row">
       <button class="btn-cam" id="btn-start" style="display:none" onclick="startCamera()">REOPEN CAMERA</button>
+      <button class="btn-flip" id="btn-flip" style="display:none" onclick="flipCamera()">FLIP CAMERA</button>
       <button class="btn-stop" id="btn-stop" style="display:none" onclick="stopCamera()">CLOSE CAMERA</button>
     </div>
     <div class="status-line" id="status-line"></div>
@@ -66,6 +77,8 @@
   var ctrlTimer=null;
   var facing="environment";
   var closedByScanner=false;
+  var secureContext=window.isSecureContext;
+  var permissionState='prompt';
 
   function setBadge(text,klass){
     var b=document.getElementById('status-badge');
@@ -73,13 +86,53 @@
     b.className='badge '+(klass||'pending');
   }
   function setLine(t){var el=document.getElementById('status-line');if(el)el.textContent=t}
+  function showNotice(){var n=document.getElementById('secure-notice'); if(n) n.style.display='block';}
+  function hideNotice(){var n=document.getElementById('secure-notice'); if(n) n.style.display='none';}
+
+  async function checkPermissions(){
+    try{
+      var perm=await navigator.permissions.query({name:'camera'});
+      permissionState=perm.state;
+      perm.onchange=function(){permissionState=this.state; updateUI();};
+    }catch(e){}
+  }
+
+  function updateUI(){
+    var ph=document.getElementById('placeholder');
+    var hint=document.getElementById('ph-hint');
+    if(!secureContext){
+      showNotice();
+      setBadge('HTTPS REQUIRED','warn');
+      setLine('Camera needs secure context (HTTPS). See notice above.');
+      if(hint)hint.textContent='Serve app over HTTPS or use localhost';
+      return;
+    }
+    hideNotice();
+    if(permissionState==='denied'){
+      setBadge('PERMISSION DENIED','off');
+      setLine('Camera permission blocked. Enable in browser settings, then tap REOPEN.');
+      if(hint)hint.textContent='Allow camera in site settings → reload';
+    }else if(permissionState==='granted'){
+      if(hint)hint.textContent='Camera access granted';
+    }else{
+      if(hint)hint.textContent='Tap to allow camera access';
+    }
+  }
 
   function startCamera(){
     closedByScanner=false;
+    if(!secureContext){
+      setBadge('HTTPS REQUIRED','warn');
+      setLine('Camera needs HTTPS. Open via secure tunnel or localhost.');
+      showNotice();
+      return;
+    }
     var constraints={video:{facingMode:facing,width:{ideal:1280},height:{ideal:960}},audio:false};
     setBadge('REQUESTING CAMERA...');
-    document.getElementById('btn-open').disabled=true;
-    document.getElementById('btn-start').style.display='none';
+    var btnOpen=document.getElementById('btn-open');
+    var btnStart=document.getElementById('btn-start');
+    if(btnOpen)btnOpen.disabled=true;
+    if(btnStart)btnStart.style.display='none';
 
     navigator.mediaDevices.getUserMedia(constraints).then(function(s){
       stream=s;
@@ -88,21 +141,33 @@
       v.classList.add('live');
       document.getElementById('placeholder').style.display='none';
       document.getElementById('btn-stop').style.display='inline-block';
-      document.getElementById('btn-start').disabled=false;
+      document.getElementById('btn-flip').style.display='inline-block';
+      if(btnStart)btnStart.disabled=false;
       setBadge('CAMERA LIVE — SENDING','live');
       setLine('Feed streaming to scanner · Pairing '+PAIRING_ID);
       sendTimer=setInterval(sendFrame,300);
+      checkPermissions();
     }).catch(function(e){
-      document.getElementById('btn-open').disabled=false;
+      if(btnOpen)btnOpen.disabled=false;
       if(closedByScanner){
         setBadge('CLOSED BY SCANNER','off');
       }else{
         setBadge('CAMERA BLOCKED','off');
-        document.getElementById('btn-start').style.display='inline-block';
-        if(e.name==='NotAllowedError'){
-          setLine('Permission denied — allow camera access then tap REOPEN');
+        if(btnStart)btnStart.style.display='inline-block';
+        if(e.name==='NotAllowedError' || e.name==='PermissionDeniedError'){
+          setLine('Permission denied — allow camera access in browser settings, then tap REOPEN');
+        }else if(e.name==='NotFoundError'){
+          setLine('No camera found on this device');
+        }else if(e.name==='NotReadableError'){
+          setLine('Camera in use by another app — close it and retry');
+        }else if(e.name==='SecurityError'){
+          setLine('Insecure origin — camera requires HTTPS (see notice above)');
+          showNotice();
+        }else{
+          setLine('Error: '+e.message);
         }
       }
+      checkPermissions();
     });
   }
 
@@ -117,9 +182,18 @@
     v.classList.remove('live');
     document.getElementById('placeholder').style.display='flex';
     document.getElementById('btn-stop').style.display='none';
+    document.getElementById('btn-flip').style.display='none';
     document.getElementById('btn-start').style.display='inline-block';
     setBadge('CAMERA CLOSED','off');
     setLine('Camera is off. Tap REOPEN to send the feed again.');
+  }
+
+  function flipCamera(){
+    facing=facing==='environment'?'user':'environment';
+    if(stream){
+      stopCamera();
+      setTimeout(startCamera,200);
+    }
   }
 
   function closeByScanner(){
@@ -135,6 +209,7 @@
     document.getElementById('ph-title').textContent='CAMERA CLOSED BY SCANNER';
     document.getElementById('ph-sub').textContent='The scanner stopped the live view. Tap OPEN CAMERA to restart.';
     document.getElementById('btn-stop').style.display='none';
+    document.getElementById('btn-flip').style.display='none';
     document.getElementById('btn-start').style.display='none';
     setBadge('CLOSED BY SCANNER','off');
     setLine('Scanner ended the live view.');
@@ -168,8 +243,12 @@
       .catch(function(){});
   }
 
-  // Auto-open camera immediately so the device's camera app appears right away.
-  startCamera();
+  // Init
+  checkPermissions();
+  updateUI();
+  if(secureContext){
+    startCamera();
+  }
   ctrlTimer=setInterval(pollControl,1500);
 
   window.addEventListener('beforeunload',function(){

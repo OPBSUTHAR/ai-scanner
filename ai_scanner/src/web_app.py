@@ -1834,7 +1834,7 @@ def bluetooth_parse_qr():
 # ---------------------------------------------------------------------------
 
 def main():
-    import argparse, socket as _socket
+    import argparse, socket as _socket, ssl, tempfile, atexit
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
@@ -1845,8 +1845,55 @@ def main():
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 5000)))
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--ngrok", action="store_true", help="Expose via ngrok (requires ngrok installed)")
+    parser.add_argument("--ssl", action="store_true", help="Enable HTTPS with auto-generated self-signed cert (for camera access on LAN)")
+    parser.add_argument("--cert", help="Path to SSL certificate file (PEM)")
+    parser.add_argument("--key", help="Path to SSL private key file (PEM)")
     args = parser.parse_args()
     local_ip = _socket.gethostbyname(_socket.gethostname())
+
+    ssl_context = None
+    if args.ssl or args.cert or args.key:
+        if args.cert and args.key:
+            ssl_context = (args.cert, args.key)
+            print(f"  🔒 Using SSL cert: {args.cert}")
+        else:
+            from cryptography.hazmat.primitives import serialization, hashes
+            from cryptography.hazmat.primitives.asymmetric import rsa
+            from cryptography import x509
+            from cryptography.x509.oid import NameOID
+            import datetime, ipaddress
+            key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+            subject = issuer = x509.Name([
+                x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AI Scanner"),
+            ])
+            san_list = [x509.DNSName("localhost")]
+            try:
+                san_list.append(x509.IPAddress(ipaddress.IPv4Address(local_ip)))
+            except Exception:
+                pass
+            cert = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(key.public_key()).serial_number(
+                x509.random_serial_number()).not_valid_before(
+                datetime.datetime.now(datetime.timezone.utc)).not_valid_after(
+                datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365)
+            ).add_extension(x509.SubjectAlternativeName(san_list), critical=False).sign(key, hashes.SHA256())
+            cert_pem = cert.public_bytes(serialization.Encoding.PEM)
+            key_pem = key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+            cert_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pem')
+            key_file = tempfile.NamedTemporaryFile(delete=False, suffix='.key')
+            cert_file.write(cert_pem)
+            key_file.write(key_pem)
+            cert_file.close()
+            key_file.close()
+            atexit.register(lambda: os.unlink(cert_file.name))
+            atexit.register(lambda: os.unlink(key_file.name))
+            ssl_context = (cert_file.name, key_file.name)
+            print(f"  🔒 Auto-generated self-signed SSL cert (valid 365 days)")
+            print(f"     Accept browser warning to enable camera on LAN")
     print(f"\n  {'='*45}")
     print(f"  ◈ AI SCANNER // NEXUS-OS v3.0")
     print(f"  {'='*45}")
@@ -1866,7 +1913,7 @@ def main():
         except ImportError:
             print(f"  ⚠ ngrok requested but pyngrok not installed.")
             print(f"  Install: pip install pyngrok\n")
-    app.run(host=args.host, port=args.port, debug=args.debug, threaded=True)
+    app.run(host=args.host, port=args.port, debug=args.debug, threaded=True, ssl_context=ssl_context)
 
 if __name__ == "__main__":
     main()
