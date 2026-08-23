@@ -1382,21 +1382,27 @@ def cloud_status():
 @app.route("/cloud/auth/<provider>")
 def cloud_auth(provider):
     explicit = request.args.get("redirect_uri")
+    # Hosted deploys (Render/Coolify): derive the callback from the incoming
+    # request so OAuth works with zero env config. Proxies terminate TLS, so
+    # honor X-Forwarded-Proto for the scheme.
+    proto = request.headers.get("X-Forwarded-Proto", request.scheme)
+    base = f"{proto}://{request.host}"
     auth_url = None
     redir = None
     if provider == "google_drive":
+        explicit = explicit or base + "/auth/google/callback"
         auth_url = scanner.cloud.get_google_drive_auth_url(explicit)
+        redir = explicit
     elif provider == "dropbox":
+        explicit = explicit or base + "/cloud/callback/dropbox"
         auth_url = scanner.cloud.get_dropbox_auth_url(explicit)
-        redir = scanner.cloud._dropbox_redirect_uri()
+        redir = scanner.cloud._dropbox_redirect_uri(explicit)
     elif provider == "onedrive":
+        explicit = explicit or base + "/cloud/callback/onedrive"
         auth_url = scanner.cloud.get_onedrive_auth_url(explicit)
-        redir = scanner.cloud._onedrive_redirect_uri()
+        redir = scanner.cloud._onedrive_redirect_uri(explicit)
 
     if auth_url:
-        if provider == "google_drive":
-            cfg = scanner.cloud._google_oauth_config()
-            redir = (cfg["redirect_uris"] or [None])[0]
         return jsonify({"auth_url": auth_url, "redirect_uri": redir})
     return jsonify({"error": "Provider not configured or not supported"}), 400
 
@@ -1459,7 +1465,11 @@ def auth_google_callback():
     code = request.args.get("code", "")
     success = False
     if code:
-        success = scanner.cloud.handle_google_drive_callback(code)
+        # Pass the request-derived redirect so a rebuilt flow (e.g. after a
+        # free-tier restart between auth start and callback) still matches.
+        proto = request.headers.get("X-Forwarded-Proto", request.scheme)
+        derived = f"{proto}://{request.host}/auth/google/callback"
+        success = scanner.cloud.handle_google_drive_callback(code, redirect_uri=derived)
     msg, tone = ("CONNECTED! You can close this window.", "ok") if success \
         else ("AUTH FAILED. Close this window and try again.", "err")
     return f"""<!doctype html><html><head><meta charset="utf-8">

@@ -1224,15 +1224,16 @@ function cloudAuth(provider){
             }else if(tries>120){
               clearInterval(t);
               fetch('/cloud/status').then(function(r){return r.json()}).then(function(d2){
+                var origin=window.location.origin;
                 var uri=(d2.providers&&d2.providers[provider]&&d2.providers[provider].redirect_uri)||'';
                 if(provider==='google_drive'){
-                  uri=uri||'http://localhost:5000/auth/google/callback';
-                  showConfirm('GOOGLE BLOCKED THE LOGIN. OPEN https://console.cloud.google.com/apis/credentials -> EDIT YOUR OAUTH CLIENT -> AUTHORIZED REDIRECT URIs -> ADD EXACTLY:\n\n'+uri+'\n\n(NO trailing slash, port 5000. Save, then try CONNECT again.)',function(){loadCloudStatus()});
+                  uri=origin+'/auth/google/callback';
+                  showConfirm('GOOGLE BLOCKED THE LOGIN. OPEN https://console.cloud.google.com/apis/credentials -> EDIT YOUR OAUTH CLIENT -> AUTHORIZED REDIRECT URIS -> ADD EXACTLY:\n\n'+uri+'\n\n(NO trailing slash. Save, then try CONNECT again.)',function(){loadCloudStatus()});
                 }else if(provider==='onedrive'){
-                  uri=uri||'http://localhost:5000/cloud/callback/onedrive';
+                  uri=origin+'/cloud/callback/onedrive';
                   showConfirm('ONEDRIVE BLOCKED THE LOGIN. OPEN https://portal.azure.com -> App registrations -> your app -> Authentication -> Web redirect URIs -> ADD EXACTLY:\n\n'+uri+'\n\nThen save and try CONNECT again.',function(){loadCloudStatus()});
                 }else{
-                  uri=uri||'http://localhost:5000/cloud/callback/dropbox';
+                  uri=origin+'/cloud/callback/dropbox';
                   showConfirm('DROPBOX BLOCKED THE LOGIN. OPEN https://www.dropbox.com/developers/apps -> your app -> Permissions -> Redirect URIs -> ADD EXACTLY:\n\n'+uri+'\n\nSave, then try CONNECT again.',function(){loadCloudStatus()});
                 }
               }).catch(function(){loadCloudStatus()});

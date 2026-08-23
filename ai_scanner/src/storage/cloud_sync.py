@@ -111,9 +111,11 @@ class CloudSync:
         return found[0]
 
     def _resolve_drive_redirect_uri(self, redirect_uri: str = None) -> Optional[str]:
-        registered = self._google_oauth_config().get("redirect_uris", [])
-        if redirect_uri and redirect_uri in registered:
+        # Explicit URI (e.g. derived from the hosted request) wins outright;
+        # only fall back to configured/localhost defaults when nothing given.
+        if redirect_uri:
             return redirect_uri
+        registered = self._google_oauth_config().get("redirect_uris", [])
         if registered:
             return registered[0]
         return os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "http://localhost:8080/")
