@@ -46,8 +46,9 @@
   </div>
 
   <div class="secure-notice" id="secure-notice">
-    ⚠ Camera access requires <b>HTTPS</b> (or localhost).<br>
-    If on LAN, access via <a href="#" id="https-link" style="color:#6fcf97">HTTPS tunnel</a> or enable "Insecure localhost" in browser flags.
+    ⚠ Phone camera access requires <b>HTTPS</b>.<br>
+    On the PC run <b>run.bat</b> (starts with --ssl), then re-scan the QR and
+    accept the certificate warning once ("Advanced" → "Proceed").
   </div>
 
   <div class="stage">
@@ -103,8 +104,8 @@
     if(!secureContext){
       showNotice();
       setBadge('HTTPS REQUIRED','warn');
-      setLine('Camera needs secure context (HTTPS). See notice above.');
-      if(hint)hint.textContent='Serve app over HTTPS or use localhost';
+      setLine('Phone cameras only work over HTTPS. Re-scan the QR after starting the PC app with run.bat (--ssl).');
+      if(hint)hint.textContent='HTTPS needed — see notice above';
       return;
     }
     hideNotice();
@@ -121,10 +122,11 @@
 
   function startCamera(){
     closedByScanner=false;
-    if(!secureContext){
-      setBadge('HTTPS REQUIRED','warn');
-      setLine('Camera needs HTTPS. Open via secure tunnel or localhost.');
+    if(!window.navigator.mediaDevices||!window.navigator.mediaDevices.getUserMedia){
+      setBadge('NOT SUPPORTED','off');
+      setLine('This browser has no camera API. Open this page in Chrome, Edge or Safari.');
       showNotice();
+      var b1=document.getElementById('btn-open');if(b1)b1.disabled=false;
       return;
     }
     var constraints={video:{facingMode:facing,width:{ideal:1280},height:{ideal:960}},audio:false};
@@ -160,8 +162,8 @@
           setLine('No camera found on this device');
         }else if(e.name==='NotReadableError'){
           setLine('Camera in use by another app — close it and retry');
-        }else if(e.name==='SecurityError'){
-          setLine('Insecure origin — camera requires HTTPS (see notice above)');
+        }else if(e.name==='SecurityError' || !window.isSecureContext){
+          setLine('Camera blocked: this page is NOT HTTPS. On the PC run run.bat (uses --ssl), then re-scan the QR.');
           showNotice();
         }else{
           setLine('Error: '+e.message);
@@ -243,12 +245,11 @@
       .catch(function(){});
   }
 
-  // Init
+  // Init — request the camera DIRECTLY (permission prompt appears immediately
+  // when the page is served over HTTPS, no click needed).
   checkPermissions();
   updateUI();
-  if(secureContext){
-    startCamera();
-  }
+  startCamera();
   ctrlTimer=setInterval(pollControl,1500);
 
   window.addEventListener('beforeunload',function(){

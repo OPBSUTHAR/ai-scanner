@@ -432,6 +432,13 @@ document.getElementById('cam-device-select').addEventListener('change',function(
 });
 
 /* ---- PHONE CAMERA BUTTON (tries getUserMedia first, falls back to native input) ---- */
+function dataURLtoBlob(dataURL){
+  var parts=dataURL.split(','),
+      mime=parts[0].match(/:(.*?);/)[1],
+      bin=atob(parts[1]),arr=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
 function phoneCameraCapture(){
   if(state.stream){closeCamera();return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -452,18 +459,59 @@ function phoneCameraCapture(){
 
 function startAutoDetect(){
   autoCaptureActive=true;
-  var v=document.getElementById('video'),c=document.getElementById('canvas'),ctx=c.getContext('2d');
+  var v=document.getElementById('video');
   var prevPixels=null,stillFrames=0;
   var CAPTURE_THRESHOLD=8; // higher = more stable required
-  var STILL_FRAMES_NEEDED=6; // frames document must be steady before capture
+  var STILL_FRAMES_NEEDED=6; // frames object must be steady before capture
+  var detectCanvas=document.createElement('canvas'); // OFFSCREEN - never touches the capture canvas
+  var dctx=detectCanvas.getContext('2d');
+  var lastDetectPost=0,detectPending=false;
+  var lastDocDetected=null;
+  var brackets=['vb-tl','vb-tr','vb-bl','vb-br'];
 
+  // REAL edge detection (server-side Canny contour) every ~700ms.
+  // This is step ONE of the pipeline: edges -> crop -> enhance -> OCR.
+  function postAutoDetect(){
+    if(!v.videoWidth||!autoCaptureActive||detectPending)return;
+    var now=Date.now();
+    if(now-lastDetectPost<700)return;
+    lastDetectPost=now;
+    var tw=180,th=Math.round(180*v.videoHeight/v.videoWidth);
+    detectCanvas.width=tw;detectCanvas.height=th;
+    dctx.drawImage(v,0,0,tw,th);
+    var jpg=detectCanvas.toDataURL('image/jpeg',0.6);
+    detectPending=true;
+    var fd=new FormData();
+    fd.append('image',dataURLtoBlob(jpg),'frame.jpg');
+    fetch('/api/auto-detect',{method:'POST',body:fd})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        detectPending=false;
+        if(!d||typeof d.document_detected!=='boolean')return;
+        lastDocDetected=d.document_detected;
+        // Telemetry shows REAL detection state now
+        var tel=document.getElementById('tel-edge');
+        if(tel)tel.textContent=d.document_detected?'DOC LOCKED':(diffState==='STEADY'?'STEADY':'SCANNING');
+        // Solid emerald brackets only when a real document quad is locked
+        brackets.forEach(function(id){
+          var el=document.getElementById(id);
+          if(el){el.style.borderColor=d.document_detected?'var(--emerald)':'var(--gold)';
+                 el.style.boxShadow=d.document_detected?'0 0 14px rgba(45,74,59,0.45)':''}
+        });
+      })
+      .catch(function(){detectPending=false});
+  }
+
+  var diffState='MOVING';
   autoCaptureTimer=setInterval(function(){
     if(!v.videoWidth||!autoCaptureActive)return;
     // Grab a tiny thumbnail (80x60) for fast pixel comparison
     var tw=80,th=60;
-    c.width=tw;c.height=th;
-    ctx.drawImage(v,0,0,tw,th);
-    var data=ctx.getImageData(0,0,tw,th).data;
+    detectCanvas.width=tw;detectCanvas.height=th;
+    dctx.drawImage(v,0,0,tw,th);
+    try{
+      var data=dctx.getImageData(0,0,tw,th).data;
+    }catch(e){return}
 
     // Compute difference from previous frame
     var diff=0;
@@ -485,24 +533,34 @@ function startAutoDetect(){
     var avgBright=totalBright/(tw*th);
 
     // Update telemetry
-    document.getElementById('tel-edge').textContent=diff<CAPTURE_THRESHOLD?'STEADY':'MOVING';
+    diffState=diff<CAPTURE_THRESHOLD?'STEADY':'MOVING';
+    if(lastDocDetected!==true){ // DOC LOCKED label set by server response
+      document.getElementById('tel-edge').textContent=lastDocDetected===false&&diffState==='STEADY'?'OBJECT STEADY':diffState;
+    }
     document.getElementById('tel-blur').textContent='Δ'+diff.toFixed(1);
     document.getElementById('tel-glare').textContent='LV'+avgBright.toFixed(0);
 
-    // Corner bracket edge-detection animation
-    var brackets=['vb-tl','vb-tr','vb-bl','vb-br'];
+    // Kick off real edge detection in parallel (non-blocking)
+    postAutoDetect();
+
+    // Bracket pulse animation while the object is steady
     if(diff<CAPTURE_THRESHOLD&&avgBright>30&&avgBright<240){
       stillFrames++;
       // Animate brackets while document is steady
       var pulse=stillFrames/STILL_FRAMES_NEEDED;
       var opacity=0.4+pulse*0.6;
-      var color=pulse>0.5?'var(--emerald)':'var(--gold)';
+      var color=(lastDocDetected===true)?'var(--emerald)':(pulse>0.5?'var(--emerald)':'var(--gold)');
       var size=36+pulse*8;
       brackets.forEach(function(id){
         var el=document.getElementById(id);
         if(el){el.style.opacity=opacity;el.style.borderColor=color;el.style.width=size+'px';el.style.height=size+'px'}
       });
-      if(stillFrames>=STILL_FRAMES_NEEDED){
+      // AUTO-CAPTURE GATE: edges must have been checked first. Documents are
+      // captured as soon as the quad locks; any other object (2D/3D) captures
+      // once it holds still. Cropping/enhancement happen server-side next.
+      var gateOpen=(lastDocDetected===true&&stillFrames>=Math.min(2,STILL_FRAMES_NEEDED))
+                  ||(lastDocDetected!==null&&stillFrames>=STILL_FRAMES_NEEDED);
+      if(gateOpen){
         stillFrames=0;
         shutterSound();
         // Flash brackets on capture
@@ -516,7 +574,8 @@ function startAutoDetect(){
             if(el){el.style.borderColor='var(--gold)';el.style.boxShadow='';el.style.width='36px';el.style.height='36px';el.style.opacity='1'}
           });
         },300);
-        // Capture full-res frame
+        // Capture full-res frame from the LIVE video element directly,
+        // never from the tiny analysis canvas
         var bigC=document.createElement('canvas');
         bigC.width=v.videoWidth;bigC.height=v.videoHeight;
         bigC.getContext('2d').drawImage(v,0,0);
@@ -530,7 +589,7 @@ function startAutoDetect(){
       stillFrames=0;
       brackets.forEach(function(id){
         var el=document.getElementById(id);
-        if(el){el.style.opacity='1';el.style.borderColor='var(--gold)';el.style.width='36px';el.style.height='36px';el.style.boxShadow=''}
+        if(el){el.style.opacity='1';el.style.borderColor=lastDocDetected===true?'var(--emerald)':'var(--gold)';el.style.width='36px';el.style.height='36px';el.style.boxShadow=''}
       });
     }
   },200); // faster check interval
