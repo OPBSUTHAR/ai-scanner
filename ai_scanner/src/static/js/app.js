@@ -276,6 +276,16 @@ function isSecureContext(){
   return window.isSecureContext||location.hostname==='localhost'||location.hostname==='127.0.0.1';
 }
 
+/* UNIVERSAL CAMERA FALLBACK: <input type=file capture> opens the NATIVE OS camera app.
+   Works on every device/browser (HTTP, LAN IP, webviews, old browsers) — no getUserMedia needed. */
+function openNativeCameraFallback(reason){
+  var inp=document.getElementById('native-capture');
+  if(!inp)return false;
+  toast(reason+' — OPENING DEVICE CAMERA INSTEAD','warn');
+  inp.click();
+  return true;
+}
+
 function requestCameraPermission(callback){
   if(cameraPermissionPending)return;
   cameraPermissionPending=true;
@@ -288,12 +298,10 @@ function requestCameraPermission(callback){
   }).catch(function(e){
     cameraPermissionPending=false;
     var msg=e.message||'';
-    if(msg.includes('NotAllowed')||msg.includes('Permission')||msg.includes('permission')){
-      toast('CAMERA BLOCKED — allow camera access in browser settings, or use HTTPS','err');
-    }else if(msg.includes('NotFound')||msg.includes('No device')){
+    if(msg.includes('NotFound')||msg.includes('No device')){
       toast('NO CAMERA FOUND on this device','err');
     }else{
-      toast('CAMERA: '+msg,'err');
+      openNativeCameraFallback('LIVE VIEW UNAVAILABLE ('+(msg||'permission denied')+')');
     }
     if(callback)callback();
   });
@@ -368,7 +376,7 @@ function startCamera(deviceId){
           else toast('NO CAMERA','err');
         });
       }else if(msg.includes('NotAllowed')||msg.includes('Permission')){
-        toast('CAMERA BLOCKED — use HTTPS or allow camera access','err');
+        openNativeCameraFallback('CAMERA BLOCKED — ALLOW ACCESS OR USE DEVICE CAMERA');
       }else{
         toast('CAMERA: '+msg,'err');
       }
@@ -386,14 +394,14 @@ function startCamera(deviceId){
           if(!ok2){
             var msg2=err2&&err2.message||'';
             if(msg2.includes('NotAllowed')||msg2.includes('Permission')){
-              toast('CAMERA BLOCKED — use HTTPS or allow camera access','err');
+              openNativeCameraFallback('CAMERA BLOCKED — USING DEVICE CAMERA');
             }else{
               toast('CAMERA: '+msg2,'err');
             }
           }
         });
       }else if(msg.includes('NotAllowed')||msg.includes('Permission')){
-        toast('CAMERA BLOCKED — use HTTPS or allow camera access','err');
+        openNativeCameraFallback('CAMERA BLOCKED — USING DEVICE CAMERA');
       }else{
         toast('CAMERA: '+msg,'err');
       }
@@ -405,13 +413,17 @@ document.getElementById('btn-open-cam').addEventListener('click',function(e){
   e.stopPropagation();e.preventDefault();
   if(state.stream){closeCamera();return}
 
-  // Check HTTPS FIRST — on HTTP, mediaDevices is often null, so order matters
+  /* Cross-platform strategy:
+     1) HTTPS + modern browser -> live getUserMedia view (best UX)
+     2) Anything else (HTTP, LAN IP, old browser, webview) -> native OS camera app
+        via hidden <input capture>, which is universally supported. */
   if(!isSecureContext()){
-    toast('CAMERA REQUIRES HTTPS — add --ngrok flag or deploy with HTTPS','err');
+    openNativeCameraFallback('LIVE CAMERA NEEDS HTTPS');
     return;
   }
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    toast('Your browser does not support camera API. Use Chrome or Edge.','err');return
+    openNativeCameraFallback('THIS BROWSER LACKS THE CAMERA API');
+    return;
   }
 
   // Step 1: try to get permission silently (grants enumerateDevices labels)
@@ -442,8 +454,8 @@ function dataURLtoBlob(dataURL){
 function phoneCameraCapture(){
   if(state.stream){closeCamera();return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    // No API at all — fall back to native capture input immediately
-    document.getElementById('native-capture').click();
+    // No API at all (HTTP/old browser) — native camera input works everywhere
+    openNativeCameraFallback('THIS BROWSER LACKS THE CAMERA API');
     return;
   }
   // Try getUserMedia first (opens actual camera on supported browsers)
@@ -452,8 +464,8 @@ function phoneCameraCapture(){
     showCameraUI(s);
     toast('CAMERA READY');
   }).catch(function(){
-    // Failed (HTTP, permission, etc.) — fall back to native capture input
-    document.getElementById('native-capture').click();
+    // Failed (permission, etc.) — fall back to native capture input
+    openNativeCameraFallback('LIVE CAMERA UNAVAILABLE');
   });
 }
 
