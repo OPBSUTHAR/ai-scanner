@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from pathlib import Path
 
 try:
@@ -21,9 +22,28 @@ class KeyManager:
         if not HAS_FERNET:
             return
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        if not self.key_file.exists():
-            self.key_file.write_bytes(Fernet.generate_key())
-        self._fernet = Fernet(self.key_file.read_bytes())
+        # Multiple gunicorn workers may boot concurrently: retry-read to avoid
+        # catching the file mid-write, then create it atomically as last resort.
+        for attempt in range(3):
+            try:
+                self._fernet = Fernet(self.key_file.read_bytes())
+                return
+            except Exception:
+                time.sleep(0.05 * (attempt + 1))
+        key = Fernet.generate_key()
+        tmp = self.key_file.with_suffix(f".{os.getpid()}.tmp")
+        try:
+            tmp.write_bytes(key)
+            os.replace(tmp, self.key_file)
+        finally:
+            if tmp.exists():
+                tmp.unlink()
+        # Another worker may have replaced the file after us — adopt whichever
+        # key ended up on disk so all workers encrypt/decrypt consistently.
+        try:
+            self._fernet = Fernet(self.key_file.read_bytes())
+        except Exception:
+            self._fernet = Fernet(key)
 
     def _encrypt(self, value: str) -> str:
         if self._fernet:
