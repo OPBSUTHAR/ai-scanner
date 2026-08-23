@@ -305,11 +305,44 @@ def _doc_ocr_text(doc_path: str) -> tuple:
     return text or "", full.name, ""
 
 
+def _app_ai_context() -> Dict[str, Any]:
+    """REAL vault facts handed to the AI so it can never invent files."""
+    ctx: Dict[str, Any] = {"total_documents": 0, "total_size": "",
+                           "categories": {}, "recent_files": []}
+    if DOCUMENTS_FOLDER.exists():
+        files = [f for f in DOCUMENTS_FOLDER.rglob("*")
+                 if f.is_file() and f.suffix.lower() in (".png", ".jpg", ".jpeg", ".pdf")]
+        ctx["total_documents"] = len(files)
+        ctx["total_size"] = _fmt_size(sum(os.path.getsize(f) for f in files))
+        cats: Dict[str, int] = {}
+        for f in files:
+            cats[f.parent.name] = cats.get(f.parent.name, 0) + 1
+        ctx["categories"] = cats
+        ctx["recent_files"] = [f.name for f in
+                               sorted(files, key=os.path.getmtime, reverse=True)[:8]]
+    return ctx
+
+
 @app.route("/api/ai/status")
 def api_ai_status():
+    if request.args.get("refresh"):
+        ai_engine._check_ollama(force=True)
     s = ai_engine.status()
     s["last_doc"] = _ai_state.get("last_doc")
+    s["config"] = _load_app_config().get("ai", {})
     return jsonify(s)
+
+
+@app.route("/api/ai/config", methods=["GET", "POST"])
+def api_ai_config():
+    config = _load_app_config()
+    if request.method == "POST":
+        data = request.json or {}
+        ai_cfg = config.get("ai", {})
+        ai_cfg["auto_summarize"] = bool(data.get("auto_summarize", False))
+        config["ai"] = ai_cfg
+        _save_app_config(config)
+    return jsonify(config.get("ai", {}))
 
 
 @app.route("/api/ai/chat", methods=["POST"])
@@ -323,8 +356,16 @@ def api_ai_chat():
         context, _, err = _doc_ocr_text(doc_path)
         if err:
             return jsonify({"reply": err, "engine": "builtin"}), 404
-    reply = ai_engine.chat(message, history=history, context=context)
+    reply = ai_engine.chat(message, history=history, context=context,
+                           app_data=_app_ai_context())
     return jsonify({"reply": reply.reply, "engine": reply.engine, "model": reply.model})
+
+
+@app.route("/api/ai/insights", methods=["POST"])
+def api_ai_insights():
+    """AI-generated natural-language overview of the whole archive."""
+    reply = ai_engine.vault_overview(_app_ai_context())
+    return jsonify({"overview": reply.reply, "engine": reply.engine})
 
 
 @app.route("/api/ai/document", methods=["POST"])
@@ -333,12 +374,25 @@ def api_ai_document():
     action = data.get("action", "summarize")
     question = str(data.get("question", "")).strip()
     doc_path = data.get("doc_path") or ""
+    doc_paths = data.get("doc_paths") or []
     text = str(data.get("text", "") or "").strip()
 
+    name = ""
     if not text:
-        text, name, err = _doc_ocr_text(doc_path)
-        if err:
-            return jsonify({"error": err}), 404
+        texts, names, errors = [], [], []
+        for p in ([doc_path] if doc_path else []) + list(doc_paths)[:5]:
+            t, n, e = _doc_ocr_text(p)
+            if e:
+                errors.append(e)
+            elif t:
+                texts.append(f"--- {n} ---\n{t}")
+                names.append(n)
+        if not texts:
+            msg = errors[0] if errors else "Selected documents have no OCR text yet."
+            status = 404 if errors else 400
+            return jsonify({"error": msg}), status
+        text = "\n\n".join(texts)
+        name = ", ".join(names[:3]) + ("…" if len(names) > 3 else "")
 
     if action == "ask":
         if not question:
@@ -355,7 +409,7 @@ def api_ai_document():
         "reply": reply.reply,
         "engine": reply.engine,
         "model": reply.model,
-        "doc_name": name if not data.get("text") else "",
+        "doc_name": name,
     })
 
 # ---------------------------------------------------------------------------

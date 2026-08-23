@@ -827,6 +827,13 @@ function showResults(r){
   var od=document.getElementById('result-ocr');
   if(r.ocr.text) od.innerHTML='<div class="ctrl-group"><h4>OCR Text</h4><div style="background:var(--cream);padding:6px 8px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.55rem;line-height:1.5;max-height:120px;overflow-y:auto;white-space:pre-wrap;color:var(--text-secondary);margin-top:4px;border:1px solid rgba(201,169,110,0.06)">'+esc(r.ocr.text)+'</div></div>';
   else od.innerHTML='';
+  state.lastOcrText=r.ocr.text||'';
+  var ra=document.getElementById('result-ai');
+  if(ra)ra.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+    '<button class="ai-chip" onclick="aiResultSummary()"><i class="lucide icon-sparkles"></i> AI Summary</button>'+
+    '<button class="ai-chip" onclick="aiCaptureTips()"><i class="lucide icon-lightbulb"></i> Capture Tips</button>'+
+    '</div>';
+  if(state.autoSummarize&&state.lastOcrText)setTimeout(aiResultSummary,300);
   var qd=document.getElementById('result-qr');
   if(r.qr_codes&&r.qr_codes.length) qd.innerHTML='<div class="ctrl-group"><h4>QR / Barcodes</h4>'+r.qr_codes.map(function(q){return '<div style="background:var(--cream);padding:4px 6px;border-radius:4px;margin-top:3px;font-family:var(--font-mono);font-size:0.55rem;word-break:break-all;border:1px solid rgba(201,169,110,0.06)"><strong>'+q.type+':</strong> '+q.data+'</div>';}).join('')+'</div>';
   else qd.innerHTML='';
@@ -988,6 +995,7 @@ function openPreview(el){
     '<div class="preview-actions">'+
     '<button class="btn btn-primary" onclick="window.location.href=\''+d.image_url+'\'"><i class="lucide icon-download"></i> DOWNLOAD</button>'+
     '<button class="btn btn-outline" onclick="aiDocAction(\'summarize\',\''+d.path+'\')" title="AI summary of this document"><i class="lucide icon-sparkles"></i> AI SUMMARY</button>'+
+    '<button class="btn btn-outline" onclick="aiDocAction(\'key_points\',\''+d.path+'\')" title="Extract key facts with AI"><i class="lucide icon-list"></i> KEY FACTS</button>'+
     '<button class="btn btn-outline" onclick="aiAskPrompt(\''+d.path+'\')" title="Ask the AI about this document"><i class="lucide icon-bot"></i> ASK AI</button>'+
     '<button class="btn btn-outline" onclick="var c=window.location.origin+\''+d.image_url+'\';navigator.clipboard.writeText(c).catch(function(){prompt(\'COPY:\',c)});toast(\'LINK COPIED\')"><i class="lucide icon-link"></i> SHARE</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'google_drive\')"><i class="lucide icon-cloud"></i> DRIVE</button>'+
@@ -1768,18 +1776,23 @@ function handleBluetoothImage(dataUrl){
 }
 
 /* ---- AI ASSISTANT (free local models, no API keys) ---- */
-var aiState={history:[],booted:false,contextDoc:null};
-function loadAiStatus(){
-  fetch('/api/ai/status').then(function(r){return r.json()}).then(function(s){
+var aiState={history:[],booted:false,contextDoc:null,autoSummarize:false};
+function loadAiStatus(force){
+  fetch('/api/ai/status'+(force?'?refresh=1':'')).then(function(r){return r.json()}).then(function(s){
     var sb=document.getElementById('sb-ai');
     var badge=document.getElementById('ai-engine-badge');
     var det=document.getElementById('ai-engine-detail');
+    var setEng=document.getElementById('set-ai-engine');
+    var dashEng=document.getElementById('dash-ai-engine');
     var eng=s.engine||'builtin';
+    var label=eng==='ollama'?'OLLAMA':eng==='transformer'?'FLAN-T5':'BASIC';
     if(sb){
       if(eng==='ollama'){sb.innerHTML='<span style="color:var(--emerald)">OLLAMA</span>'}
       else if(eng==='transformer'){sb.innerHTML='<span style="color:var(--gold)">FLAN-T5</span>'}
       else{sb.innerHTML='<span style="color:var(--gold)">BASIC</span>'}
     }
+    if(setEng)setEng.textContent=label+(s.model?' · '+s.model:'');
+    if(dashEng)dashEng.textContent=label;
     if(badge){
       var cls=eng==='ollama'?'ok':eng==='transformer'?'mid':'basic';
       badge.className='ai-engine-badge '+cls;
@@ -1796,6 +1809,11 @@ function loadAiStatus(){
         h+='<div>'+esc(s.transformer&&s.transformer.downloaded?'flan-t5 cached locally':'flan-t5 downloads once (~300 MB), then offline')+'</div>';
       }
       det.innerHTML=h;
+    }
+    if(s.config&&typeof s.config.auto_summarize!=='undefined'){
+      var tg=document.getElementById('tog-ai-auto');
+      if(tg)tg.classList.toggle('on',!!s.config.auto_summarize);
+      aiState.autoSummarize=!!s.config.auto_summarize;
     }
   }).catch(function(){
     var sb=document.getElementById('sb-ai');if(sb)sb.textContent='ERROR';
@@ -1912,6 +1930,75 @@ function aiFromResult(){
   var p=_lastDocPath();
   if(p)_aiDocRequest('summarize',p);
   else{aiBubble('assistant','I see the last scan has text but was not saved yet. Press SAVE TO VAULT first, then I can summarize it.');}
+}
+
+/* ---- AI IN EVERY SECTION ---- */
+function aiDashOverview(){
+  var out=document.getElementById('dash-ai-output');
+  var btn=document.getElementById('btn-dash-ai');
+  if(!out)return;
+  btn.disabled=true;
+  out.innerHTML='<span style="color:var(--gold)"><i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> Analyzing archive...</span>';
+  fetch('/api/ai/insights',{method:'POST'}).then(function(r){return r.json()})
+    .then(function(d){
+      btn.disabled=false;
+      out.innerHTML='<span class="dash-ai-text">'+aesc(d.overview||'No overview available.')+'</span>'+
+        '<div style="margin-top:5px;font-family:var(--font-mono);font-size:0.42rem;color:var(--text-tertiary)">ENGINE: '+aesc(d.engine||'builtin').toUpperCase()+'</div>';
+    })
+    .catch(function(){btn.disabled=false;out.textContent='AI overview failed — is the server running?'});
+}
+function _renderResultAi(html){
+  var box=document.getElementById('result-ai');
+  if(box)box.innerHTML=html;
+}
+function aiResultSummary(){
+  var t=state.lastOcrText;
+  if(!t){toast('NO OCR TEXT TO SUMMARIZE','warn');return}
+  _renderResultAi('<div class="ctrl-group"><h4><i class="lucide icon-sparkles"></i> AI Summary</h4><div class="result-ai-body"><span style="color:var(--gold)"><i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> Summarizing...</div></div></div>');
+  fetch('/api/ai/document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'summarize',text:t})})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      _renderResultAi('<div class="ctrl-group"><h4><i class="lucide icon-sparkles"></i> AI Summary</h4><div class="result-ai-body">'+aesc(d.reply||d.error||'—')+'</div><div style="font-family:var(--font-mono);font-size:0.42rem;color:var(--text-tertiary);margin-top:3px">ENGINE: '+aesc(d.engine||'').toUpperCase()+'</div></div>');
+    })
+    .catch(function(){_renderResultAi('')});
+}
+function aiCaptureTips(){
+  var r=state.currentResult;
+  if(!r||!r.quality){toast('PROCESS A SCAN FIRST','warn');return}
+  var msg='My scan quality: blur '+r.quality.blur_score+', brightness '+r.quality.brightness+
+    ', lighting '+(r.quality.good_lighting?'good':'poor')+'. Give short practical tips to capture a better scan.';
+  aiState.history.push({role:'user',content:msg});
+  fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,history:[]})})
+    .then(function(x){return x.json()})
+    .then(function(d){
+      _renderResultAi('<div class="ctrl-group"><h4><i class="lucide icon-lightbulb"></i> Capture Tips</h4><div class="result-ai-body">'+aesc(d.reply||'—')+'</div></div>');
+    })
+    .catch(function(){toast('TIPS FAILED','err')});
+}
+function toggleAiAuto(el){
+  el.classList.toggle('on');
+  var on=el.classList.contains('on');
+  aiState.autoSummarize=on;
+  fetch('/api/ai/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auto_summarize:on})})
+    .then(function(){toast(on?'AUTO-SUMMARIZE ON':'AUTO-SUMMARIZE OFF')})
+    .catch(function(){toast('SAVE FAILED','err')});
+}
+function aiBriefingSelected(){
+  if(!state.selectedDocs.length){toast('SELECT DOCUMENTS FIRST','warn');return}
+  showLoader('AI BRIEFING...','READING '+Math.min(state.selectedDocs.length,5)+' DOCUMENTS');
+  fetch('/api/ai/document',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'summarize',doc_paths:state.selectedDocs.slice(0,5)})})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+    .then(function(res){
+      hideLoader();
+      if(!res.ok||res.d.error){toast(res.d.error||'BRIEFING FAILED','err');return}
+      document.getElementById('modal-title').textContent='AI BRIEFING // '+res.d.doc_name.toUpperCase();
+      document.getElementById('modal-body').innerHTML=
+        '<div style="background:var(--cream);border:1px solid var(--gold-dim);border-radius:var(--radius-md);padding:12px;font-family:var(--font-body);font-size:0.68rem;line-height:1.6;color:var(--ink)">'+aesc(res.d.reply).replace(/\n/g,'<br>')+'</div>'+
+        '<div style="margin-top:6px;font-family:var(--font-mono);font-size:0.45rem;color:var(--text-tertiary)">ENGINE: '+aesc(res.d.engine||'').toUpperCase()+' · FREE LOCAL MODEL</div>';
+      document.getElementById('modal').classList.add('show');
+    })
+    .catch(function(){hideLoader();toast('BRIEFING FAILED','err')});
 }
 
 /* ---- INIT ---- */

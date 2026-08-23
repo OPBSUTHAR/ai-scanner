@@ -78,6 +78,39 @@ USAGE_HELP = {
     ),
 }
 
+# Strict grounding appended whenever real app data is supplied, so the model
+# cannot invent files that do not exist.
+GROUNDING_RULES = (
+    "You are connected to live app data. Use ONLY these facts about the vault. "
+    "If the data shows 0 documents, say the vault is empty. NEVER invent file "
+    "names, counts or categories that are not listed."
+)
+
+
+def _format_vault_facts(app_data: dict) -> str:
+    lines = [f"- Total documents in vault: {app_data.get('total_documents', 0)}"]
+    size = app_data.get("total_size")
+    if size:
+        lines.append(f"- Total storage used: {size}")
+    cats = app_data.get("categories") or {}
+    if cats:
+        cat_str = ", ".join(f"{k}: {v}" for k, v in sorted(cats.items()))
+        lines.append(f"- Documents by category: {cat_str}")
+    else:
+        lines.append("- Documents by category: none")
+    recent = app_data.get("recent_files") or []
+    if recent:
+        lines.append("- Recent files (newest first): " + "; ".join(recent[:8]))
+    else:
+        lines.append("- Recent files: none")
+    return "\n".join(lines)
+
+
+VAULT_INTENT = re.compile(
+    r"\b(files?|documents?|vault|archive|library|scans?|stored|available|"
+    r"how many|any\s+(?:files|docs|documents)|list|show\s+(?:me\s+)?(?:all|files|docs)|"
+    r"what\s+(?:do|i|have|is)\s+(?:have|in|there))\b", re.IGNORECASE)
+
 
 @dataclass
 class ChatReply:
@@ -294,27 +327,62 @@ class AIAssistantEngine:
                 "too short — try rescanning with better lighting, or install Ollama "
                 "for full LLM answers.")
 
+    def _builtin_vault_answer(self, message: str, app_data: dict) -> Optional[str]:
+        """Deterministic answers about the vault — always from REAL data."""
+        total = int(app_data.get("total_documents", 0))
+        cats = app_data.get("categories") or {}
+        recent = app_data.get("recent_files") or []
+        size = app_data.get("total_size", "")
+        if total == 0:
+            return ("Your vault is currently EMPTY — 0 documents saved. "
+                    "Scan or upload something in the Scanner section and press "
+                    "DONE & SAVE; it will appear in Dashboard and Vault right away.")
+        parts = [f"Your vault holds {total} document{'s' if total != 1 else ''}"
+                 + (f" ({size})" if size else "") + "."]
+        if cats:
+            cat_str = ", ".join(f"{v} {k}" for k, v in sorted(cats.items(),
+                                                              key=lambda kv: -kv[1]))
+            parts.append(f"By category: {cat_str}.")
+        if recent:
+            shown = ", ".join(recent[:5])
+            more = f" (+{len(recent) - 5} more)" if len(recent) > 5 else ""
+            parts.append(f"Most recent: {shown}{more}.")
+        parts.append("Open the Vault section to browse them.")
+        return " ".join(parts)
+
     # ------------------------------------------------------------------ #
     # Public API
     # ------------------------------------------------------------------ #
 
     def chat(self, message: str, history: Optional[List[Dict]] = None,
-             context: str = "") -> ChatReply:
+             context: str = "", app_data: Optional[Dict] = None) -> ChatReply:
         message = (message or "").strip()
         if not message:
             return ChatReply(reply="Say something and I'll help!", engine="builtin")
+        app_data = app_data or {}
+
+        # Vault/file questions are answered strictly from real data — no LLM
+        # guessing, so files can never be invented.
+        if app_data and VAULT_INTENT.search(message):
+            return ChatReply(reply=self._builtin_vault_answer(message, app_data),
+                             engine="builtin")
 
         prompt = message
         if context:
             prompt = (f"Document text:\n\"\"\"\n{self._clip(context)}\n\"\"\"\n\n"
                       f"User question: {message}")
+        system = SYSTEM_PROMPT
+        if app_data:
+            prompt = (f"Live vault data:\n{_format_vault_facts(app_data)}\n\n"
+                      + prompt)
+            system = f"{SYSTEM_PROMPT}\n\n{GROUNDING_RULES}"
         if history:
             recent = "\n".join(
                 f"{h.get('role', 'user')}: {h.get('content', '')}"
                 for h in history[-6:] if h.get("content"))
             prompt = f"{recent}\nuser: {message}"
 
-        reply = self._ollama_generate(prompt, system=SYSTEM_PROMPT)
+        reply = self._ollama_generate(prompt, system=system)
         if reply:
             return ChatReply(reply=reply, engine="ollama",
                              model=self._pick_ollama_model(self._check_ollama()))
@@ -413,3 +481,34 @@ class AIAssistantEngine:
             return ChatReply(reply=out, engine="transformer", model=self.hf_model)
         out = self._builtin_answer_from_context(question, context)
         return ChatReply(reply=out, engine="builtin")
+
+    def vault_overview(self, app_data: Dict) -> ChatReply:
+        """Natural-language overview of the vault for the dashboard."""
+        total = int(app_data.get("total_documents", 0))
+        if total == 0:
+            return ChatReply(
+                reply=("Your archive is empty — nothing has been saved yet. Head to "
+                       "the Scanner, capture or upload a document, press PROCESS and "
+                       "then DONE & SAVE. Your first scan will show up here."),
+                engine="builtin")
+        prompt = ("Write a friendly 3-sentence overview of this document archive "
+                  "for the user:\n" + _format_vault_facts(app_data))
+        system = f"{SYSTEM_PROMPT}\n\n{GROUNDING_RULES}"
+        out = self._ollama_generate(prompt, system=system)
+        if out:
+            return ChatReply(reply=out, engine="ollama",
+                             model=self._pick_ollama_model(self._check_ollama()))
+        cats = app_data.get("categories") or {}
+        recent = app_data.get("recent_files") or []
+        size = app_data.get("total_size", "")
+        top = sorted(cats.items(), key=lambda kv: -kv[1])[:3]
+        cat_str = ", ".join(f"{v} {k}{'s' if v != 1 else ''}" for k, v in top) \
+            if top else "no categories yet"
+        lines = [f"The archive currently preserves {total} document"
+                 f"{'s' if total != 1 else ''}"
+                 + (f" using {size}" if size else "") + f" — mainly {cat_str}."]
+        if recent:
+            lines.append(f"Latest addition: {recent[0]}.")
+        lines.append("Everything is searchable from the top bar and stored locally "
+                     "on this machine.")
+        return ChatReply(reply=" ".join(lines), engine="builtin")

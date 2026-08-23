@@ -72,6 +72,57 @@ def test_ask_without_context_is_graceful():
     assert "no ocr text" in reply.reply.lower()
 
 
+def _vault_data(total=3):
+    return {
+        "total_documents": total,
+        "total_size": "4.2 MB",
+        "categories": {"invoice": 2, "receipt": 1} if total else {},
+        "recent_files": (["Invoice_Acme_Mar15.png", "Receipt_Store_Mar14.png",
+                          "Contract_Jan2026.pdf"][:total] if total else []),
+    }
+
+
+def test_vault_question_empty_vault_never_invents_files():
+    eng = _offline_engine()
+    reply = eng.chat("are there any files available?", app_data=_vault_data(0))
+    assert "empty" in reply.reply.lower()
+    assert ".png" not in reply.reply and ".pdf" not in reply.reply
+
+
+def test_vault_question_reports_real_files():
+    eng = _offline_engine()
+    reply = eng.chat("is there any files avaialbe", app_data=_vault_data(3))
+    assert "3 documents" in reply.reply
+    assert "Invoice_Acme_Mar15.png" in reply.reply
+    assert reply.engine == "builtin"
+
+
+def test_vault_question_with_ollama_still_grounded():
+    """Even when Ollama is installed, vault questions use real data only."""
+    eng = _offline_engine()
+    called = {"post": False}
+
+    def fake_post(url, json=None, timeout=None):
+        called["post"] = True
+        raise AssertionError("LLM must not be consulted for vault questions")
+
+    with mock.patch("src.ai_assistant.engine.requests.get",
+                    side_effect=lambda u, t: (_ for _ in ()).throw(Exception("down"))), \
+         mock.patch("src.ai_assistant.engine.requests.post", side_effect=fake_post):
+        reply = eng.chat("what files do i have?", app_data=_vault_data(2))
+    assert not called["post"]
+    assert "2 documents" in reply.reply
+
+
+def test_vault_overview_empty_and_filled():
+    eng = _offline_engine()
+    empty = eng.vault_overview(_vault_data(0))
+    assert "empty" in empty.reply.lower()
+    filled = eng.vault_overview(_vault_data(3))
+    assert "3 documents" in filled.reply
+    assert "Invoice_Acme_Mar15.png" in filled.reply
+
+
 def test_summarize_short_text_guard():
     eng = _offline_engine()
     reply = eng.summarize("too short")

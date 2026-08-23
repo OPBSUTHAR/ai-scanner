@@ -1,6 +1,32 @@
 # AI Scanner — Project Status & Roadmap
 
-## Session Log — 23 Aug 2026 (Latest First)
+## Session Log — 23 Aug 2026 #2 (Latest First)
+
+### FIX: AI Hallucination About Vault Contents
+- Reported: assistant claimed files existed while Vault/Dashboard showed none.
+- Root cause: chat engine had **no access to real app state** — LLMs invent facts
+  when ungrounded. (`data/documents` was empty; nothing was corrupted.)
+- Fix: `/api/ai/chat` now always injects **live vault facts** (total count, size,
+  per-category counts, recent filenames) + strict grounding rules into every prompt.
+- Vault/file questions ("any files available?", "how many documents?") are answered
+  **deterministically from real data** — never passed through an LLM — so invented
+  file names are impossible in every engine mode.
+
+### NEW: AI Integrated Into Every Section
+- **Dashboard** — "AI Archive Overview" card: one-click natural-language summary of
+  the whole archive (`POST /api/ai/insights`, new `engine.vault_overview()`).
+- **Scanner** — result panel now has inline **AI Summary** and **Capture Tips**
+  chips (tips use quality metrics as context). Optional **Auto-summarize after scan**
+  setting runs the summary automatically.
+- **Vault** — document inspector gained a **KEY FACTS** button; gallery bar gained
+  **AI Briefing** which summarizes up to 5 selected documents at once
+  (`doc_paths[]` support added to `/api/ai/document`).
+- **Settings** — new **AI Assistant** group: live engine status, Recheck Engine,
+  Open Assistant shortcut, and persisted auto-summarize toggle (`GET/POST /api/ai/config`,
+  stored in `config/app_config.json` under `"ai"`).
+- Tests grew to 69 (vault grounding, empty-vault behavior, overview generation).
+
+## Session Log — 23 Aug 2026
 
 ### NEW: Local AI Assistant (Free · Open-Source · No API Keys)
 - Added `src/ai_assistant/engine.py` — `AIAssistantEngine` with a free-provider chain:

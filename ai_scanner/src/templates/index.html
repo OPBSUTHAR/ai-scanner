@@ -140,6 +140,14 @@
         <p><span id="dash-total">0</span> documents processed — all scans preserved</p>
       </div>
       <div class="stat-grid" id="stat-grid"></div>
+      <div class="ctrl-group dash-ai-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <h4 style="margin:0"><i class="lucide icon-sparkles"></i> AI Archive Overview</h4>
+          <span class="badge badge-gray" id="dash-ai-engine" style="font-size:0.45rem">AI</span>
+          <button class="btn btn-primary btn-xs" id="btn-dash-ai" onclick="aiDashOverview()" style="margin-left:auto"><i class="lucide icon-refresh-cw"></i> Generate</button>
+        </div>
+        <div id="dash-ai-output" class="dash-ai-output">Let the local AI describe your archive — press GENERATE.</div>
+      </div>
       <div class="pipeline-card">
         <div class="pipe-title"><i class="lucide icon-cpu"></i> Processing Pipeline</div>
         <div class="pipeline-flow">
@@ -307,6 +315,7 @@
                 <div class="result-compare" id="result-compare"></div>
                 <div class="stat-grid" id="result-grid" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr));margin-bottom:12px"></div>
                 <div id="result-details"></div>
+                <div id="result-ai" style="margin-top:8px"></div>
                 <div id="result-ocr" style="margin-top:8px"></div>
                 <div id="result-qr" style="margin-top:8px"></div>
                 <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
@@ -369,6 +378,7 @@
           <button data-filter="merged">Merged PDFs</button>
         </div>
         <div style="flex:1"></div>
+        <button class="btn btn-outline btn-sm" id="btn-ai-briefing" onclick="aiBriefingSelected()"><i class="lucide icon-bot"></i> AI Briefing</button>
         <button class="btn btn-outline btn-sm" id="btn-select-all" onclick="selectAllDocs()"><i class="lucide icon-list-check"></i> Select All</button>
       </div>
       <div id="gallery-container"></div>
@@ -456,6 +466,17 @@
           <input type="file" id="folder-picker" webkitdirectory style="display:none" onchange="handleFolderPick(this)">
           <div class="toggle-row"><span>Documents</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)" id="set-count">--</span></div>
           <div class="toggle-row"><span>Storage Used</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)" id="set-size">--</span></div>
+        </div>
+        <div class="ctrl-group" style="margin-bottom:10px">
+          <h4><i class="lucide icon-bot"></i> AI Assistant</h4>
+          <p style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary);margin-bottom:6px">Free · open-source · fully local — no API keys, no internet needed</p>
+          <div class="toggle-row"><span>Engine</span><span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-tertiary)" id="set-ai-engine">CHECK...</span></div>
+          <div class="toggle-row"><span>Auto-summarize after scan</span><div class="toggle" id="tog-ai-auto" onclick="toggleAiAuto(this)"></div></div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-xs" onclick="loadAiStatus(true)"><i class="lucide icon-refresh-cw"></i> Recheck Engine</button>
+            <button class="btn btn-outline btn-xs" onclick="switchView('ai')"><i class="lucide icon-bot"></i> Open Assistant</button>
+          </div>
+          <p style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-tertiary);margin-top:8px;line-height:1.7">Full LLM chat: install <strong>Ollama</strong> (ollama.com) then run <code style="color:var(--gold)">ollama pull llama3.2</code> and restart the app. Without it the assistant uses the built-in flan-t5 / rule-based engine.</p>
         </div>
         <div class="ctrl-group" style="margin-bottom:10px">
           <h4><i class="lucide icon-cloud"></i> Cloud Sync</h4>

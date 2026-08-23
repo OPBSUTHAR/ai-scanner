@@ -36,6 +36,18 @@ Built-in assistant powered by **open-source models that never leave your machine
 - **Chat help** for app features (merging PDFs, cloud sync, OCR engines...)
 - Available everywhere: sidebar **AI Assistant** view, **AI SUMMARY / ASK AI** buttons
   in every document inspector, and an **Ask AI** button on scan results
+- **Grounded in your real vault** — file counts and listings come straight from the
+  archive (never invented), and vault questions are answered from live data in every mode
+
+Where the assistant appears:
+
+| Section | AI feature |
+|---|---|
+| Dashboard | **AI Archive Overview** — one-click natural-language summary |
+| Scanner | **AI Summary** + **Capture Tips** chips on results; optional auto-summarize |
+| Vault | **AI SUMMARY / KEY FACTS / ASK AI** per document + multi-doc **AI Briefing** |
+| Settings | Engine status, recheck, auto-summarize toggle |
+| AI Assistant view | Full chat with quick actions |
 
 Provider chain — first available wins, zero configuration required:
 

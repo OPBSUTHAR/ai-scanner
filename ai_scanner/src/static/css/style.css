@@ -1461,3 +1461,20 @@ body{
 }
 #ai-input:focus{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-dim)}
 .ai-side .ctrl-group{margin-bottom:10px}
+
+/* AI in dashboard / scanner / vault */
+.dash-ai-card{margin-top:12px}
+.dash-ai-output{
+  background:var(--cream);
+  border:1px solid var(--gold-dim);border-radius:var(--radius-md);
+  padding:10px 12px;
+  font-family:var(--font-body);font-size:0.68rem;line-height:1.6;
+  color:var(--text-secondary);
+}
+.result-ai-body{
+  background:var(--cream);
+  border:1px solid var(--gold-dim);border-radius:var(--radius-sm);
+  padding:7px 9px;margin-top:4px;
+  font-family:var(--font-body);font-size:0.62rem;line-height:1.55;
+  color:var(--text-secondary);
+}
