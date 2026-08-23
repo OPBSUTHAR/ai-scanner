@@ -26,6 +26,28 @@
 - Quality assessment (blur detection, lighting check)
 - Auto-crop and perspective correction
 
+### AI Assistant (Local · Free · No API Keys)
+
+Built-in assistant powered by **open-source models that never leave your machine**:
+
+- **Summarize** any scanned document (invoices → key amounts/dates in seconds)
+- **Ask questions** about document content ("what's the total?", "who's the vendor?")
+- **Key-fact extraction** (amounts, dates, emails, phone numbers)
+- **Chat help** for app features (merging PDFs, cloud sync, OCR engines...)
+- Available everywhere: sidebar **AI Assistant** view, **AI SUMMARY / ASK AI** buttons
+  in every document inspector, and an **Ask AI** button on scan results
+
+Provider chain — first available wins, zero configuration required:
+
+| Engine | Requirement | Notes |
+|---|---|---|
+| Ollama | Install [Ollama](https://ollama.com) + `ollama pull llama3.2` | Full LLM chat quality |
+| Transformers | `pip install transformers` | Auto-downloads `google/flan-t5-small` (~300 MB) once, then offline |
+| Built-in helper | Nothing — always available | Rule-based summaries, fact extraction & app guidance |
+
+All three are 100% free, open-source, and require **no API keys and no internet**
+(after the one-time model download).
+
 ---
 
 ## Project Structure
@@ -38,6 +60,7 @@ ai_scanner/
 │   ├── enhancement/         # Image enhancement (contrast, sharpening, shadow removal)
 │   ├── ocr/                 # OCR engine (Tesseract, Google Vision)
 │   ├── classification/      # Document type classifier
+│   │   ├── ai_assistant/    # Local AI assistant (Ollama + flan-t5 + builtin)
 │   ├── storage/             # Cloud sync + local storage
 │   │   ├── cloud_sync.py
 │   │   └── local_storage.py
@@ -122,6 +145,9 @@ Only if using cloud features (optional — scanner works without them):
 | Google Cloud Vision | `.env` | `GOOGLE_VISION_API_KEY` or `GOOGLE_APPLICATION_CREDENTIALS` |
 | Dropbox | `.env` | `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`, `DROPBOX_ACCESS_TOKEN` |
 | OneDrive | `.env` | `ONEDRIVE_CLIENT_ID`, `ONEDRIVE_CLIENT_SECRET`, `ONEDRIVE_TENANT_ID` |
+
+The **AI Assistant needs no keys at all** — see the AI Assistant section above.
+Optional tuning in `.env`: `OLLAMA_HOST`, `OLLAMA_MODEL`, `AI_LOCAL_MODEL`.
 
 ### Usage
 

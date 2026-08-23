@@ -60,6 +60,10 @@
       <span class="nav-label">Vault</span>
       <span class="badge" id="gallery-count">0</span>
     </button>
+    <button class="nav-item" data-view="ai" onclick="switchView('ai')">
+      <span class="icon"><i class="lucide icon-bot"></i></span>
+      <span class="nav-label">AI Assistant</span>
+    </button>
     <div class="nav-section">Tools</div>
     <button class="nav-item" onclick="showMergedGallery()">
       <span class="icon"><i class="lucide icon-file-stack"></i></span>
@@ -76,6 +80,7 @@
     <div class="sb-row"><span class="sb-k">DOCUMENTS</span><b class="sb-v" id="sb-docs">0</b></div>
     <div class="sb-row"><span class="sb-k">STORAGE</span><b class="sb-v" id="sb-storage">--</b></div>
     <div class="sb-row"><span class="sb-k">OCR ENGINE</span><b class="sb-v" id="sb-ocr" style="font-size:0.48rem">CHECK...</b></div>
+    <div class="sb-row"><span class="sb-k">AI ENGINE</span><b class="sb-v" id="sb-ai" style="font-size:0.48rem">CHECK...</b></div>
     <div class="sb-tick" id="sb-scan-tick"><span class="dot on"></span> <span id="sb-tick-label">SCANNER IDLE</span></div>
   </div>
   <div class="sidebar-footer">
@@ -106,6 +111,7 @@
       <button class="hud-tab active" data-tab="dashboard" onclick="switchView('dashboard')">Dashboard</button>
       <button class="hud-tab" data-tab="scanner" onclick="switchView('scanner')">Scanner</button>
       <button class="hud-tab" data-tab="gallery" onclick="switchView('gallery')">Vault</button>
+      <button class="hud-tab" data-tab="ai" onclick="switchView('ai')">AI</button>
     </div>
     <div class="hud-spacer"></div>
     <div style="display:flex;align-items:center;position:relative">
@@ -306,6 +312,7 @@
                 <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
                   <button class="btn btn-primary" onclick="resetScanner()"><i class="lucide icon-refresh-cw"></i> New Scan</button>
                   <button class="btn btn-outline" id="btn-dl"><i class="lucide icon-download"></i> Download</button>
+                  <button class="btn btn-outline" id="btn-ai-insights" onclick="aiFromResult()"><i class="lucide icon-sparkles"></i> Ask AI</button>
                   <button class="btn btn-outline" id="btn-cloud" style="display:none" onclick="cloudUploadFromResult()"><i class="lucide icon-cloud"></i> Upload</button>
                 </div>
               </div>
@@ -373,6 +380,65 @@
           <div style="flex:1"></div>
           <button class="btn btn-outline btn-sm" onclick="clearSelection()"><i class="lucide icon-x"></i> CLEAR</button>
           <button class="btn btn-primary btn-sm" id="btn-merge" style="display:none" onclick="mergeToPdf()"><i class="lucide icon-file-stack"></i> MERGE PDF (<span id="merge-n">0</span>)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== AI ASSISTANT ===== -->
+    <div class="view" id="view-ai">
+      <div class="page-title">
+        <h1>AI Assistant // Local Model</h1>
+        <p>Free · open-source · runs offline — no API keys, your documents never leave this machine</p>
+      </div>
+      <div class="ai-shell">
+        <div class="ai-chat-card">
+          <div class="ai-chat-head">
+            <span class="ai-bot-ic"><i class="lucide icon-bot"></i></span>
+            <div>
+              <div class="ai-chat-title">Archive Assistant</div>
+              <div class="ai-engine-badge" id="ai-engine-badge"><i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> DETECTING ENGINE...</div>
+            </div>
+            <button class="btn btn-outline btn-xs" style="margin-left:auto" onclick="aiClearChat()" title="Clear conversation"><i class="lucide icon-trash-2"></i></button>
+          </div>
+          <div class="ai-msgs" id="ai-msgs"></div>
+          <div class="ai-quick" id="ai-quick">
+            <button class="ai-chip" onclick="aiQuickSummarize()"><i class="lucide icon-file-text"></i> Summarize last scan</button>
+            <button class="ai-chip" onclick="aiAskLastDoc()"><i class="lucide icon-message-circle-question"></i> Ask about last scan</button>
+            <button class="ai-chip" onclick="aiSend('How do I merge documents into a PDF?')">Merge help</button>
+            <button class="ai-chip" onclick="aiSend('How does cloud sync work?')">Cloud sync</button>
+            <button class="ai-chip" onclick="aiSend('What OCR engines are available?')">OCR info</button>
+          </div>
+          <div class="ai-input-row">
+            <input type="text" id="ai-input" placeholder="Ask about a document or app feature..." autocomplete="off">
+            <button class="btn btn-primary" id="btn-ai-send" onclick="aiSend()"><i class="lucide icon-send"></i></button>
+          </div>
+        </div>
+        <div class="ai-side">
+          <div class="ctrl-group">
+            <h4><i class="lucide icon-cpu"></i> Engine Status</h4>
+            <div id="ai-engine-detail" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-secondary);line-height:1.7">Checking...</div>
+          </div>
+          <div class="ctrl-group">
+            <h4><i class="lucide icon-lightbulb"></i> What I Can Do</h4>
+            <div style="font-family:var(--font-mono);font-size:0.52rem;color:var(--text-tertiary);line-height:1.8">
+              • Summarize any scanned document<br>
+              • Answer questions about document content<br>
+              • Extract key facts (amounts, dates, IDs)<br>
+              • Explain scanner features &amp; workflows<br>
+              • 100% local — nothing uploaded anywhere
+            </div>
+          </div>
+          <div class="ctrl-group">
+            <h4><i class="lucide icon-arrow-up-narrow-wide"></i> Upgrade To Full LLM</h4>
+            <div style="font-family:var(--font-mono);font-size:0.52rem;color:var(--text-tertiary);line-height:1.8">
+              Install <strong>Ollama</strong> (free):<br>
+              1. ollama.com → install<br>
+              2. <code style="color:var(--gold)">ollama pull llama3.2</code><br>
+              3. Restart this app<br><br>
+              The assistant auto-detects it.<br>
+              Basic mode works without it.
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -542,7 +608,7 @@
 </div>
 
 <!-- KEYBOARD HINT -->
-<div class="kbd-hint" id="kbd-hint"><kbd>Esc</kbd> Close · <kbd>1</kbd>-<kbd>4</kbd> Navigate · <kbd>Enter</kbd> Scan</div>
+<div class="kbd-hint" id="kbd-hint"><kbd>Esc</kbd> Close · <kbd>1</kbd>-<kbd>5</kbd> Navigate · <kbd>Enter</kbd> Scan</div>
 
 <!-- TOAST -->
 <div class="toast-container" id="toast-c"></div>

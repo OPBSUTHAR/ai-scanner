@@ -15,6 +15,12 @@ google-cloud-vision>=3.4.0
 # torch>=2.0.0  # pulled in automatically by easyocr
 easyocr>=1.7.0
 
+# Local AI Assistant (free, open-source, no API keys)
+# Runs google/flan-t5-small locally; Ollama (https://ollama.com) is auto-detected
+# as the preferred engine when installed.
+transformers>=4.44.0
+huggingface_hub>=0.24.0
+
 # Cloud Storage
 google-api-python-client>=2.95.0
 google-auth-httplib2>=0.1.0

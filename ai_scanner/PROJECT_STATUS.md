@@ -1,6 +1,26 @@
 # AI Scanner — Project Status & Roadmap
 
-## Session Log — 08 Aug 2026 (Latest First)
+## Session Log — 23 Aug 2026 (Latest First)
+
+### NEW: Local AI Assistant (Free · Open-Source · No API Keys)
+- Added `src/ai_assistant/engine.py` — `AIAssistantEngine` with a free-provider chain:
+  1. **Ollama** (auto-detected at `OLLAMA_HOST`, prefers llama3.2/phi3/gemma2/qwen2.5...)
+  2. **Transformers** — `google/flan-t5-small` (Apache-2.0), downloaded once, then offline
+  3. **Built-in helper** — always available (extractive summaries, key-fact regex extraction,
+     app-usage Q&A, context matching for document questions)
+- New endpoints in `web_app.py`: `GET /api/ai/status`, `POST /api/ai/chat`,
+  `POST /api/ai/document` (`action=summarize|ask|key_points`, by doc path or raw text).
+- Last scanned document is tracked server-side (`_ai_state["last_doc"]`) so quick actions work.
+- UI: new sidebar **AI Assistant** view + top-bar AI tab with chat interface, typing
+  indicator, engine badge, quick-action chips (summarize last scan / ask / merge help /
+  cloud sync / OCR info) and an "upgrade to Ollama" guide card.
+- Document inspector now has **AI SUMMARY** and **ASK AI** buttons; scan result panel has
+  an **Ask AI** button; sidebar status shows the active **AI ENGINE**.
+- Keyboard shortcut: `4` opens the assistant. `requirements.txt` gained
+  `transformers` + `huggingface_hub`; `.env.example` documents `OLLAMA_HOST`,
+  `OLLAMA_MODEL`, `AI_LOCAL_MODEL`. Tests: `tests/test_ai_assistant.py`.
+
+## Session Log — 08 Aug 2026
 
 ### Sidebar Upgrade
 - Added live **ARCHIVE STATUS** widget in the sidebar (DOCUMENTS count, STORAGE used, OCR ENGINE, scanner status tick with green/amber pulse dot).

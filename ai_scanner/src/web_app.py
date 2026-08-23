@@ -21,6 +21,7 @@ import numpy as np
 from PIL import Image
 
 from src.main import AIScanner
+from src.ai_assistant import AIAssistantEngine
 from src.storage.local_storage import LocalStorage
 from src.utils.search import DocumentSearch
 from src.utils.key_manager import KeyManager
@@ -60,8 +61,11 @@ def _bind_cloud_user():
     scanner.cloud.activate_user(user or "default")
 
 scanner = AIScanner()
+ai_engine = AIAssistantEngine()
 searcher = DocumentSearch()
 key_manager = KeyManager()
+
+_ai_state: Dict[str, Any] = {}
 
 # Load saved storage path
 _app_config = _load_app_config()
@@ -138,6 +142,10 @@ def _serialize_result(r):
         out["image_url"] = url_for("serve_image", subpath=rel.replace("\\", "/"))
         if os.path.exists(saved):
             out["file_size"] = _fmt_size(os.path.getsize(saved))
+        try:
+            _ai_state["last_doc"] = rel.replace("\\", "/")
+        except Exception:
+            pass
     if "_orig_url" in r:
         out["original_url"] = r["_orig_url"]
     shape = r.get("original_shape", [])
@@ -274,6 +282,80 @@ def api_ocr_status():
         "tesseract": has_tesseract,
         "google_vision": has_google_vision,
         "engine": "tesseract" if has_tesseract else ("google_vision" if has_google_vision else "none"),
+    })
+
+# ---------------------------------------------------------------------------
+#  Local AI Assistant (free, open-source, no API keys)
+# ---------------------------------------------------------------------------
+
+def _doc_ocr_text(doc_path: str) -> tuple:
+    """Return (text, name, error) for a document path relative to DOCUMENTS_FOLDER."""
+    if not doc_path:
+        return "", "", "No document specified"
+    full = _resolve_within(DOCUMENTS_FOLDER, doc_path.replace("\\", "/"))
+    if full is None or not full.exists():
+        return "", "", f"Document not found: {doc_path}"
+    text = ""
+    meta_path = scanner.storage.base_dir / "metadata" / f"{full.stem}.json"
+    if meta_path.exists():
+        try:
+            text = json.loads(meta_path.read_text()).get("ocr_text", "")
+        except Exception:
+            text = ""
+    return text or "", full.name, ""
+
+
+@app.route("/api/ai/status")
+def api_ai_status():
+    s = ai_engine.status()
+    s["last_doc"] = _ai_state.get("last_doc")
+    return jsonify(s)
+
+
+@app.route("/api/ai/chat", methods=["POST"])
+def api_ai_chat():
+    data = request.json or {}
+    message = str(data.get("message", ""))
+    history = data.get("history") or []
+    context = ""
+    doc_path = data.get("doc_path") or ""
+    if doc_path:
+        context, _, err = _doc_ocr_text(doc_path)
+        if err:
+            return jsonify({"reply": err, "engine": "builtin"}), 404
+    reply = ai_engine.chat(message, history=history, context=context)
+    return jsonify({"reply": reply.reply, "engine": reply.engine, "model": reply.model})
+
+
+@app.route("/api/ai/document", methods=["POST"])
+def api_ai_document():
+    data = request.json or {}
+    action = data.get("action", "summarize")
+    question = str(data.get("question", "")).strip()
+    doc_path = data.get("doc_path") or ""
+    text = str(data.get("text", "") or "").strip()
+
+    if not text:
+        text, name, err = _doc_ocr_text(doc_path)
+        if err:
+            return jsonify({"error": err}), 404
+
+    if action == "ask":
+        if not question:
+            return jsonify({"error": "Question required"}), 400
+        reply = ai_engine.ask(question, text)
+    elif action == "key_points":
+        reply = ai_engine.key_points(text)
+    else:
+        action = "summarize"
+        reply = ai_engine.summarize(text)
+
+    return jsonify({
+        "action": action,
+        "reply": reply.reply,
+        "engine": reply.engine,
+        "model": reply.model,
+        "doc_name": name if not data.get("text") else "",
     })
 
 # ---------------------------------------------------------------------------
@@ -945,6 +1027,11 @@ def batch_done():
                           "kind": "pdf", "type": "documented"})
 
     shutil.rmtree(str(job_dir), ignore_errors=True)
+    if saved:
+        try:
+            _ai_state["last_doc"] = saved[0]["path"]
+        except Exception:
+            pass
     return jsonify({"done": True, "saved": saved,
                     "count": len(saved),
                     "pdf_name": next((s["name"] for s in saved if s["kind"] == "pdf"), None)})

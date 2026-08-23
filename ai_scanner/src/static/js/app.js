@@ -48,7 +48,7 @@ function saveState(){
 function restoreState(){
   try{
     var v=localStorage.getItem('scanner_view');
-    if(v&&['dashboard','scanner','gallery','settings'].includes(v))switchView(v);
+    if(v&&['dashboard','scanner','gallery','ai','settings'].includes(v))switchView(v);
   }catch(e){}
 }
 
@@ -85,7 +85,7 @@ function switchView(v){
   document.querySelectorAll('.nav-item').forEach(function(b){b.classList.toggle('active',b.dataset.view===v)});
   document.querySelectorAll('.hud-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===v)});
   document.querySelectorAll('.view').forEach(function(x){x.classList.toggle('active',x.id==='view-'+v)});
-  var t={dashboard:'DASHBOARD',scanner:'SCANNER',gallery:'VAULT',settings:'CONFIG'};
+  var t={dashboard:'DASHBOARD',scanner:'SCANNER',gallery:'VAULT',ai:'AI ASSISTANT',settings:'CONFIG'};
   var tag=document.querySelector('.brand-tag');
   if(tag)tag.innerHTML='<strong>AI SCANNER</strong> // '+(t[v]||'NEXUS-OS');
   closeSidebar();
@@ -94,6 +94,7 @@ function switchView(v){
     if(v==='gallery')loadGallery();
     if(v==='dashboard'){loadDashboard();loadActivity()}
     if(v==='settings')loadSettings();
+    if(v==='ai')ensureAiView();
   },50);
 }
 
@@ -832,6 +833,9 @@ function showResults(r){
   document.getElementById('btn-dl').onclick=function(){window.open(r.image_url,'_blank')};
   var cb=document.getElementById('btn-cloud');
   if(r.saved_path){cb.style.display='';cb.dataset.path=(r.saved_path.split('documents\\').pop()||r.saved_path.split('documents/').pop())}else cb.style.display='none';
+  state.lastDocPath=cb.dataset.path||null;
+  var ab=document.getElementById('btn-ai-insights');
+  if(ab)ab.classList.toggle('disabled',!r.ocr.text);
 }
 function cloudUploadFromResult(){
   var cb=document.getElementById('btn-cloud');
@@ -983,6 +987,8 @@ function openPreview(el){
     '<button class="btn btn-primary btn-sm" onclick="renameDoc(\''+d.path+'\')">SAVE</button></div>'+
     '<div class="preview-actions">'+
     '<button class="btn btn-primary" onclick="window.location.href=\''+d.image_url+'\'"><i class="lucide icon-download"></i> DOWNLOAD</button>'+
+    '<button class="btn btn-outline" onclick="aiDocAction(\'summarize\',\''+d.path+'\')" title="AI summary of this document"><i class="lucide icon-sparkles"></i> AI SUMMARY</button>'+
+    '<button class="btn btn-outline" onclick="aiAskPrompt(\''+d.path+'\')" title="Ask the AI about this document"><i class="lucide icon-bot"></i> ASK AI</button>'+
     '<button class="btn btn-outline" onclick="var c=window.location.origin+\''+d.image_url+'\';navigator.clipboard.writeText(c).catch(function(){prompt(\'COPY:\',c)});toast(\'LINK COPIED\')"><i class="lucide icon-link"></i> SHARE</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'google_drive\')"><i class="lucide icon-cloud"></i> DRIVE</button>'+
     '<button class="btn btn-outline" onclick="cloudUpload(\''+d.path+'\',\'dropbox\')"><i class="lucide icon-cloudy"></i> DROPBOX</button>'+
@@ -1397,7 +1403,7 @@ document.addEventListener('keydown',function(e){
     if(document.getElementById('view-scanner').classList.contains('active')&&!document.getElementById('btn-process').disabled)
       document.getElementById('btn-process').click();
   }
-  var navMap={'1':'dashboard','2':'scanner','3':'gallery','4':'settings'};
+  var navMap={'1':'dashboard','2':'scanner','3':'gallery','4':'ai','5':'settings'};
   if(e.key in navMap&&document.getElementById('view-'+navMap[e.key])){
     switchView(navMap[e.key]);e.preventDefault();
   }
@@ -1761,11 +1767,158 @@ function handleBluetoothImage(dataUrl){
   img.src=dataUrl;
 }
 
+/* ---- AI ASSISTANT (free local models, no API keys) ---- */
+var aiState={history:[],booted:false,contextDoc:null};
+function loadAiStatus(){
+  fetch('/api/ai/status').then(function(r){return r.json()}).then(function(s){
+    var sb=document.getElementById('sb-ai');
+    var badge=document.getElementById('ai-engine-badge');
+    var det=document.getElementById('ai-engine-detail');
+    var eng=s.engine||'builtin';
+    if(sb){
+      if(eng==='ollama'){sb.innerHTML='<span style="color:var(--emerald)">OLLAMA</span>'}
+      else if(eng==='transformer'){sb.innerHTML='<span style="color:var(--gold)">FLAN-T5</span>'}
+      else{sb.innerHTML='<span style="color:var(--gold)">BASIC</span>'}
+    }
+    if(badge){
+      var cls=eng==='ollama'?'ok':eng==='transformer'?'mid':'basic';
+      badge.className='ai-engine-badge '+cls;
+      badge.innerHTML='<span class="dot on"></span> '+(s.detail||'BUILT-IN HELPER').toUpperCase();
+    }
+    if(det){
+      var h='<div>ENGINE <span style="color:var(--gold)">'+eng.toUpperCase()+'</span></div>';
+      if(s.model)h+='<div>MODEL <span style="color:var(--emerald)">'+esc(s.model)+'</span></div>';
+      if(s.ollama&&s.ollama.installed){
+        h+='<div style="margin-top:4px;color:var(--emerald)">Ollama running · '+s.ollama.models.length+' model(s)</div>';
+      }else{
+        h+='<div style="margin-top:4px">Ollama: not detected</div>';
+        h+='<div>Transformers pkg: '+(s.transformer&&s.transformer.package?'<span style="color:var(--emerald)">yes</span>':'no')+'</div>';
+        h+='<div>'+esc(s.transformer&&s.transformer.downloaded?'flan-t5 cached locally':'flan-t5 downloads once (~300 MB), then offline')+'</div>';
+      }
+      det.innerHTML=h;
+    }
+  }).catch(function(){
+    var sb=document.getElementById('sb-ai');if(sb)sb.textContent='ERROR';
+    var b=document.getElementById('ai-engine-badge');if(b)b.innerHTML='STATUS ERROR';
+  });
+}
+function ensureAiView(){
+  if(!aiState.booted){
+    aiState.booted=true;
+    loadAiStatus();
+    aiBubble('assistant',"Hello! I'm your local AI assistant — free, open-source and fully offline. I can summarize documents, answer questions about their content, or explain any scanner feature.\n\nTry a quick action below, or ask me something!");
+    var inp=document.getElementById('ai-input');
+    if(inp&&!inp._bound){inp._bound=true;inp.addEventListener('keydown',function(e){if(e.key==='Enter')aiSend()})}
+  }
+}
+function aiBubble(role,text,meta){
+  var wrap=document.getElementById('ai-msgs');
+  if(!wrap)return;
+  var el=document.createElement('div');
+  el.className='ai-msg '+(role==='user'?'user':'bot');
+  var ic=role==='user'?'icon-user':'icon-bot';
+  el.innerHTML='<span class="ai-msg-ic"><i class="lucide '+ic+'"></i></span>'+
+    '<div class="ai-msg-body">'+aesc(text).replace(/\n/g,'<br>')+
+    (meta?'<div class="ai-msg-meta">'+aesc(meta)+'</div>':'')+'</div>';
+  wrap.appendChild(el);
+  wrap.scrollTop=wrap.scrollHeight;
+}
+function aiTyping(on){
+  var wrap=document.getElementById('ai-msgs');
+  if(!wrap)return;
+  var t=document.getElementById('ai-typing');
+  if(on){
+    if(!t){
+      t=document.createElement('div');
+      t.id='ai-typing';t.className='ai-msg bot';
+      t.innerHTML='<span class="ai-msg-ic"><i class="lucide icon-bot"></i></span><div class="ai-msg-body"><span class="ai-dot"></span><span class="ai-dot"></span><span class="ai-dot"></span></div>';
+      wrap.appendChild(t);
+    }
+    wrap.scrollTop=wrap.scrollHeight;
+  }else if(t)t.remove();
+}
+function aiClearChat(){
+  aiState.history=[];
+  var m=document.getElementById('ai-msgs');
+  if(m)m.innerHTML='';
+  aiBubble('assistant','Conversation cleared. What can I help you with?');
+}
+function aiSend(presetText){
+  var inp=document.getElementById('ai-input');
+  var text=(presetText||inp.value||'').trim();
+  if(!text)return;
+  inp.value='';
+  ensureAiView();
+  aiBubble('user',text);
+  aiTyping(true);
+  var payload={message:text,history:aiState.history.slice(-6)};
+  if(aiState.contextDoc&&aiState.contextDoc.path)payload.doc_path=aiState.contextDoc.path;
+  fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      aiTyping(false);
+      var reply=d.reply||'No reply.';
+      aiState.history.push({role:'user',content:text});
+      aiState.history.push({role:'assistant',content:reply});
+      aiBubble('assistant',reply,'engine: '+d.engine+(d.model?' · '+d.model:''));
+    })
+    .catch(function(){aiTyping(false);aiBubble('assistant','Connection error — is the server running?')});
+}
+function _aiDocRequest(action,path,question){
+  ensureAiView();
+  switchView('ai');
+  aiState.contextDoc={path:path};
+  var body={action:action,doc_path:path};
+  if(question)body.question=question;
+  aiTyping(true);
+  return fetch('/api/ai/document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+    .then(function(res){
+      aiTyping(false);
+      if(!res.ok||res.d.error){aiBubble('assistant',res.d.error||'AI request failed.');return null}
+      var label=action==='ask'?'Answer about "'+path.split('/').pop()+'"':
+                action==='key_points'?'Key facts from "'+path.split('/').pop()+'"':
+                'Summary of "'+path.split('/').pop()+'"';
+      aiState.history.push({role:'user',content:label});
+      aiState.history.push({role:'assistant',content:res.d.reply});
+      aiBubble('assistant',label+':\n'+res.d.reply,'engine: '+res.d.engine);
+      return res.d;
+    })
+    .catch(function(){aiTyping(false);aiBubble('assistant','Connection error.')});
+}
+function aiDocAction(action,path){_aiDocRequest(action,path)}
+function aiAskPrompt(path){
+  showPrompt('ASK AI — YOUR QUESTION ABOUT THIS DOCUMENT:',function(q){
+    if(q)_aiDocRequest('ask',path,q);
+  });
+}
+function _lastDocPath(){
+  if(state.lastDocPath)return state.lastDocPath;
+  return null;
+}
+function aiQuickSummarize(){
+  var p=_lastDocPath();
+  if(!p){toast('NO SCANS YET — PROCESS A DOCUMENT FIRST','warn');return}
+  _aiDocRequest('summarize',p);
+}
+function aiAskLastDoc(){
+  var p=_lastDocPath();
+  if(!p){toast('NO SCANS YET — PROCESS A DOCUMENT FIRST','warn');return}
+  aiAskPrompt(p);
+}
+function aiFromResult(){
+  if(!state.currentResult||!(state.currentResult.ocr&&state.currentResult.ocr.text)){toast('NO OCR TEXT TO ASK ABOUT','warn');return}
+  switchView('ai');ensureAiView();
+  var p=_lastDocPath();
+  if(p)_aiDocRequest('summarize',p);
+  else{aiBubble('assistant','I see the last scan has text but was not saved yet. Press SAVE TO VAULT first, then I can summarize it.');}
+}
+
 /* ---- INIT ---- */
 applySession();
 restoreState();
 loadDashboard();loadActivity();
-loadOcrStatus();
+loadOcrStatus();loadAiStatus();
 // Boot splash: dissolve the intro logo screen
 setTimeout(function(){
   var bs=document.getElementById('boot-splash');
