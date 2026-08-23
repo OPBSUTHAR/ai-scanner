@@ -1283,8 +1283,11 @@ var KEY_META_UI={
   ocr_api_key:{label:'OCR API KEY (ocr-api.com)',icon:'<i class="lucide icon-file-text"></i>'},
   azure_vision_key:{label:'AZURE VISION KEY',icon:'<i class="lucide icon-file-text"></i>'},
   azure_vision_endpoint:{label:'AZURE VISION ENDPOINT',icon:'<i class="lucide icon-file-text"></i>'},
+  groq_api_key:{label:'AI MODEL (GROQ)',icon:'<i class="lucide icon-sparkles"></i>'},
 };
 var KEY_SETUP_GUIDE=[
+  {icon:'<i class="lucide icon-sparkles"></i>',label:'AI MODEL (GROQ)',keys:['groq_api_key'],
+   get:'https://console.groq.com/keys',tip:'Powers AI chat for every visitor — free tier, no credit card. Set as Render env var GROQ_API_KEY for persistence'},
   {icon:'<i class="lucide icon-eye"></i>',label:'GOOGLE VISION OCR',keys:['google_vision_api_key'],
    get:'https://console.cloud.google.com/apis/credentials',tip:'Enables cloud OCR — enable the Cloud Vision API then create an API key'},
   {icon:'<i class="lucide icon-cloud"></i>',label:'GOOGLE DRIVE SYNC',keys:['google_drive_client_id','google_drive_client_secret'],
