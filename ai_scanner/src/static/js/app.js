@@ -1932,6 +1932,22 @@ function aiClearChat(){
   if(m)m.innerHTML='';
   aiBubble('assistant','Conversation cleared. What can I help you with?');
 }
+/* AI fetch with cold-start retry: free tiers (Render) sleep after idle;
+   first request can take ~30-60s to wake or fail once while booting. */
+function aiFetchRetry(url,opts,retries,onDone,onFail){
+  fetch(url,opts)
+    .then(function(r){return r.json()})
+    .then(onDone)
+    .catch(function(){
+      if(retries>0){
+        aiTyping(true);
+        toast('SERVER WAKING UP (FREE TIER COLD START) — RETRYING...','warn');
+        setTimeout(function(){aiFetchRetry(url,opts,retries-1,onDone,onFail)},8000);
+      }else{
+        onFail();
+      }
+    });
+}
 function aiSend(presetText){
   var inp=document.getElementById('ai-input');
   var text=(presetText||inp.value||'').trim();
@@ -1942,9 +1958,7 @@ function aiSend(presetText){
   aiTyping(true);
   var payload={message:text,history:aiState.history.slice(-6)};
   if(aiState.contextDoc&&aiState.contextDoc.path)payload.doc_path=aiState.contextDoc.path;
-  fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-    .then(function(r){return r.json()})
-    .then(function(d){
+  aiFetchRetry('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)},2,function(d){
       aiTyping(false);
       var reply=d.reply||'No reply.';
       aiState.history.push({role:'user',content:text});
@@ -1952,8 +1966,10 @@ function aiSend(presetText){
       var meta='engine: '+d.engine+(d.model?' · '+d.model:'');
       if(d.grounded)meta+=' · ✓ verified from your vault';
       aiBubble('assistant',reply,meta);
-    })
-    .catch(function(){aiTyping(false);aiBubble('assistant','Connection error — is the server running?')});
+    },function(){
+      aiTyping(false);
+      aiBubble('assistant','Connection error — the server may be waking up or restarting. Wait ~1 minute and try again.');
+    });
 }
 function _aiDocRequest(action,path,question){
   ensureAiView();
@@ -1962,20 +1978,23 @@ function _aiDocRequest(action,path,question){
   var body={action:action,doc_path:path};
   if(question)body.question=question;
   aiTyping(true);
-  return fetch('/api/ai/document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
-    .then(function(res){
+  return new Promise(function(resolve){
+    aiFetchRetry('/api/ai/document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},2,function(d){
       aiTyping(false);
-      if(!res.ok||res.d.error){aiBubble('assistant',res.d.error||'AI request failed.');return null}
+      if(!d||d.error){aiBubble('assistant',(d&&d.error)||'AI request failed.');resolve(null);return}
       var label=action==='ask'?'Answer about "'+path.split('/').pop()+'"':
                 action==='key_points'?'Key facts from "'+path.split('/').pop()+'"':
                 'Summary of "'+path.split('/').pop()+'"';
       aiState.history.push({role:'user',content:label});
-      aiState.history.push({role:'assistant',content:res.d.reply});
-      aiBubble('assistant',label+':\n'+res.d.reply,'engine: '+res.d.engine);
-      return res.d;
-    })
-    .catch(function(){aiTyping(false);aiBubble('assistant','Connection error.')});
+      aiState.history.push({role:'assistant',content:d.reply});
+      aiBubble('assistant',label+':\n'+d.reply,'engine: '+d.engine);
+      resolve(d);
+    },function(){
+      aiTyping(false);
+      aiBubble('assistant','Connection error — the server may be waking up. Try again in ~1 minute.');
+      resolve(null);
+    });
+  });
 }
 function aiDocAction(action,path){_aiDocRequest(action,path)}
 function aiAskPrompt(path){
@@ -2012,13 +2031,14 @@ function aiDashOverview(){
   if(!out)return;
   btn.disabled=true;
   out.innerHTML='<span style="color:var(--gold)"><i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> Analyzing archive...</span>';
-  fetch('/api/ai/insights',{method:'POST'}).then(function(r){return r.json()})
-    .then(function(d){
+  aiFetchRetry('/api/ai/insights',{method:'POST'},2,function(d){
       btn.disabled=false;
       out.innerHTML='<span class="dash-ai-text">'+aesc(d.overview||'No overview available.')+'</span>'+
         '<div style="margin-top:5px;font-family:var(--font-mono);font-size:0.42rem;color:var(--text-tertiary)">ENGINE: '+aesc(d.engine||'builtin').toUpperCase()+'</div>';
-    })
-    .catch(function(){btn.disabled=false;out.textContent='AI overview failed — is the server running?'});
+    },function(){
+      btn.disabled=false;
+      out.textContent='AI overview failed — the server may be waking up. Try again in ~1 minute.';
+    });
 }
 function _renderResultAi(html){
   var box=document.getElementById('result-ai');

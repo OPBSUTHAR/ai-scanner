@@ -172,7 +172,13 @@ class AIAssistantEngine:
         return models[0] if models else ""
 
     def _cloud_enabled(self) -> bool:
-        """Cloud LLM ready (key configured, not in failure cool-down)."""
+        """Cloud LLM ready (key configured, not in failure cool-down).
+
+        Re-reads the env each call so a key saved via Settings -> API Keys
+        (synced to os.environ) takes effect immediately, without restart.
+        """
+        self.cloud_key = os.environ.get("CLOUD_AI_API_KEY") or \
+            os.environ.get("GROQ_API_KEY", "")
         return bool(self.cloud_key) and time.time() >= self._cloud_failed_until
 
     def _cloud_generate(self, prompt: str, system: str = "") -> Optional[str]:

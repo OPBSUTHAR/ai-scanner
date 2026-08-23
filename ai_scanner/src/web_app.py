@@ -80,7 +80,16 @@ DOCUMENTS_FOLDER = scanner.storage.base_dir / "documents"
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
+_MANAGED_ENV_KEYS: set = set()
+
+
 def _sync_keys_to_env():
+    """Mirror stored UI keys into os.environ.
+
+    Platform-injected env vars (Render/Railway/Coolify dashboards) are NEVER
+    removed — only keys we injected ourselves from the UI/.env may be popped
+    (e.g. after deleting a key in Settings).
+    """
     try:
         from dotenv import dotenv_values
         env_file = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
@@ -91,10 +100,13 @@ def _sync_keys_to_env():
         env_name = name.upper()
         if name in stored:
             os.environ[env_name] = stored[name]
+            _MANAGED_ENV_KEYS.add(env_name)
         elif env_file.get(env_name):
             os.environ[env_name] = env_file[env_name]
-        else:
+            _MANAGED_ENV_KEYS.add(env_name)
+        elif env_name in _MANAGED_ENV_KEYS:
             os.environ.pop(env_name, None)
+            _MANAGED_ENV_KEYS.discard(env_name)
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +198,7 @@ KEY_META = {
     "ocr_api_key": {"label": "OCR API Key (ocr-api.com)", "service": "ocr", "secret": True},
     "azure_vision_key": {"label": "Azure Vision API Key", "service": "ocr", "secret": True},
     "azure_vision_endpoint": {"label": "Azure Vision Endpoint", "service": "ocr"},
+    "groq_api_key": {"label": "Groq API Key (free — powers hosted AI chat)", "service": "ai", "secret": True},
 }
 
 _sync_keys_to_env()
@@ -196,12 +209,22 @@ def api_list_keys():
     stored = key_manager.list_keys()
     result = []
     for name, meta in KEY_META.items():
+        env_val = os.getenv(name.upper())
+        configured = name in stored or bool(env_val)
+        if name in stored:
+            masked = stored[name]
+        elif env_val:
+            # Key comes from the platform environment (Render/Railway env vars)
+            masked = (env_val[:4] + "*" * 6 + env_val[-4:]
+                      if len(env_val) > 12 else "*" * 8) + "  [from environment]"
+        else:
+            masked = None
         entry = {
             "name": name,
             "label": meta["label"],
             "service": meta["service"],
-            "configured": name in stored,
-            "masked_value": stored.get(name, None),
+            "configured": configured,
+            "masked_value": masked,
         }
         result.append(entry)
     return jsonify(result)

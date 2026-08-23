@@ -158,14 +158,8 @@ def test_ollama_provider_preferred_when_available():
         assert reply.reply == "Ollama says hi"
 
 
-def _cloud_engine() -> AIAssistantEngine:
-    eng = _offline_engine()
-    eng.cloud_key = "test-key"
-    return eng
-
-
 def test_cloud_provider_used_when_no_ollama():
-    eng = _cloud_engine()
+    eng = _offline_engine()
 
     class FakeResp:
         status_code = 200
@@ -179,7 +173,8 @@ def test_cloud_provider_used_when_no_ollama():
         assert json["messages"][-1]["role"] == "user"
         return FakeResp()
 
-    with mock.patch("src.ai_assistant.engine.requests.post", side_effect=fake_post):
+    with mock.patch.dict(os.environ, {"GROQ_API_KEY": "test-key"}), \
+         mock.patch("src.ai_assistant.engine.requests.post", side_effect=fake_post):
         s = eng.status()
         assert s["engine"] == "cloud"
         assert s["cloud"]["enabled"] is True
@@ -189,7 +184,7 @@ def test_cloud_provider_used_when_no_ollama():
 
 
 def test_cloud_failure_falls_back_to_builtin():
-    eng = _cloud_engine()
+    eng = _offline_engine()
 
     def fail_post(url, json=None, timeout=None, headers=None):
         class R:
@@ -200,7 +195,8 @@ def test_cloud_failure_falls_back_to_builtin():
 
         return R()
 
-    with mock.patch("src.ai_assistant.engine.requests.post", side_effect=fail_post):
+    with mock.patch.dict(os.environ, {"GROQ_API_KEY": "test-key"}), \
+         mock.patch("src.ai_assistant.engine.requests.post", side_effect=fail_post):
         reply = eng.chat("how do I merge PDFs?")
     assert reply.engine == "builtin"
     # engine is put into cool-down so later calls skip the dead provider
@@ -213,3 +209,13 @@ def test_cloud_disabled_without_key_stays_builtin():
     s = eng.status()
     assert s["engine"] == "builtin"
     assert s["cloud"]["enabled"] is False
+
+
+def test_cloud_key_picked_up_live_from_env():
+    """Key saved via Settings -> API Keys syncs to os.environ; engine must
+    see it without restart."""
+    eng = _offline_engine()
+    assert eng._cloud_enabled() is False
+    with mock.patch.dict(os.environ, {"GROQ_API_KEY": "late-key"}):
+        assert eng._cloud_enabled() is True
+        assert eng.cloud_key == "late-key"

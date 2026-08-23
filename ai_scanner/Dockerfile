@@ -31,4 +31,4 @@ EXPOSE 8000
 ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
 
-CMD ["sh", "-c", "gunicorn --bind=0.0.0.0:${PORT:-8000} --workers=2 --timeout=120 --access-logfile=- --error-logfile=- src.web_app:app"]
+CMD ["sh", "-c", "gunicorn --bind=0.0.0.0:${PORT:-8000} --worker-class gthread --workers=${GUNICORN_WORKERS:-2} --threads=${GUNICORN_THREADS:-4} --timeout=120 --access-logfile=- --error-logfile=- src.web_app:app"]

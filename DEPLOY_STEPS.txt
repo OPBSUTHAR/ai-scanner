@@ -87,6 +87,10 @@ If steps 9-10 fail, DO NOT DEPLOY. Fix locally first
         APP_ENV   = production
         APP_DEBUG = False
         DATA_DIR  = /app/data
+        GUNICORN_WORKERS = 1     <- IMPORTANT on free tier (512MB RAM):
+                                    halves memory, prevents worker
+                                    crashes mid-request ("connection
+                                    error" in AI chat)
         (service restarts itself after saving - that is normal)
 
 [ ] 19. RECOMMENDED - free AI chat for all your users:
@@ -97,8 +101,36 @@ If steps 9-10 fail, DO NOT DEPLOY. Fix locally first
         c. Render -> Environment -> add:  GROQ_API_KEY = <paste>
         Every visitor now gets full llama-3.3-70b chat quality.
         (Skip it and the assistant still works in basic rule mode.)
-        Optional (cloud sync only, can also be done later inside the
-        app under Settings -> API Keys): Drive/Dropbox/OneDrive keys.
+
+UNIVERSAL KEYS - SET ONCE IN RENDER, ALL USERS BENEFIT
+------------------------------------------------------
+Keys typed inside the app (Settings -> API Keys) are saved to the
+server DISK - and Render free WIPES disk on every deploy/restart.
+Keys set as Render ENVIRONMENT VARIABLES survive forever and are
+shared by every visitor automatically. Put these in Render ->
+Environment (once):
+
+  GROQ_API_KEY               -> AI chat for everyone (free)
+  GOOGLE_VISION_API_KEY      -> better OCR for everyone
+  GOOGLE_DRIVE_CLIENT_ID / _SECRET  -> enables CONNECT button
+  DROPBOX_APP_KEY / _SECRET         -> enables CONNECT button
+  ONEDRIVE_CLIENT_ID / _SECRET      -> enables CONNECT button
+
+(requires the key-manager fix: env keys are no longer stripped at
+boot, and Settings now shows them as "[from environment]")
+
+Users NEVER create API keys. For cloud sync they only click CONNECT
+and allow access with their own account - that OAuth consent step
+is required by Google/Microsoft/Dropbox security, but it is one
+click, no developer console, no keys on their side.
+Register the hosted redirect URIs first (DEPLOYMENT_GUIDE.md A.3)
+or CONNECT will fail.
+
+WILL PUSHING TO GITHUB REDEPLOY SAFELY?
+---------------------------------------
+YES - Render auto-builds on every push to main. Env vars live in
+Render's dashboard, NOT in the code, so they survive every deploy.
+Only user uploads (scans) are wiped on the free tier (no disk).
 
 VERIFY THE DEPLOY IS SAFE AND WORKING
 -------------------------------------
