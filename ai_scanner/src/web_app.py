@@ -646,9 +646,9 @@ def scan_advanced():
     if dewarp:
         img = edges.dewarp(img)
 
-    if shadow_removal and hasattr(enhancer, 'remove_shadows'):
+    if shadow_removal and hasattr(enhancer, 'remove_shadow'):
         try:
-            img = enhancer.remove_shadows(img)
+            img = enhancer.remove_shadow(img)
         except Exception:
             pass
 
@@ -816,9 +816,9 @@ def effects_preview():
         if corners is not None:
             img = scanner.edges.perspective_correct(img, corners)
 
-    if shadow_removal and hasattr(scanner.enhancer, 'remove_shadows'):
+    if shadow_removal and hasattr(scanner.enhancer, 'remove_shadow'):
         try:
-            img = scanner.enhancer.remove_shadows(img)
+            img = scanner.enhancer.remove_shadow(img)
         except Exception:
             pass
 
@@ -913,9 +913,9 @@ def batch_process():
                     img = scanner.edges.perspective_correct(img, corners)
             if dewarp:
                 img = scanner.edges.dewarp(img)
-            if shadow_removal and hasattr(scanner.enhancer, "remove_shadows"):
+            if shadow_removal and hasattr(scanner.enhancer, "remove_shadow"):
                 try:
-                    img = scanner.enhancer.remove_shadows(img)
+                    img = scanner.enhancer.remove_shadow(img)
                 except Exception:
                     pass
             if enhance:
@@ -1186,7 +1186,7 @@ def stats():
 
 @app.route("/pdf/merge", methods=["POST"])
 def pdf_merge():
-    paths = request.json.get("paths", [])
+    paths = (request.json or {}).get("paths", [])
     if not paths:
         return jsonify({"error": "No paths provided"}), 400
 
@@ -1941,10 +1941,9 @@ def bluetooth_generate_qr():
         },
         "config": config
     }
-    
-    import json
+
     qr_data = json.dumps(pairing_data, separators=(',', ':'))
-    
+
     return jsonify({
         "qr_code": qr_base64,
         "qr_data": qr_data,

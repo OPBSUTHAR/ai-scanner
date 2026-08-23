@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 import uuid
 import base64
 import logging
@@ -444,7 +445,7 @@ def generate_pairing_qr_code(device: BluetoothDevice, output_path: str, include_
             "name": device.name,
             "is_camera": device.is_camera
         },
-        "timestamp": int(asyncio.get_event_loop().time()) if asyncio.get_event_loop().is_running() else 0
+            "timestamp": int(time.time())
     }
     
     if include_config:

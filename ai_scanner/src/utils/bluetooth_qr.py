@@ -1,5 +1,6 @@
 import json
 import base64
+import time
 import qrcode
 from io import BytesIO
 from typing import Optional, Dict, Any
@@ -43,8 +44,6 @@ class BluetoothQRGenerator:
         pairing_code: Optional[str] = None,
         output_path: Optional[str] = None
     ) -> str:
-        import time
-        
         pairing_data = BluetoothPairingData(
             device_id=device_id,
             device_name=device_name,
@@ -82,22 +81,13 @@ class BluetoothQRGenerator:
         config: Optional[Dict[str, Any]] = None,
         pairing_code: Optional[str] = None
     ) -> str:
-        self.generate_pairing_qr(
-            device_id=device_id,
-            device_name=device_name,
-            device_address=device_address,
-            service_uuid=service_uuid,
-            config=config,
-            pairing_code=pairing_code,
-            output_path=None
-        )
-        
         pairing_data = BluetoothPairingData(
             device_id=device_id,
             device_name=device_name,
             device_address=device_address,
             service_uuid=service_uuid,
             config=config or self.DEFAULT_CONFIG,
+            timestamp=int(time.time()),
             pairing_code=pairing_code
         )
         

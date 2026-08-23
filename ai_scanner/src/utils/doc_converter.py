@@ -1,4 +1,3 @@
-import csv, os
 from pathlib import Path
 
 OFFICE_EXT = {".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".tsv", ".pptx", ".ppt", ".txt", ".md", ".log", ".rtf"}
@@ -87,7 +86,7 @@ def _docx_to_pdf(src: Path, out: Path):
             ]))
             els.append(Spacer(1, 0.1 * inch))
             els.append(t)
-    _text_doc = _build_doc(out, els)
+    _build_doc(out, els)
 
 
 def _xlsx_to_pdf(src: Path, out: Path):

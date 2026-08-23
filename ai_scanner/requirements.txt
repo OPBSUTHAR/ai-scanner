@@ -50,6 +50,9 @@ openpyxl>=3.1.0
 flask>=3.0.0
 gunicorn>=21.2.0
 
+# Desktop GUI (src/gui.py)
+customtkinter>=5.2.0
+
 # Encryption for API key storage
 cryptography>=41.0.0
 

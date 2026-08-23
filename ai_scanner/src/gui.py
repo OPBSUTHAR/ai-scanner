@@ -594,7 +594,7 @@ class AIScannerGUI:
 
     def retake_photo(self):
         self.close_analysis()
-        self.start_camera()
+        self._start_camera()
 
     # ---- Settings Tab ----
     def _build_settings_tab(self):
