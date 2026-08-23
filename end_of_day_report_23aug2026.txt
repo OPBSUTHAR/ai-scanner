@@ -2,8 +2,8 @@ End-of-Day Report 23 Aug 2026
 AI Document Scanner | Tests 69/69 pass | Docker OK | E2E OK | localhost:8000
 Previously: login/guest sessions, multi-cloud sync, Bluetooth QR pairing, HTTPS, batch+vault merge.
 Today
-1. Camera Fallback - Fixed camera API unsupported on new devices (getUserMedia missing over HTTP). Added openNativeCameraFallback() in app.js: failures auto-open native OS camera via input capture=environment. Live view for HTTPS+modern browsers. Unified phoneCameraCapture.
-2. Deployment Guide - Documented monolith (Flask serves all). Vercel/Netlify fail: 120s OCR timeouts, ephemeral disk, no custom deps. Options: Render Free (Root=ai_scanner), Railway (railway.json healthcheck), Coolify on VPS (Lets Encrypt + /app/data volume).
+1. Camera Fallback - Fixed camera API on new devices (getUserMedia missing over HTTP). Added openNativeCameraFallback() in app.js: failures auto-open native OS camera via input capture=environment. Live view for HTTPS+modern browsers.
+2. Deployment Guide - Documented monolith (Flask serves all). Vercel/Netlify fail: 120s OCR timeouts, ephemeral disk, no custom deps. Options: Render Free (Root=ai_scanner), Railway (railway.json healthcheck), Coolify on VPS (Lets Encrypt + /app/data).
 3. Doc Fixes - Removed false Render persistent-disk claim and unused MongoDB Atlas. Fixed README tree (ai_assistant indent, added Dockerfile/render.yaml/railway.json). Added deployment table.
 4. Dockerfile Trixie - python:3.11-slim to Debian 13 dropped libgl1-mesa-glx, libglib2.0-0, libzbar0. Replaced with libgl1, libglib2.0-0t64, libzbar0t64. Pinned to python:3.11-slim-trixie. CMD exec form (fixes JSONArgs, keeps PORT)
 5. Torch Slimming - Was pulling 900MB CUDA wheel (timeout). Now CPU-only torch/torchvision from pytorch.org/cpu first (EasyOCR is CPU-only) with timeout 180 retries 10, separate cached layer. Image 3.13GB.
@@ -12,4 +12,3 @@ Verification: pytest 69/69 pass | docker build OK | container E2E: root to 302 l
 Files: app.js, Dockerfile, key_manager.py, DEPLOYMENT_GUIDE.md, README.md
 Not Done: commit/push key_manager fix; persistent volume on Render Free (scans reset per deploy)
 Run: docker run -p 8000:8000 ai-scanner
-Next: 1. Commit/push key fix 2. Deploy to Render/Coolify 3. Register OAuth redirects for cloud sync
