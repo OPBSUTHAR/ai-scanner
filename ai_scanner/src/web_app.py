@@ -1509,9 +1509,13 @@ def bluetooth_create_pairing():
     token = _new_bt_token()
     pairing_id = "BT-" + token[:6].upper()
 
-    local_ip = socket.gethostbyname(socket.gethostname())
-    port = request.host.split(":")[1] if ":" in request.host else "80"
-    base_url = f"http://{local_ip}:{port}"
+    # Device-facing URL built from the PUBLIC host (Host header + proxy proto),
+    # so it works identically on a LAN PC (https://192.168.x.x:5000) and on
+    # hosted platforms (https://your-app.onrender.com) where the container's
+    # internal IP is unreachable from the phone.
+    scheme = request.headers.get("X-Forwarded-Proto") or (
+        "https" if request.is_secure else "http")
+    connect_url = f"{scheme}://{request.host}/bt/cam/{token}"
 
     data = request.get_json(silent=True) or {}
     device_name = data.get("device_name", "Scanner")
@@ -1523,8 +1527,6 @@ def bluetooth_create_pairing():
         "interval": float(data.get("interval", 2.0))
     }
 
-    scheme = "https" if request.is_secure else "http"
-    connect_url = f"{scheme}://{local_ip}:{port}/bt/cam/{token}"
     qr_code = create_url_qr_base64(connect_url)
 
     _bt_sessions[token] = {
