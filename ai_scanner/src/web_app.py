@@ -121,6 +121,30 @@ def _fmt_size(b):
     if b < 1024**2: return f"{b/1024:.1f} KB"
     return f"{b/(1024**2):.1f} MB"
 
+
+MAX_SCAN_DIM = int(os.environ.get("MAX_SCAN_DIM", "2000"))
+
+
+def _decode_upload(raw: bytes, max_dim: int = 0):
+    """Decode an uploaded image, downscaling oversized photos.
+
+    Phone cameras produce 12MP+ images; the scan pipeline allocates several
+    full-size intermediate arrays per scan, which can exceed small instance
+    RAM (Render free = 512MB). 2000px on the long edge keeps ~240 DPI on an
+    A4 document - plenty for OCR - while cutting array memory by ~75%.
+    """
+    max_dim = max_dim or MAX_SCAN_DIM
+    img = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        return None
+    h, w = img.shape[:2]
+    longest = max(h, w)
+    if longest > max_dim:
+        scale = max_dim / float(longest)
+        img = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale))),
+                         interpolation=cv2.INTER_AREA)
+    return img
+
 def _serialize_result(r):
     out = {
         "quality": {
@@ -740,8 +764,7 @@ def scan_fusion():
 
     frames = []
     for file in files:
-        nparr = np.frombuffer(file.read(), np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        img = _decode_upload(file.read())
         if img is not None:
             frames.append(img)
     if not frames:
@@ -825,8 +848,7 @@ def effects_preview():
         return jsonify({"error": "No image"}), 400
     file = request.files["image"]
     ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
-    nparr = np.frombuffer(file.read(), np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    img = _decode_upload(file.read())
     if img is None:
         return jsonify({"error": "Bad image"}), 400
 
@@ -926,7 +948,7 @@ def batch_process():
         item_key = f"item{i}"
 
         if ext and Path(fname).name.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tiff", ".tif")):
-            img = cv2.imdecode(np.frombuffer(f.read(), np.uint8), cv2.IMREAD_COLOR)
+            img = _decode_upload(f.read())
             if img is None:
                 errors.append(fname)
                 continue
@@ -1127,8 +1149,7 @@ def api_auto_detect():
     file = request.files.get("image")
     if not file:
         return jsonify({"error": "No image"}), 400
-    img_array = np.frombuffer(file.read(), np.uint8)
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    img = _decode_upload(file.read())
     if img is None:
         return jsonify({"error": "Invalid image"}), 400
 

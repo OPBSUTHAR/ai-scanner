@@ -78,6 +78,11 @@ Dashboard → your service → **Environment**:
 | `APP_ENV` | `production` | Yes |
 | `APP_DEBUG` | `False` | Yes |
 | `DATA_DIR` | `/app/data` | Yes |
+| `GUNICORN_WORKERS` | `1` | **Free tier: yes** — 2 workers = duplicate torch/OpenCV copies = OOM restarts |
+| `GUNICORN_THREADS` | `2` | Recommended with 1 worker |
+| `DISABLE_EASYOCR` | `1` | **Free tier: yes** — EasyOCR loads ~1 GB PyTorch on first handwriting scan → instant OOM; Tesseract unaffected |
+| `AI_DISABLE_TRANSFORMERS` | `1` | Free tier: yes — skips the ~500 MB flan-t5 fallback (use `GROQ_API_KEY` for full AI instead) |
+| `MAX_SCAN_DIM` | `2000` | Recommended — downscales 12 MP phone photos before processing (~240 DPI on A4, OCR quality unaffected) |
 | `PORT` | *(leave unset — Render injects it)* | — |
 
 Cloud-feature keys are **optional** (Tesseract OCR works without them):

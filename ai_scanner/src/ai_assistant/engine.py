@@ -282,6 +282,10 @@ class AIAssistantEngine:
 
     def _get_hf_pipeline(self):
         if self._hf_pipeline is None and not self._hf_failed:
+            # flan-t5 + torch need ~500MB RAM; skip entirely on small instances
+            if os.environ.get("AI_DISABLE_TRANSFORMERS", "").strip() in ("1", "true", "True"):
+                self._hf_failed = True
+                return None
             try:
                 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
                 tok = AutoTokenizer.from_pretrained(self.hf_model)

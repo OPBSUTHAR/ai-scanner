@@ -87,10 +87,18 @@ If steps 9-10 fail, DO NOT DEPLOY. Fix locally first
         APP_ENV   = production
         APP_DEBUG = False
         DATA_DIR  = /app/data
-        GUNICORN_WORKERS = 1     <- IMPORTANT on free tier (512MB RAM):
-                                    halves memory, prevents worker
-                                    crashes mid-request ("connection
-                                    error" in AI chat)
+        GUNICORN_WORKERS = 1        <- REQUIRED on free tier (512MB RAM).
+        GUNICORN_THREADS = 2           2 workers = 2x torch/OpenCV copies =
+                                       OOM restarts (the "exceeded memory
+                                       limit" emails from Render)
+        DISABLE_EASYOCR  = 1        <- EasyOCR loads ~1GB PyTorch on first
+                                       handwriting scan = instant OOM.
+                                       Tesseract OCR still works normally.
+        AI_DISABLE_TRANSFORMERS = 1 <- skips flan-t5 fallback (needs ~500MB)
+        MAX_SCAN_DIM     = 2000     <- downscales huge phone photos before
+                                       processing (~240 DPI on A4, OCR
+                                       quality unaffected, ~75% less RAM
+                                       per scan)
         (service restarts itself after saving - that is normal)
 
 [ ] 19. RECOMMENDED - free AI chat for all your users:

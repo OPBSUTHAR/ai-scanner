@@ -103,6 +103,11 @@ class OCREngine:
             return OCRResult(text="", confidence=0.0, engine="google_vision")
 
     def _handwriting_ocr(self, image: np.ndarray) -> OCRResult:
+        # EasyOCR pulls in PyTorch (~1GB+ with models). On small instances
+        # (Render free = 512MB) that guarantees an OOM restart, so it can be
+        # disabled via env var. Tesseract still handles printed text.
+        if os.environ.get("DISABLE_EASYOCR", "").strip() in ("1", "true", "True"):
+            return OCRResult(text="", confidence=0.0, engine="easyocr")
         try:
             import easyocr
             if self.easyocr_reader is None:
