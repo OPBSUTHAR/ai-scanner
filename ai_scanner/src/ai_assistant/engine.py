@@ -1,11 +1,15 @@
-"""Local AI Assistant — 100% free, no API keys, open-source models.
+"""AI Assistant — free provider chain, first available wins.
 
-Provider chain (first available wins):
+Provider chain:
   1. Ollama      — local open-source LLM runtime (llama3.2, phi3, gemma, mistral...)
                    Install from https://ollama.com then `ollama pull llama3.2`
-  2. Transformers— google/flan-t5-small (Apache-2.0, ~300MB) downloaded once
+  2. Cloud LLM   — any OpenAI-compatible hosted API (default: Groq free tier,
+                   llama-3.3-70b). Set CLOUD_AI_API_KEY / GROQ_API_KEY to enable.
+                   Used on hosted deploys (Render/Railway/Coolify) so every
+                   visitor gets full LLM quality with zero local setup.
+  3. Transformers— google/flan-t5-small (Apache-2.0, ~300MB) downloaded once
                    from the Hugging Face Hub, then runs fully offline.
-  3. Builtin     — rule-based helper that answers app-usage questions and can
+  4. Builtin     — rule-based helper that answers app-usage questions and can
                    summarize/answer from provided document context. Always works.
 """
 
@@ -45,8 +49,9 @@ USAGE_HELP = {
     ),
     "api key|keys": (
         "API keys live in Settings -> API Keys. They are only needed for optional "
-        "services: Google Vision OCR and cloud sync. Tesseract OCR and this AI "
-        "assistant work without any keys."
+        "services: Google Vision OCR, cloud sync, and the hosted AI chat "
+        "(CLOUD_AI_API_KEY / GROQ_API_KEY). Tesseract OCR and the built-in "
+        "assistant answers work without any keys."
     ),
     "ocr": (
         "OCR runs automatically on every processed scan. Tesseract is used when "
@@ -131,6 +136,12 @@ class AIAssistantEngine:
         self._ollama_checked_at = 0.0
         self._hf_pipeline = None
         self._hf_failed = False
+        # Cloud LLM (OpenAI-compatible chat completions; Groq free tier by default)
+        self.cloud_base = os.environ.get(
+            "CLOUD_AI_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
+        self.cloud_key = os.environ.get("CLOUD_AI_API_KEY") or os.environ.get("GROQ_API_KEY", "")
+        self.cloud_model = os.environ.get("CLOUD_AI_MODEL", "llama-3.3-70b-versatile")
+        self._cloud_failed_until = 0.0
 
     # ------------------------------------------------------------------ #
     # Provider detection
@@ -160,24 +171,58 @@ class AIAssistantEngine:
                     return m
         return models[0] if models else ""
 
+    def _cloud_enabled(self) -> bool:
+        """Cloud LLM ready (key configured, not in failure cool-down)."""
+        return bool(self.cloud_key) and time.time() >= self._cloud_failed_until
+
+    def _cloud_generate(self, prompt: str, system: str = "") -> Optional[str]:
+        if not self._cloud_enabled():
+            return None
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        try:
+            r = requests.post(
+                f"{self.cloud_base}/chat/completions",
+                headers={"Authorization": f"Bearer {self.cloud_key}"},
+                json={"model": self.cloud_model, "messages": messages,
+                      "temperature": 0.4, "max_tokens": 700},
+                timeout=60,
+            )
+            if r.status_code != 200:
+                self._cloud_failed_until = time.time() + 60
+                return None
+            text = ((r.json().get("choices") or [{}])[0].get("message") or {}) \
+                .get("content", "").strip()
+            return text or None
+        except Exception:
+            self._cloud_failed_until = time.time() + 60
+            return None
+
     def status(self) -> dict:
         ollama_models = self._check_ollama()
         hf_ready = self.hf_available(check=False)
         if ollama_models:
             model = self._pick_ollama_model(ollama_models)
             engine, detail = "ollama", f"Ollama · {model}"
+        elif self._cloud_enabled():
+            engine, detail = "cloud", f"Cloud LLM · {self.cloud_model}"
+            model = self.cloud_model
         elif hf_ready:
             engine, detail = "transformer", f"Transformers · {self.hf_model}"
+            model = self.hf_model
         else:
-            engine = "builtin"
-            detail = "Built-in helper"
+            engine, detail, model = "builtin", "Built-in helper", ""
         return {
             "engine": engine,
-            "model": model if engine == "ollama" else (self.hf_model if engine == "transformer" else ""),
+            "model": model,
             "detail": detail,
             "available": True,
             "ollama": {"host": self.ollama_host, "installed": bool(ollama_models),
                        "models": ollama_models},
+            "cloud": {"enabled": bool(self.cloud_key), "model": self.cloud_model,
+                      "base": self.cloud_base},
             "transformer": {"model": self.hf_model, "package": self.transformers_installed(),
                             "downloaded": hf_ready},
         }
@@ -387,6 +432,10 @@ class AIAssistantEngine:
         if reply:
             return ChatReply(reply=reply, engine="ollama", grounded=bool(app_data),
                              model=self._pick_ollama_model(self._check_ollama()))
+        reply = self._cloud_generate(prompt, system=system)
+        if reply:
+            return ChatReply(reply=reply, engine="cloud", grounded=bool(app_data),
+                             model=self.cloud_model)
         builtin = self._builtin_help(message)
         if builtin:
             return ChatReply(reply=builtin, engine="builtin")
@@ -403,10 +452,10 @@ class AIAssistantEngine:
             if ans and len(ans.split()) >= 3:
                 return ChatReply(reply=ans, engine="transformer", model=self.hf_model)
         return ChatReply(
-            reply=("I'm running in basic mode right now. For full AI chat install "
-                   "Ollama (https://ollama.com, then `ollama pull llama3.2`) — it's "
-                   "free and offline. Meanwhile I can still help with app features: "
-                   "try \"how do I merge PDFs?\" or use Summarize on a document."),
+            reply=("I'm running in basic mode right now. On this server no LLM "
+                   "engine is reachable (Ollama locally, or a hosted cloud key). "
+                   "Meanwhile I can still help with app features: try \"how do I "
+                   "merge PDFs?\" or use Summarize on a document."),
             engine="builtin")
 
     def summarize(self, text: str) -> ChatReply:
@@ -419,6 +468,11 @@ class AIAssistantEngine:
         if out:
             return ChatReply(reply=out, engine="ollama",
                              model=self._pick_ollama_model(self._check_ollama()))
+        out = self._cloud_generate(
+            f"Summarize this scanned document in 3-4 bullet points:\n\n{self._clip(text)}",
+            system=SYSTEM_PROMPT)
+        if out:
+            return ChatReply(reply=out, engine="cloud", model=self.cloud_model)
         out = self._hf_generate(f"summarize: {self._clip(text, 2800)}")
         if out:
             return ChatReply(reply=out, engine="transformer", model=self.hf_model)
@@ -438,6 +492,11 @@ class AIAssistantEngine:
         if out:
             return ChatReply(reply=out, engine="ollama",
                              model=self._pick_ollama_model(self._check_ollama()))
+        out = self._cloud_generate(
+            f"List the key facts (dates, amounts, names, IDs) from this document "
+            f"as short bullet points:\n\n{self._clip(text)}", system=SYSTEM_PROMPT)
+        if out:
+            return ChatReply(reply=out, engine="cloud", model=self.cloud_model)
         amounts = re.findall(r"[\$£€]\s*[\d,]+\.?\d*", text)[:5]
         dates = re.findall(r"\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}|"
                            r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*"
@@ -475,6 +534,12 @@ class AIAssistantEngine:
         if out:
             return ChatReply(reply=out, engine="ollama",
                              model=self._pick_ollama_model(self._check_ollama()))
+        out = self._cloud_generate(
+            f"Document:\n\"\"\"\n{self._clip(context, 6000)}\n\"\"\"\n\n"
+            f"Question: {question}\nAnswer using only the document.",
+            system=SYSTEM_PROMPT)
+        if out:
+            return ChatReply(reply=out, engine="cloud", model=self.cloud_model)
         out = self._hf_generate(
             f"question: {self._clip(question, 250)} context: {self._clip(context, 2500)}")
         if out and self._hf_answer_sane(out, context):
@@ -498,6 +563,9 @@ class AIAssistantEngine:
         if out:
             return ChatReply(reply=out, engine="ollama",
                              model=self._pick_ollama_model(self._check_ollama()))
+        out = self._cloud_generate(prompt, system=system)
+        if out:
+            return ChatReply(reply=out, engine="cloud", model=self.cloud_model)
         cats = app_data.get("categories") or {}
         recent = app_data.get("recent_files") or []
         size = app_data.get("total_size", "")

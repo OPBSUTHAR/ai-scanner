@@ -49,16 +49,18 @@ Where the assistant appears:
 | Settings | Engine status, recheck, auto-summarize toggle |
 | AI Assistant view | Full chat with quick actions |
 
-Provider chain — first available wins, zero configuration required:
+Provider chain — first available wins:
 
 | Engine | Requirement | Notes |
 |---|---|---|
-| Ollama | Install [Ollama](https://ollama.com) + `ollama pull llama3.2` | Full LLM chat quality |
+| Ollama | Install [Ollama](https://ollama.com) + `ollama pull llama3.2` | Full LLM chat quality, fully local |
+| Cloud LLM | Free `GROQ_API_KEY` from [console.groq.com](https://console.groq.com) | llama-3.3-70b via Groq's free tier — ideal for hosted deploys (Render/Railway/Coolify) so every visitor gets full quality with zero setup. Any OpenAI-compatible provider works via `CLOUD_AI_BASE_URL` / `CLOUD_AI_MODEL` |
 | Transformers | `pip install transformers` | Auto-downloads `google/flan-t5-small` (~300 MB) once, then offline |
 | Built-in helper | Nothing — always available | Rule-based summaries, fact extraction & app guidance |
 
-All three are 100% free, open-source, and require **no API keys and no internet**
-(after the one-time model download).
+All four are 100% free. Ollama, Transformers and Built-in need **no API keys and
+no internet** (after the one-time model download); the Cloud LLM needs one free
+key set as an env var on the server.
 
 ---
 

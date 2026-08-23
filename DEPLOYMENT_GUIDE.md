@@ -84,6 +84,7 @@ Cloud-feature keys are **optional** (Tesseract OCR works without them):
 
 | Key | Used for |
 |-----|----------|
+| `GROQ_API_KEY` | **AI Assistant full chat quality for all users** — free key from console.groq.com (no credit card). Without it the assistant still works via the built-in rule-based engine |
 | `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` | Drive sync |
 | `GOOGLE_VISION_API_KEY` | Cloud OCR fallback |
 | `DROPBOX_APP_KEY` / `DROPBOX_APP_SECRET` / `DROPBOX_ACCESS_TOKEN` | Dropbox sync |

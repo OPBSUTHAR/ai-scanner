@@ -89,10 +89,16 @@ If steps 9-10 fail, DO NOT DEPLOY. Fix locally first
         DATA_DIR  = /app/data
         (service restarts itself after saving - that is normal)
 
-[ ] 19. Optional (only if you want Drive/Dropbox/OneDrive sync):
-        easiest way is INSIDE the app later:
-        open the site -> Settings -> API Keys -> paste keys.
-        No env vars needed for the scanner itself to work.
+[ ] 19. RECOMMENDED - free AI chat for all your users:
+        The AI Assistant needs an LLM. On Render there is no Ollama,
+        so get a FREE key (no credit card):
+        a. go to https://console.groq.com -> sign up -> API Keys
+        b. create key, copy it
+        c. Render -> Environment -> add:  GROQ_API_KEY = <paste>
+        Every visitor now gets full llama-3.3-70b chat quality.
+        (Skip it and the assistant still works in basic rule mode.)
+        Optional (cloud sync only, can also be done later inside the
+        app under Settings -> API Keys): Drive/Dropbox/OneDrive keys.
 
 VERIFY THE DEPLOY IS SAFE AND WORKING
 -------------------------------------

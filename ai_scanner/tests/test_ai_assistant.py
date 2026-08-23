@@ -156,3 +156,60 @@ def test_ollama_provider_preferred_when_available():
         reply = eng.chat("hello")
         assert reply.engine == "ollama"
         assert reply.reply == "Ollama says hi"
+
+
+def _cloud_engine() -> AIAssistantEngine:
+    eng = _offline_engine()
+    eng.cloud_key = "test-key"
+    return eng
+
+
+def test_cloud_provider_used_when_no_ollama():
+    eng = _cloud_engine()
+
+    class FakeResp:
+        status_code = 200
+
+        def json(self):
+            return {"choices": [{"message": {"content": " Cloud says hi "}}]}
+
+    def fake_post(url, json=None, timeout=None, headers=None):
+        assert "/chat/completions" in url
+        assert headers["Authorization"] == "Bearer test-key"
+        assert json["messages"][-1]["role"] == "user"
+        return FakeResp()
+
+    with mock.patch("src.ai_assistant.engine.requests.post", side_effect=fake_post):
+        s = eng.status()
+        assert s["engine"] == "cloud"
+        assert s["cloud"]["enabled"] is True
+        reply = eng.chat("hello")
+    assert reply.engine == "cloud"
+    assert reply.reply == "Cloud says hi"
+
+
+def test_cloud_failure_falls_back_to_builtin():
+    eng = _cloud_engine()
+
+    def fail_post(url, json=None, timeout=None, headers=None):
+        class R:
+            status_code = 500
+
+            def json(self):
+                return {}
+
+        return R()
+
+    with mock.patch("src.ai_assistant.engine.requests.post", side_effect=fail_post):
+        reply = eng.chat("how do I merge PDFs?")
+    assert reply.engine == "builtin"
+    # engine is put into cool-down so later calls skip the dead provider
+    assert eng._cloud_failed_until > 0
+
+
+def test_cloud_disabled_without_key_stays_builtin():
+    eng = _offline_engine()
+    assert eng._cloud_enabled() is False
+    s = eng.status()
+    assert s["engine"] == "builtin"
+    assert s["cloud"]["enabled"] is False
