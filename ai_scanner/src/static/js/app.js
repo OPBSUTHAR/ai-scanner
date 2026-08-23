@@ -1935,21 +1935,28 @@ function aiClearChat(){
   if(m)m.innerHTML='';
   aiBubble('assistant','Conversation cleared. What can I help you with?');
 }
-/* AI fetch with cold-start retry: free tiers (Render) sleep after idle;
-   first request can take ~30-60s to wake or fail once while booting. */
-function aiFetchRetry(url,opts,retries,onDone,onFail){
-  fetch(url,opts)
-    .then(function(r){return r.json()})
-    .then(onDone)
-    .catch(function(){
-      if(retries>0){
-        aiTyping(true);
-        toast('SERVER WAKING UP (FREE TIER COLD START) — RETRYING...','warn');
-        setTimeout(function(){aiFetchRetry(url,opts,retries-1,onDone,onFail)},8000);
-      }else{
-        onFail();
-      }
-    });
+/* AI fetch with cold-start wait: free tiers (Render) sleep after ~15 min idle
+   and this container is heavy (torch+OpenCV imports), so a cold boot can take
+   30-60s+. Poll a lightweight endpoint until the server answers (max ~90s),
+   then fire the real request. */
+function aiWaitServer(deadline,cb){
+  fetch('/api/session').then(function(r){
+    if(r.ok){cb(true);return}
+    throw new Error('warming');
+  }).catch(function(){
+    if(Date.now()<deadline){
+      toast('SERVER WAKING UP (FREE TIER COLD START)...','warn');
+      setTimeout(function(){aiWaitServer(deadline,cb)},5000);
+    }else{
+      cb(false);
+    }
+  });
+}
+function aiFetchRetry(url,opts,onDone,onFail){
+  aiWaitServer(Date.now()+90000,function(up){
+    if(!up){onFail();return}
+    fetch(url,opts).then(function(r){return r.json()}).then(onDone).catch(onFail);
+  });
 }
 function aiSend(presetText){
   var inp=document.getElementById('ai-input');
@@ -1961,7 +1968,7 @@ function aiSend(presetText){
   aiTyping(true);
   var payload={message:text,history:aiState.history.slice(-6)};
   if(aiState.contextDoc&&aiState.contextDoc.path)payload.doc_path=aiState.contextDoc.path;
-  aiFetchRetry('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)},2,function(d){
+  aiFetchRetry('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)},function(d){
       aiTyping(false);
       var reply=d.reply||'No reply.';
       aiState.history.push({role:'user',content:text});
@@ -1982,7 +1989,7 @@ function _aiDocRequest(action,path,question){
   if(question)body.question=question;
   aiTyping(true);
   return new Promise(function(resolve){
-    aiFetchRetry('/api/ai/document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},2,function(d){
+    aiFetchRetry('/api/ai/document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},function(d){
       aiTyping(false);
       if(!d||d.error){aiBubble('assistant',(d&&d.error)||'AI request failed.');resolve(null);return}
       var label=action==='ask'?'Answer about "'+path.split('/').pop()+'"':
@@ -2034,7 +2041,7 @@ function aiDashOverview(){
   if(!out)return;
   btn.disabled=true;
   out.innerHTML='<span style="color:var(--gold)"><i class="lucide icon-loader" style="animation:spin 1s linear infinite"></i> Analyzing archive...</span>';
-  aiFetchRetry('/api/ai/insights',{method:'POST'},2,function(d){
+  aiFetchRetry('/api/ai/insights',{method:'POST'},function(d){
       btn.disabled=false;
       out.innerHTML='<span class="dash-ai-text">'+aesc(d.overview||'No overview available.')+'</span>'+
         '<div style="margin-top:5px;font-family:var(--font-mono);font-size:0.42rem;color:var(--text-tertiary)">ENGINE: '+aesc(d.engine||'builtin').toUpperCase()+'</div>';
