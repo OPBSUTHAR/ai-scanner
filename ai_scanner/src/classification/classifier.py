@@ -16,16 +16,20 @@ class DocumentClassifier:
             "keywords": ["invoice", "bill", "amount due", "total due", "payment terms",
                          "invoice number", "invoice #", "due date"],
             "patterns": [
-                (r'(?:total|amount|sum)\s*(?:due)?\s*:?\s*[\$£€]?\s*([\d,]+\.?\d*)', "amount"),
-                (r'(?:invoice|inv)\s*(?:#|number|no|:)?\s*([\w-]+)', "invoice_number"),
-                (r'(?:due\s*date|payment\s*due)[:\s]+([\w\s,]+)', "due_date"),
+                (r'(?:total|amount|sum)[^0-9\n]{0,12}([\d][\d,]*\.?\d{0,2})', "amount"),
+                (r'(?:invoice|inv)(?:\s*#|\s+no\.?|\s+number)?\s*[:#.;-]?\s*'
+                 r'((?=[\w/-]*\d)[A-Za-z0-9][\w/-]*)', "invoice_number"),
+                (r'(?:due\s*date|payment\s*due)\s*:?\s*'
+                 r'((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s*\d{4}'
+                 r'|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}'
+                 r'|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})', "due_date"),
             ]
         },
         "receipt": {
             "keywords": ["receipt", "thank you", "store", "purchase", "total", "change",
                          "cash", "credit", "debit", "sale"],
             "patterns": [
-                (r'(?:total|amount)\s*[\$£€]?\s*([\d,]+\.?\d*)', "amount"),
+                (r'(?:total|amount)[^0-9\n]{0,12}([\d][\d,]*\.?\d{0,2})', "amount"),
                 (r'(?:date|datetime)[:\s]+([\d/\-\.\s:]+)', "date"),
                 (r'(?:store|merchant|seller)[:\s]+([A-Za-z\s]+)', "merchant"),
             ]

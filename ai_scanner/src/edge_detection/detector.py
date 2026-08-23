@@ -23,6 +23,34 @@ class EdgeDetector:
             approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
             if len(approx) == 4:
                 return self._order_corners(approx)
+
+        return self._find_contour_low_contrast(image)
+
+    def _find_contour_low_contrast(self, image: np.ndarray) -> Optional[np.ndarray]:
+        """Fallback for faint page boundaries that Canny cannot pick up.
+
+        Heavy blur dissolves text into the page tone, leaving two modes
+        (page vs background) that Otsu can separate even at ~8% contrast.
+        """
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        h, w = gray.shape
+        k = max(31, (min(h, w) // 10) | 1)
+        blurred = cv2.GaussianBlur(gray, (k, k), 0)
+        _, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((15, 15), np.uint8))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((25, 25), np.uint8))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            return None
+
+        frame_area = h * w
+        for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:3]:
+            area = cv2.contourArea(contour)
+            if not (0.08 * frame_area < area < 0.98 * frame_area):
+                continue
+            approx = cv2.approxPolyDP(contour, 0.02 * cv2.arcLength(contour, True), True)
+            if len(approx) == 4:
+                return self._order_corners(approx)
         return None
 
     def _order_corners(self, pts: np.ndarray) -> np.ndarray:
