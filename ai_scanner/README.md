@@ -72,23 +72,27 @@ ai_scanner/
 │   ├── enhancement/         # Image enhancement (contrast, sharpening, shadow removal)
 │   ├── ocr/                 # OCR engine (Tesseract, Google Vision)
 │   ├── classification/      # Document type classifier
-│   │   ├── ai_assistant/    # Local AI assistant (Ollama + flan-t5 + builtin)
+│   ├── ai_assistant/        # Local AI assistant (Ollama + flan-t5 + builtin)
 │   ├── storage/             # Cloud sync + local storage
 │   │   ├── cloud_sync.py
 │   │   └── local_storage.py
 │   ├── utils/               # Auto-naming, QR detection, search
-│   ├── templates/           # Web UI templates
-│   ├── web_app.py           # Flask web server
+│   ├── templates/           # Web UI templates (served by Flask — no separate frontend)
+│   ├── static/              # CSS / JS (camera logic with universal fallback in app.js)
+│   ├── web_app.py           # Flask web server (frontend + backend in one service)
 │   └── main.py              # Core scanner pipeline
 ├── tests/                   # Unit tests
 ├── config/                  # Configuration
 ├── data/                    # Working directory (gitignored)
 ├── .env                     # API keys & secrets (gitignored)
-├── .gitignore
+├── .env.example             # Template for .env (tracked)
+├── Dockerfile               # Production container (Python 3.11 + Tesseract + zbar)
+├── .dockerignore            # Keeps secrets out of the image
+├── railway.json             # Railway deploy config
+├── render.yaml              # Render deploy config
+├── startup.sh               # gunicorn start script (honors $PORT)
+├── run.bat                  # Windows dev launcher
 ├── requirements.txt
-├── startup.sh               # Azure App Service startup script
-├── log_file.txt             # Auto-generated timestamped logs
-├── diary_log.txt            # Development diary (auto-generated)
 └── README.md
 ```
 
@@ -173,10 +177,28 @@ python -m src.web_app
 Open `http://localhost:5000` in your browser.  
 On your phone (same Wi-Fi), use `http://YOUR_PC_IP:5000`.
 
-To deploy to Azure App Service:
-```bash
-gunicorn --bind=0.0.0.0:8000 src.web_app:app
-```
+> **Camera note:** browsers expose the live camera only on HTTPS/localhost.
+> Over plain HTTP the OPEN CAMERA button automatically falls back to the
+> device's **native camera app** — capture works everywhere either way.
+
+---
+
+## Deployment
+
+The app is a **monolith** — Flask serves both the web UI (frontend) and the
+JSON API (backend) from one container, so you deploy a single service.
+
+Full step-by-step instructions for all platforms:
+**[DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md)**
+
+| Option | Cost | Best for |
+|---|---|---|
+| Render (free) | $0 | Quick demo — HTTPS included, sleeps when idle |
+| Railway | ~$5/mo | Always-on PaaS, no sleep |
+| Coolify on VPS (open-source) | ~$4.5/mo or free on Oracle | Production self-hosting, persistent disk |
+
+Deploy essentials: Docker runtime, Root Directory = `ai_scanner`,
+`DATA_DIR=/app/data`, health check `/`.
 
 ---
 
