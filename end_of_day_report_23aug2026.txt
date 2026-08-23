@@ -1,22 +1,15 @@
-END OF DAY REPORT - 23 Aug 2026
-AI Document Scanner (WebEnoid Intern)
-App: http://localhost:8000 (Docker) | Tests: 69/69 pass
-
-PRIOR: login/guest sessions, multi-cloud sync, Bluetooth QR camera pairing, HTTPS support, batch + vault merge.
-
-NEW TODAY
-1. UNIVERSAL CAMERA FALLBACK (cross-platform fix): "browser does not support camera API" on new devices was getUserMedia missing over plain HTTP; added openNativeCameraFallback() in app.js - every failure path (no HTTPS, no mediaDevices API, permission denied) now auto-opens the native OS camera via hidden <input type=file capture=environment>; live view still used when HTTPS+modern browser; phoneCameraCapture unified onto same helper.
-2. DEPLOYMENT_GUIDE REWRITE for monolith reality: one service hosts frontend+backend (Flask serves templates/static); documented why Vercel/Netlify unsuitable (serverless timeouts vs OCR 120s, ephemeral disk, no custom Docker system deps); three options with steps: Render free (Root Directory=ai_scanner), Railway (railway.json healthcheck /), Coolify on VPS as the open-source stack (Let's Encrypt + persistent volume at /app/data).
-3. DOC CORRECTIONS: removed false Render-free-persistent-disk and unused MongoDB Atlas sections; fixed README project tree (ai_assistant misindent, added Dockerfile/render.yaml/railway.json); added deployment table linking guide.
-4. DOCKERFILE FIXED FOR DEBIAN TRIXIE: python:3.11-slim now resolves to Debian 13 which dropped libgl1-mesa-glx/libglib2.0-0/libzbar0 -> replaced with libgl1/libglib2.0-0t64/libzbar0t64; pinned base to python:3.11-slim-trixie so names cannot drift again; CMD exec form (kills JSONArgs warning, keeps $PORT expansion).
-5. TORCH SLIMMED: pip was pulling ~900MB CUDA torch wheel (timed out on slow link); now installs CPU-only torch/torchvision from download.pytorch.org/whl/cpu first (easyocr is CPU-only anyway) with --timeout 180 --retries 10, split into its own cached layer; image 3.13GB.
-6. FERNET KEY RACE FIX (gunicorn boot crash): two workers raced creating data/.key_enc - worker B read A's half-written file -> "Fernet key must be 32 url-safe base64 bytes" -> workers exited; key_manager._init_fernet now retry-reads x3 with backoff, writes atomically via per-PID .tmp + os.replace, then adopts whichever key landed on disk so both workers encrypt consistently.
-
-VERIFICATION: pytest 69/69; docker build green; container run e2e - / ->302 /login, /login ->200, both gunicorn workers healthy, no errors in logs; node --check clean on app.js.
-
-FILES: src/static/js/app.js (camera fallback), Dockerfile (trixie pkgs, CPU torch, exec CMD), src/utils/key_manager.py (race fix), ../DEPLOYMENT_GUIDE.md (rewrite), README.md (tree+deployment).
-
-NOT DONE: key_manager race fix not yet committed/pushed; persistent volume still needed on Render free or scans reset each deploy.
-
-RUN: docker run -p 8000:8000 ai-scanner   # http://localhost:8000
-NEXT: commit+push key fix, deploy to Render/Coolify, register hosted OAuth redirect URIs for cloud sync.
+End-of-Day Report 23 Aug 2026
+AI Document Scanner | Tests 69/69 pass | Docker OK | E2E OK | localhost:8000
+Previously: login/guest sessions, multi-cloud sync, Bluetooth QR pairing, HTTPS, batch+vault merge.
+Today
+1. Camera Fallback - Fixed camera API unsupported on new devices (getUserMedia missing over HTTP). Added openNativeCameraFallback() in app.js: failures auto-open native OS camera via input capture=environment. Live view for HTTPS+modern browsers. Unified phoneCameraCapture.
+2. Deployment Guide - Documented monolith (Flask serves all). Vercel/Netlify fail: 120s OCR timeouts, ephemeral disk, no custom deps. Options: Render Free (Root=ai_scanner), Railway (railway.json healthcheck), Coolify on VPS (Lets Encrypt + /app/data volume).
+3. Doc Fixes - Removed false Render persistent-disk claim and unused MongoDB Atlas. Fixed README tree (ai_assistant indent, added Dockerfile/render.yaml/railway.json). Added deployment table.
+4. Dockerfile Trixie - python:3.11-slim to Debian 13 dropped libgl1-mesa-glx, libglib2.0-0, libzbar0. Replaced with libgl1, libglib2.0-0t64, libzbar0t64. Pinned to python:3.11-slim-trixie. CMD exec form (fixes JSONArgs, keeps PORT)
+5. Torch Slimming - Was pulling 900MB CUDA wheel (timeout). Now CPU-only torch/torchvision from pytorch.org/cpu first (EasyOCR is CPU-only) with timeout 180 retries 10, separate cached layer. Image 3.13GB.
+6. Fernet Key Race Fix - Two gunicorn workers raced creating data/.key_enc causing corruption/crash. key_manager._init_fernet now retry-reads 3x with backoff, writes atomically via per-PID .tmp and os.replace, adopts landed key for consistent encryption.
+Verification: pytest 69/69 pass | docker build OK | container E2E: root to 302 login, login to 200, workers healthy, no errors | node check clean
+Files: app.js, Dockerfile, key_manager.py, DEPLOYMENT_GUIDE.md, README.md
+Not Done: commit/push key_manager fix; persistent volume on Render Free (scans reset per deploy)
+Run: docker run -p 8000:8000 ai-scanner
+Next: 1. Commit/push key fix 2. Deploy to Render/Coolify 3. Register OAuth redirects for cloud sync
