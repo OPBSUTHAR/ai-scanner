@@ -1,0 +1,111 @@
+WEBENOID INTERN - AI DOCUMENT SCANNER
+PROJECT STRUCTURE (generated 23 Aug 2026)
+==============================================================
+
+cookies.txt
+DEPLOYMENT_GUIDE.md
+end_of_day_report_01aug2026.txt
+end_of_day_report_02aug2026.txt
+end_of_day_report_08aug2026.txt
+end_of_day_report_11aug2026.txt
+end_of_day_report_13aug2026.txt
+end_of_day_report_15aug2026.txt
+end_of_day_report_19jul2026.txt
+end_of_day_report_20-21jul2026.txt
+end_of_day_report_22jul2026.txt
+end_of_day_report_23aug2026.txt
+generate_project.py
+PROJECT_STRUCTURE.txt
+ai_scanner/
+|-- config/
+|    |-- __init__.py  (0 KB)
+|    |-- app_config.json  (0 KB)
+|    \___ settings.py  (0.3 KB)
+|-- data/   (runtime scans/metadata/photos - created at run time, gitignored)
+|-- src/
+|    |-- ai_assistant/
+|    |    |-- __init__.py  (0.1 KB)
+|    |    \___ engine.py  (22.8 KB)
+|    |-- camera/
+|    |    |-- __init__.py  (0.7 KB)
+|    |    |-- bluetooth_camera.py  (18.3 KB)
+|    |    \___ capture.py  (3.3 KB)
+|    |-- classification/
+|    |    |-- __init__.py  (0 KB)
+|    |    \___ classifier.py  (4.7 KB)
+|    |-- data/   (runtime scans/metadata/photos - created at run time, gitignored)
+|    |-- edge_detection/
+|    |    |-- __init__.py  (0 KB)
+|    |    \___ detector.py  (4.4 KB)
+|    |-- enhancement/
+|    |    |-- __init__.py  (0 KB)
+|    |    \___ enhancer.py  (3.3 KB)
+|    |-- ocr/
+|    |    |-- __init__.py  (0 KB)
+|    |    \___ ocr_engine.py  (5.2 KB)
+|    |-- static/
+|    |    |-- css/
+|    |    |    |-- login.css  (10.5 KB)
+|    |    |    \___ style.css  (65.1 KB)
+|    |    |-- images/
+|    |    |    \___ logo.svg  (0.5 KB)
+|    |    \___ js/
+|    |         |-- app.js  (107.2 KB)
+|    |         \___ login.js  (5.4 KB)
+|    |-- storage/
+|    |    |-- __init__.py  (0 KB)
+|    |    |-- cloud_sync.py  (30.4 KB)
+|    |    \___ local_storage.py  (3.2 KB)
+|    |-- templates/
+|    |    |-- bt_cam.html  (11.5 KB)
+|    |    |-- index.html  (43.2 KB)
+|    |    \___ login.html  (2.8 KB)
+|    |-- utils/
+|    |    |-- __init__.py  (0.7 KB)
+|    |    |-- auto_naming.py  (1.7 KB)
+|    |    |-- bluetooth_qr.py  (6.1 KB)
+|    |    |-- doc_converter.py  (6.7 KB)
+|    |    |-- key_manager.py  (3.3 KB)
+|    |    |-- qr_detection.py  (2.1 KB)
+|    |    \___ search.py  (2.4 KB)
+|    |-- __init__.py  (0 KB)
+|    |-- gui.py  (43.4 KB)
+|    |-- main.py  (6.2 KB)
+|    |-- setup.py  (0.5 KB)
+|    \___ web_app.py  (77.9 KB)
+|-- tests/
+|    |-- __init__.py  (0 KB)
+|    |-- conftest.py  (0.1 KB)
+|    |-- test_ai_assistant.py  (5.2 KB)
+|    |-- test_bluetooth.py  (5.2 KB)
+|    |-- test_camera.py  (1.6 KB)
+|    |-- test_classification.py  (2 KB)
+|    |-- test_edge_detection.py  (1.5 KB)
+|    |-- test_enhancement.py  (2.2 KB)
+|    |-- test_ocr.py  (1.8 KB)
+|    \___ test_storage.py  (2.1 KB)
+|-- tokens/   (per-user cloud auth token caches, gitignored)
+|-- .dockerignore  (0.3 KB)
+|-- .env  (1.6 KB)   <- SECRETS (gitignored, never committed)
+|-- .env.example  (2.7 KB)
+|-- .gitignore  (0.7 KB)
+|-- credentials-googleDriveNew.json  (0.5 KB)   <- local OAuth client (gitignored pattern)
+|-- Dockerfile  (0.8 KB)
+|-- PROJECT_STATUS.md  (12.6 KB)
+|-- railway.json  (0.3 KB)
+|-- README.md  (8 KB)
+|-- render.yaml  (0.9 KB)
+|-- requirements-dev.txt  (0.1 KB)
+|-- requirements.txt  (1.2 KB)
+|-- run.bat  (0.8 KB)
+|-- startup.sh  (0.7 KB)
+\___ test_invoice.png  (55 KB)   <- sample test image
+
+==============================================================
+NOTES
+|-- Frontend + backend live together: Flask (src/web_app.py) serves
+|   templates/ + static/ AND the JSON API from ONE service.
+|-- Deploy: Dockerfile + railway.json + render.yaml (+ startup.sh).
+|-- Excluded from this view: .venv, __pycache__, .pytest_cache, logs;
+|   data/ and tokens/ are listed as stubs only (runtime content).
+|-- Full deploy steps: DEPLOYMENT_GUIDE.md | App docs: ai_scanner/README.md

@@ -1,0 +1,195 @@
+================================================================
+ AI SCANNER - SIMPLE STEP-BY-STEP DEPLOY + VERIFY GUIDE
+ (plain text, follow top to bottom, tick boxes as you go)
+================================================================
+
+WHAT YOU ARE DEPLOYING
+----------------------
+ONE thing only. Flask serves the web pages AND the API together.
+No Vercel. No separate frontend. One container = whole app.
+
+BEFORE YOU START - 5 MINUTE SAFETY CHECK
+----------------------------------------
+[ ] 1. Open PowerShell in the project folder:
+       cd "C:\vs code\WebEnoid Intern"
+
+[ ] 2. Make sure nothing important is uncommitted:
+       git status
+       (Today the file src/utils/key_manager.py must be committed
+        - it fixes the server crash on startup.)
+
+[ ] 3. NEVER commit secrets. Check these are NOT in the list:
+       .env, credentials*.json, tokens/
+       (they are gitignored - if you ever see them in git status,
+        STOP and ask before pushing)
+
+[ ] 4. Commit and push what is pending:
+       git add ai_scanner/src/utils/key_manager.py
+       git commit -m "fix: fernet key race on multi-worker boot"
+       git push
+
+[ ] 5. Confirm the push worked:
+       git log --oneline -1
+       (top line should be your new commit, and it should also be
+        visible on github.com/OPBSUTHAR/ai-scanner after ~30s)
+
+TEST LOCALLY FIRST (do not skip - catches 90% of problems)
+----------------------------------------------------------
+[ ] 6. Start Docker Desktop and wait until it says "running".
+
+[ ] 7. Build (only rebuilds changed parts, ~1-2 min):
+       cd ai_scanner
+       docker build -t ai-scanner .
+
+[ ] 8. Run it:
+       docker run -p 8000:8000 ai-scanner
+
+[ ] 9. Open http://localhost:8000 in your browser.
+       You MUST see the login page.
+       Log in or Continue as Guest.
+
+[ ] 10. Upload any image on the Scanner page.
+       You MUST see it get processed (original + enhanced).
+
+[ ] 11. Stop the container: press Ctrl+C in the terminal.
+
+If steps 9-10 fail, DO NOT DEPLOY. Fix locally first
+(see TROUBLESHOOT at the bottom).
+
+------------------------------------------------------------
+ OPTION A: DEPLOY FREE ON RENDER (recommended first deploy)
+------------------------------------------------------------
+[ ] 12. Go to https://render.com and sign up WITH GITHUB
+        (this lets Render see your repo).
+
+[ ] 13. Dashboard -> "New +" -> "Web Service".
+
+[ ] 14. Pick the repo: ai-scanner.
+
+[ ] 15. Fill the form EXACTLY:
+        Name:          ai-scanner (or any name)
+        Root Directory: ai_scanner        <-- MOST IMPORTANT LINE
+        Runtime:       Docker
+        Instance Type: Free
+        (Root Directory is critical: your Dockerfile lives inside
+         the ai_scanner folder, not at the repo root. If you skip
+         this, the build fails with "Dockerfile not found".)
+
+[ ] 16. Click "Create Web Service" and WAIT 5-10 minutes.
+        Watch the log - you will see apt install, then pip install
+        (torch is big, this is normal), then gunicorn starting.
+
+[ ] 17. When it says "live", note your URL:
+        https://YOUR-APP-NAME.onrender.com
+
+[ ] 18. Add environment variables:
+        Dashboard -> your service -> Environment -> Add:
+        APP_ENV   = production
+        APP_DEBUG = False
+        DATA_DIR  = /app/data
+        (service restarts itself after saving - that is normal)
+
+[ ] 19. Optional (only if you want Drive/Dropbox/OneDrive sync):
+        easiest way is INSIDE the app later:
+        open the site -> Settings -> API Keys -> paste keys.
+        No env vars needed for the scanner itself to work.
+
+VERIFY THE DEPLOY IS SAFE AND WORKING
+-------------------------------------
+[ ] 20. HTTPS check: open your URL. Padlock icon must be there.
+        Camera live-view only works on HTTPS - Render gives it free.
+
+[ ] 21. Login check: /login page loads, guest login works.
+
+[ ] 22. Core flow: upload a photo -> it processes -> appears in
+        VAULT. This proves the whole pipeline (edge detection,
+        enhancement, OCR, storage) runs on the server.
+
+[ ] 23. Phone test (the original bug!): open the SAME https URL
+        on your phone browser -> Scanner -> OPEN CAMERA.
+        - HTTPS + modern browser = live camera view with
+          edge-detection overlay.
+        - Anything else = phone's native camera app opens.
+        BOTH are correct. A photo must land in the app either way.
+
+[ ] 24. Logs check: Dashboard -> your service -> Logs tab.
+        Look for: "Listening at: http://0.0.0.0:..." and
+        "Booting worker" x2, and NO red ValueError lines.
+        (The fernet crash from today would show here if unfixed.)
+
+[ ] 25. Redeploy safety: push any tiny commit to main ->
+        Render auto-rebuilds -> site comes back with the same URL.
+        This is your future update routine.
+
+KNOW THE FREE PLAN LIMITS (not bugs)
+------------------------------------
+- Sleeps after 15 min idle -> first visitor waits ~30-60s.
+- NO persistent disk on free -> uploaded scans are DELETED on
+  every redeploy/restart. For real use: enable cloud sync in the
+  app (scans go to your Drive/Dropbox too) or self-host (below).
+
+------------------------------------------------------------
+ OPTION B: ALWAYS-ON OPEN-SOURCE SELF-HOST (Coolify on a VPS)
+------------------------------------------------------------
+Use when you want it permanently online for ~$5/month.
+
+[ ] 26. Rent a small Ubuntu VPS (Hetzner CX22 4GB recommended,
+        or Oracle Cloud free ARM VM).
+
+[ ] 27. One command to install Coolify (open-source hosting panel):
+        curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+        Save the admin password it prints. Open http://VPS-IP:8000.
+
+[ ] 28. Coolify -> New Resource -> connect GitHub repo
+        OPBSUTHAR/ai-scanner. Set:
+        Branch:        main
+        Base Directory: /ai_scanner      <-- same trap as Render
+        Build Pack:    Dockerfile
+
+[ ] 29. Environment variables (same as step 18).
+
+[ ] 30. Domains: type your domain -> Coolify auto-creates a FREE
+        Let's Encrypt HTTPS certificate.
+
+[ ] 31. Storage: add a persistent volume mounted at /app/data
+        -> now scans SURVIVE redeploys (better than Render free).
+
+[ ] 32. Deploy. Then repeat the SAME checks 20-25 above.
+
+EMERGENCY ROLLBACK (if a deploy breaks production)
+--------------------------------------------------
+[ ] 33. Find last good commit:  git log --oneline -5
+[ ] 34. Undo bad one:           git revert <bad-commit-id>
+[ ] 35. Push:                   git push
+        Render rebuilds the reverted (safe) code automatically.
+
+TROUBLESHOOT - QUICK TABLE
+--------------------------
+"Dockerfile not found" during build
+        -> Root/Base Directory not set to ai_scanner. Fix step 15/28.
+Build dies during pip install (timeout)
+        -> network hiccup. Just click "Retry deploy" - big layers
+           are cached, it resumes fast.
+Page loads but scans vanish after redeploy
+        -> expected on Render free (no disk). Use cloud sync or
+           Option B with a volume.
+Camera shows a toast then opens the normal phone camera
+        -> working as designed (HTTP or unsupported browser).
+        Live view needs the https:// URL.
+502 / app crashes at boot
+        -> open Logs. Missing env var is the usual cause
+           (DATA_DIR=/app/data). Then check the fernet fix was pushed.
+Google/Dropbox login loops
+        -> redirect URIs still point to localhost. Register the
+           hosted ones (see DEPLOYMENT_GUIDE.md section A.3).
+
+DONE WHEN
+---------
+[x] Local docker test passed (steps 6-11)
+[x] Deployed with Root Directory = ai_scanner (step 15)
+[x] HTTPS + login + upload + phone camera all verified (20-23)
+[x] Logs clean (24)
+[x] You know the free-plan limits and the rollback routine
+================================================================
+ Full details: DEPLOYMENT_GUIDE.md | App docs: ai_scanner/README.md
+================================================================
