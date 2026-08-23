@@ -1878,7 +1878,9 @@ function aiSend(presetText){
       var reply=d.reply||'No reply.';
       aiState.history.push({role:'user',content:text});
       aiState.history.push({role:'assistant',content:reply});
-      aiBubble('assistant',reply,'engine: '+d.engine+(d.model?' · '+d.model:''));
+      var meta='engine: '+d.engine+(d.model?' · '+d.model:'');
+      if(d.grounded)meta+=' · ✓ verified from your vault';
+      aiBubble('assistant',reply,meta);
     })
     .catch(function(){aiTyping(false);aiBubble('assistant','Connection error — is the server running?')});
 }

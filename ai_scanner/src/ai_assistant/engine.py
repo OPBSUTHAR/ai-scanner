@@ -117,6 +117,7 @@ class ChatReply:
     reply: str
     engine: str = "builtin"
     model: str = ""
+    grounded: bool = False
 
 
 class AIAssistantEngine:
@@ -365,7 +366,7 @@ class AIAssistantEngine:
         # guessing, so files can never be invented.
         if app_data and VAULT_INTENT.search(message):
             return ChatReply(reply=self._builtin_vault_answer(message, app_data),
-                             engine="builtin")
+                             engine="builtin", grounded=True)
 
         prompt = message
         if context:
@@ -384,9 +385,8 @@ class AIAssistantEngine:
 
         reply = self._ollama_generate(prompt, system=system)
         if reply:
-            return ChatReply(reply=reply, engine="ollama",
+            return ChatReply(reply=reply, engine="ollama", grounded=bool(app_data),
                              model=self._pick_ollama_model(self._check_ollama()))
-
         builtin = self._builtin_help(message)
         if builtin:
             return ChatReply(reply=builtin, engine="builtin")

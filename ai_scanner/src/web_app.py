@@ -323,6 +323,9 @@ def _app_ai_context() -> Dict[str, Any]:
     return ctx
 
 
+AI_ASSISTANT_VERSION = "2.1"
+
+
 @app.route("/api/ai/status")
 def api_ai_status():
     if request.args.get("refresh"):
@@ -330,7 +333,10 @@ def api_ai_status():
     s = ai_engine.status()
     s["last_doc"] = _ai_state.get("last_doc")
     s["config"] = _load_app_config().get("ai", {})
-    return jsonify(s)
+    s["assistant_version"] = AI_ASSISTANT_VERSION
+    resp = jsonify(s)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.route("/api/ai/config", methods=["GET", "POST"])
@@ -358,7 +364,10 @@ def api_ai_chat():
             return jsonify({"reply": err, "engine": "builtin"}), 404
     reply = ai_engine.chat(message, history=history, context=context,
                            app_data=_app_ai_context())
-    return jsonify({"reply": reply.reply, "engine": reply.engine, "model": reply.model})
+    resp = jsonify({"reply": reply.reply, "engine": reply.engine,
+                    "model": reply.model, "grounded": reply.grounded})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.route("/api/ai/insights", methods=["POST"])
@@ -2038,6 +2047,7 @@ def main():
             print(f"     Accept browser warning to enable camera on LAN")
     print(f"\n  {'='*45}")
     print(f"  ◈ AI SCANNER // NEXUS-OS v3.0")
+    print(f"  AI Assistant v{AI_ASSISTANT_VERSION} (grounded, local models)")
     print(f"  {'='*45}")
     print(f"  Local:   http://localhost:{args.port}")
     print(f"  Network: http://{local_ip}:{args.port}")
