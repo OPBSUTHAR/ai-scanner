@@ -1,8 +1,8 @@
 # AI Scanner — Full Project Report
-## Solely Developed by **Om Prakash Suthar**
-### WebEnoid Intern Project | 19 July 2026 — 05 September 2026
+## WebEnoid Internship Project — Developed by **Om Prakash Suthar**
+### WebEnoid Internship | 19 July 2026 — 05 September 2026
 
-> **Attribution:** This project was **solely developed by Om Prakash Suthar**. Every line of code, design decision, deployment configuration, test, and documentation from inception to final delivery was authored by Om Prakash Suthar.
+> **Attribution:** This project was completed as part of the **WebEnoid Internship** and was **solely developed and implemented by Om Prakash Suthar (WebEnoid Intern)**. Every line of code, design decision, deployment configuration, test, and documentation from inception to final delivery was authored by Om Prakash Suthar as the internship deliverable.
 
 **Repo:** https://github.com/OPBSUTHAR/ai-scanner | **Branch:** `main` | **Commits:** 110 | **Tracked Files:** 80 | **Python LOC:** ~6,673 | **Tests:** 73/73 passing
 
@@ -12,7 +12,9 @@
 
 AI Scanner is a **monolithic Flask application** (one Docker container serves both UI and API) that turns any phone, tablet, or desktop browser into an intelligent document scanner. Users can capture via camera or upload, auto-detect edges, correct perspective, enhance, OCR, classify, auto-name, store, search, merge PDFs, and sync to cloud — plus a **local AI Assistant** that is grounded in real vault data and never hallucinates.
 
-**Rating:** 5.0 | **Duration:** 2–3 Months | **Current Commit:** `7701d53` (05 Sep 2026)
+This report documents the work completed **as part of the WebEnoid Internship** by **Om Prakash Suthar**.
+
+**Rating:** 5.0 | **Duration:** 2–3 Months | **Internship Period:** 19 July – 05 September 2026 | **Current Commit:** `eca81b8` (05 Sep 2026)
 
 **Stack:** Python 3.11/3.13, Flask + Gunicorn, OpenCV, scikit-image, SciPy, Tesseract OCR, Google Cloud Vision, EasyOCR (PyTorch CPU), Transformers (`google/flan-t5-small`), `pyzbar` (zbar), ReportLab, img2pdf, Pillow, NumPy, Flask, MSAL, Dropbox SDK, google-api-python-client, `cryptography` (Fernet), `transformers` + `huggingface_hub`
 
@@ -307,9 +309,9 @@ Deploy: set **Root Directory = `ai_scanner`**, Docker, add `APP_ENV=production` 
 
 ---
 
-## 11. Sole Authorship Statement
+## 11. Authorship Statement — WebEnoid Internship
 
-**This project was solely developed by Om Prakash Suthar.** From the first scaffold on 19 July 2026 (`1d0e735 Initialize AI Scanner project structure`) through every subsequent feature (camera, OCR, cloud sync, batch, Bluetooth, AI Assistant, camera fallback, Dockerfile trixie, hallucination fix, GitHub hygiene) to the final push on 05 September 2026 (`7701d53` + this report), all design, code, tests, docs, and deployment work were authored by Om Prakash Suthar. No external code, team members, or generated agency work contributed to the repository history (see `git log --pretty=format:"%an"` — all `OMPRAKASH SUTHAR`).
+**This project was completed as part of the WebEnoid Internship and was solely developed and implemented by Om Prakash Suthar (WebEnoid Intern).** From the first scaffold on 19 July 2026 (`1d0e735 Initialize AI Scanner project structure`) through every subsequent feature (camera, OCR, cloud sync, batch, Bluetooth, AI Assistant, camera fallback, Dockerfile trixie, hallucination fix, GitHub hygiene) to the final push on 05 September 2026 (`eca81b8` + this report), all design, code, tests, docs, and deployment work were authored by Om Prakash Suthar as the WebEnoid internship deliverable. No other team member contributed code to the repository history (see `git log --pretty=format:"%an"` — all `OMPRAKASH SUTHAR`). The project was carried out under the WebEnoid internship program.
 
 ---
 
@@ -321,5 +323,5 @@ Deploy: set **Root Directory = `ai_scanner`**, Docker, add `APP_ENV=production` 
 
 ---
 
-*Report generated 05 Sep 2026 — covers every commit, daily log, and verification from 19 Jul 2026 to 05 Sep 2026. Source: `git log`, `end_of_day_report_*.txt`, `ai_scanner/PROJECT_STATUS.md`, `DEPLOYMENT_GUIDE.md`, `PROJECT_STRUCTURE.txt`, live `pytest` + `test_client` checks, `gh api` remote verification.*
+*Report generated 05 Sep 2026 — WebEnoid Internship deliverable by Om Prakash Suthar. Covers every commit, daily log, and verification from 19 Jul 2026 to 05 Sep 2026. Source: `git log`, `end_of_day_report_*.txt`, `ai_scanner/PROJECT_STATUS.md`, `DEPLOYMENT_GUIDE.md`, `PROJECT_STRUCTURE.txt`, live `pytest` + `test_client` checks, `gh api` remote verification.*
 
