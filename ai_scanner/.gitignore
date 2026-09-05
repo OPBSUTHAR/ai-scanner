@@ -38,9 +38,10 @@ log_file.txt
 diary_log.txt
 server_*.log
 
-# Service account keys (JSON credentials)
+# Service account keys (JSON credentials) — keep deploy json tracked
 *.json
 !secrets/example.json
+!railway.json
 
 # Google OAuth client credentials — NEVER commit
 credentials-google-drive.json

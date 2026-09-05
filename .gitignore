@@ -1,0 +1,66 @@
+# Root gitignore — mirrors ai_scanner/.gitignore + repo-level artifacts
+# Secrets & env
+.env
+ai_scanner/.env
+*.env
+credentials*.json
+**/credentials*.json
+client_secret_*.json
+**/.key_enc
+tokens/
+ai_scanner/tokens/
+
+# Data & runtime (ephemeral on free tier)
+data/
+ai_scanner/data/
+ai_scanner/data/*
+ai_scanner/tokens/*
+ai_scanner/src/data/.key_enc
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+ai_scanner/.venv/
+venv/
+env/
+.pytest_cache/
+ai_scanner/.pytest_cache/
+.pytest_cache/
+.pytest_cache/*
+
+# Models & large binaries
+models/
+*.pth
+*.pt
+*.h5
+*.onnx
+
+# Logs
+log_file.txt
+diary_log.txt
+server_*.log
+*.log
+
+# OS & IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+.DS_Store
+cookies.txt
+
+# Service account JSON — targeted (do NOT ignore all *.json)
+credentials*.json
+**/credentials*.json
+*_credentials.json
+service-account*.json
+# keep deploy/config json tracked
+!ai_scanner/railway.json
+!ai_scanner/render.yaml
+!**/secrets/example.json
+!ai_scanner/.env.example
