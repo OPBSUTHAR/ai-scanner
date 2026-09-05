@@ -71,6 +71,11 @@ pytest tests/ -v
 Skipping `git push` leaves GitHub stale and Render/Railway will NOT redeploy — treat as incomplete work.
 
 ## Session Log (append newest first)
+### 2026-09-05 — Full project report pushed (solely Om Prakash Suthar)
+- **Report:** FULL_PROJECT_REPORT.md:1 (27,653 bytes, 249 lines) — inch-by-inch from 19 Jul 2026 (1d0e735) to 05 Sep 2026 (296798), 110 commits, 80 files, 6,673 Python lines, 73/73 tests. Covers scaffold, camera/OCR/cloud refactors, Docker, handwriting/fusion, frontend modular, batch/theme, Drive/Dropbox/multi-user, auth/vault merge, Bluetooth/HTTPS, AI Assistant + hallucination fix + Dockerfile trixie, GitHub hygiene.
+- **Attribution:** Solely developed by **Om Prakash Suthar** — all commits OMPRAKASH SUTHAR, verified via git log --pretty=%an.
+- **Pushed:** 296798 pushed_at 2026-09-05T08:17:09Z, gh api .../contents/FULL_PROJECT_REPORT.md 27,653 B verified. GitHub now hosts report at root.
+
 ### 2026-09-05 — Fix GitHub README + gitignore + railway.json; enforce push rule
 - **Root cause:** Repo had no `README.md` at root (only `ai_scanner/README.md`) → GitHub showed "Add a README" banner + API `read me: 404`. Missing root `.gitignore` left `data/` untracked, and `ai_scanner/.gitignore` `*.json` was ignoring `railway.json` (deploy config never reached GitHub).
 - **Fixed:** Created `README.md:1` (6754 bytes) — GitHub entrypoint explaining monolith, `Root Directory = ai_scanner`, quick start, deployment; links to `ai_scanner/README.md` + `DEPLOYMENT_GUIDE.md`. Created `.gitignore:1` (root, scoped JSON). Patched `ai_scanner/.gitignore:42` → `!railway.json` so deploy config IS committed.
