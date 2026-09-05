@@ -1,0 +1,250 @@
+================================================================
+PROJECT DESCRIPTION & NOTES — FOR WEBENOID INTERNSHIP SUBMISSION
+================================================================
+Project Title: AI Scanner — AI-Powered Document Scanner
+Intern Name: Om Prakash Suthar
+Internship: WebEnoid Internship
+Internship Period: 19 July 2026 – 05 September 2026 (2–3 Months)
+Rating: 5.0
+Repo: https://github.com/OPBSUTHAR/ai-scanner
+Live Demo (Render): https://ai-scanner-fnjh.onrender.com/
+Branch: main | Commits: 110+ | Tests: 73/73 passing
+
+----------------------------------------------------------------
+1. PROJECT OVERVIEW
+----------------------------------------------------------------
+AI Scanner is a monolithic Flask web application (one Docker container
+serves both frontend and backend) that turns any phone, tablet or
+desktop browser into an intelligent document scanner.
+
+User flow: Upload / Camera Capture -> Edge Detection & Perspective
+Correction -> Enhancement (shadow removal, contrast, sharpening) -> OCR
+(Tesseract / Cloud Vision / EasyOCR) -> Classification (invoice,
+receipt, ID, contract) -> Auto-naming -> Storage -> Search & Vault ->
+Cloud Sync -> AI Assistant.
+
+The app works on any device via browser. No separate frontend deployment
+is needed. Camera live-view works over HTTPS; over HTTP it auto-falls
+back to the native OS camera app.
+
+This project was completed as part of the WebEnoid Internship and was
+solely developed and implemented by Om Prakash Suthar (WebEnoid Intern).
+All code, design, tests, docs and deployment were authored by me.
+
+----------------------------------------------------------------
+2. OBJECTIVE
+----------------------------------------------------------------
+To build a production-ready, AI-assisted scanner that:
+- Captures documents accurately from phone cameras
+- Enhances and extracts text reliably
+- Organizes documents automatically
+- Syncs to cloud and stays searchable
+- Assists users with local/free AI that never hallucinates vault data
+
+----------------------------------------------------------------
+3. TECH STACK
+----------------------------------------------------------------
+Backend: Python 3.11/3.13, Flask, Gunicorn
+Image Processing: OpenCV, scikit-image, SciPy, Pillow, NumPy
+OCR: Tesseract OCR 5.5, Google Cloud Vision, EasyOCR (PyTorch CPU-only)
+AI Assistant: Ollama (llama3.2/phi3/gemma2) -> Groq Cloud (llama-3.3-70b)
+             -> Transformers (google/flan-t5-small) -> Built-in helper
+QR/Barcode: pyzbar (zbar), OpenCV QRCodeDetector
+Storage: LocalStorage (metadata JSON), ReportLab, img2pdf
+Cloud Sync: Google Drive API, Dropbox API, OneDrive (MSAL/Graph API)
+Security: Fernet encryption for API keys, path-traversal protection
+Frontend: HTML, CSS (Classic Archive theme), JavaScript (no framework)
+Deploy: Docker (python:3.11-slim-trixie + Tesseract + libzbar0), Gunicorn,
+        Render (free), Railway, Coolify/VPS | Root Directory = ai_scanner
+Testing: pytest (73 tests), Flask test_client, Docker E2E
+
+----------------------------------------------------------------
+4. KEY FEATURES
+----------------------------------------------------------------
+A) Capture & Scan
+   - Upload (drag-drop) and Camera (getUserMedia live view)
+   - Universal fallback: HTTP/old browser -> native camera input
+   - Device selector for USB/external cameras
+
+B) Image Intelligence
+   - Auto edge detection + perspective correction
+   - Dewarp for curved pages, shadow removal, auto-contrast (CLAHE)
+   - Multi-shot fusion (ECC align + median) for glare reduction
+   - Effects: grayscale, binarize (Otsu), sharpen, invert
+   - Quality assessment: blur (Laplacian variance), brightness, lighting
+
+C) OCR & Classification
+   - Tesseract (auto-detected on Windows/Linux/Mac) + Cloud Vision + EasyOCR
+   - Document type: invoice/receipt/ID/contract/unknown
+   - Extraction: amounts, dates, due dates, invoice numbers
+   - QR/barcode detection
+
+D) Storage & Vault
+   - Auto-naming: e.g., Invoice_AcmeCorp_March15_$234.50.png
+   - Saves to data/documents/{type}/{filename} + metadata JSON
+   - Vault: grid/list, filters, preview modal, rename, delete
+   - Search: full-text across OCR text
+   - Batch: multi-file upload -> instant processing -> preview -> Done & Save
+   - Office docs (docx/xlsx/pptx) -> PDF conversion, PDF merge (reportlab)
+   - Dashboard: stats (total, size, types), recent scans, activity feed
+
+E) Cloud Sync
+   - Google Drive, Dropbox, OneDrive OAuth (per-user tokens)
+   - Multi-user isolation: tokens per user (tokens/<user>.<provider>.json)
+   - Real-time usage stats, folder view
+
+F) Authentication & UX
+   - Login/Register + Guest (GUEST-XXXX unique ID), session cookies
+   - Bluetooth Camera QR pairing (/bt/cam/<token>), HTTPS support
+   - Classic Archive theme: cream/parchment, burgundy/gold, leather-book
+     sidebar, Playfair/Lora/JetBrains Mono fonts, Lucide icons, boot splash
+
+G) AI Assistant (Free, Local, No API Keys Required)
+   - Summarize any scan, ask questions, extract key facts
+   - Grounded in real vault: injects live facts (counts, categories,
+     recent filenames) so it never invents files; vault questions answered
+     deterministically
+   - Available in: Dashboard (Archive Overview), Scanner (Summary + Tips),
+     Vault (per-doc Summary/KEY FACTS + multi-doc Briefing), Settings
+     (engine status), dedicated AI Assistant view
+   - Chain: Ollama -> Groq (free) -> Transformers -> Built-in (always)
+
+----------------------------------------------------------------
+5. ARCHITECTURE
+----------------------------------------------------------------
+Browser --HTTPS--> Flask + Gunicorn (ONE container, ai_scanner/)
+                    |-- templates/ + static/css + static/js (served by Flask)
+                    |-- /scan, /batch, /history, /api/ai/*, /api/keys etc.
+                    |-- LocalStorage at /app/data (Render) or ai_scanner/data
+No Vercel/Netlify split. Dockerfile builds system deps (tesseract, zbar).
+
+----------------------------------------------------------------
+6. MY ROLE & IMPLEMENTATION HIGHLIGHTS (WebEnoid Intern)
+----------------------------------------------------------------
+Solo developer for entire project (July 19 – Sep 5, 2026, 110 commits):
+
+- 19 July: Scaffolded project via generate_project.py, built 8 core modules,
+  Flask app, industry-grade UI, fixed storage path bug (os.getcwd -> file
+  relative).
+
+- 20-21 July: Added Fernet key manager, wired cloud OAuth, rewrote camera
+  (3 methods + stability detection), fixed mobile UX issues.
+
+- 22 July: Dockerized (Dockerfile, .dockerignore, railway.json, render.yaml,
+  startup.sh), wrote deployment guide. Root Directory = ai_scanner.
+
+- 01 Aug: Wired handwriting (EasyOCR), dewarp, multi-shot fusion (/scan/fusion),
+  token persistence, wrote 46 tests (fixed ECC, regex, np.bool_).
+
+- 02 Aug: Modularized frontend (index.html 2616->413 lines, separate CSS/JS).
+
+- 08 Aug: Batch flow rework (ORIGINAL->Process->Done), per-image delete,
+  cloud CONNECT buttons, API keys onboarding guide, Archive theme rewrite.
+
+- 11 Aug: Drive/Dropbox hardening (auto-detect credentials*.json, 400 fix,
+  refresh tokens), per-user multi-user isolation, path-traversal fix,
+  gitignore hygiene.
+
+- 13 Aug: Login/Register + Guest, OneDrive MSAL, Vault PDF merge (checkboxes,
+  merge modal, PDF viewer).
+
+- 15 Aug: Bluetooth QR pairing (/bt/cam/<token>), HTTPS --ssl self-signed
+  cert, bt_cam.html rewrite.
+
+- 23 Aug: AI Assistant (engine.py chain + 6 endpoints + grounding fix for
+  hallucination), universal camera fallback for HTTP, Dockerfile trixie
+  (libgl1, libzbar0t64), Fernet race fix (atomic os.replace), 69->73 tests,
+  Docker E2E verified.
+
+- 05 Sep: Fixed GitHub hygiene (root README 6754B was missing, root
+  .gitignore scoping, !railway.json), verified 73/73, deployed to Render
+  (https://ai-scanner-fnjh.onrender.com), verified live 200 for all
+  endpoints + scan pipeline + AI grounding.
+
+----------------------------------------------------------------
+7. TESTING & VERIFICATION
+----------------------------------------------------------------
+- 73 tests: ai_assistant (17), bluetooth (10), camera (6), classification (8),
+  edge_detection (7), enhancement (8), ocr (6), storage (7)
+- Latest: pytest ai_scanner/tests/ -v => 73 passed (52s)
+- Flask test_client: GET / 302->/login, /api/ocr/status tesseract:true,
+  /api/ai/status transformer/cloud, POST /scan test_invoice.png => invoice
+  0.714, $234.50, OCR 171 chars
+- Docker: build OK, run -p 8000:8000 => workers healthy
+- Live Render: GET / 200, /api/ai/status cloud llama-3.3-70b, POST /scan 200,
+  POST /api/ai/chat grounded EMPTY before scan, 2 docs after (local) /
+  0 docs on fresh Render (ephemeral) — all PASS 05 Sep 2026 08:21 UTC.
+
+----------------------------------------------------------------
+8. DEPLOYMENT
+----------------------------------------------------------------
+Live: https://ai-scanner-fnjh.onrender.com/ (Render free, Oregon, Docker,
+Root Directory ai_scanner, auto-deploy on git push main)
+
+Steps: Render Dashboard -> New Web Service -> repo OPBSUTHAR/ai-scanner ->
+Root Directory ai_scanner, Runtime Docker, env APP_ENV=production
+APP_DEBUG=False DATA_DIR=/app/data GUNICORN_WORKERS=1 DISABLE_EASYOCR=1
+AI_DISABLE_TRANSFORMERS=1 MAX_SCAN_DIM=2000 GROQ_API_KEY (optional, enables
+cloud AI) -> Create -> 5-10 min build -> verify GET / + scan + AI.
+
+Alternatives documented in DEPLOYMENT_GUIDE.md: Railway (~$5/mo),
+Coolify on VPS (~$4.5/mo, persistent /app/data).
+
+Limits (free tier): 512MB RAM, sleeps after 15 min idle (30-60s wake),
+ephemeral disk (scans lost on redeploy — use Drive/Dropbox sync).
+
+----------------------------------------------------------------
+9. CHALLENGES & SOLUTIONS
+----------------------------------------------------------------
+- Duplicate data/ folder -> resolved via file-relative base_dir
+- Camera over HTTP blocked -> fallback to native input capture
+- PKCE verifier lost / redirect_uri_mismatch -> stateless + exact callback
+- Token loss on restart -> _load_token + per-user files
+- Path traversal -> _resolve_within check
+- Fernet race on 2 workers -> atomic os.replace + retry
+- AI hallucinated files -> inject live vault facts + deterministic branch
+- *.json gitignore hid railway.json -> !railway.json exception
+- GitHub Add a README banner -> added root README.md entrypoint
+
+----------------------------------------------------------------
+10. LEARNINGS (WebEnoid Internship)
+----------------------------------------------------------------
+- Full-stack monolith deployment (Flask + Gunicorn + Docker) vs serverless
+  limits
+- Per-user session isolation for multi-tenant hosting
+- Free-tier resource optimization (downscaling, worker count, CPU torch)
+- Grounding LLMs to prevent hallucination
+- Git hygiene: secrets gitignored, deploy configs committed, push-to-deploy
+- Manual verification: phone HTTPS live camera requires Render auto-TLS
+
+----------------------------------------------------------------
+11. HOW TO RUN LOCALLY
+----------------------------------------------------------------
+git clone https://github.com/OPBSUTHAR/ai-scanner.git
+cd ai-scanner
+python -m venv ai_scanner/.venv
+.\ai_scanner\.venv\Scripts\Activate.ps1  # Windows (or source on Linux)
+pip install -r ai_scanner/requirements.txt
+copy ai_scanner\.env.example ai_scanner\.env  # optional keys
+python -m src.web_app  # from ai_scanner/ -> http://localhost:5000
+pytest ai_scanner/tests/ -v
+
+----------------------------------------------------------------
+12. NOTES FOR REVIEWER
+----------------------------------------------------------------
+- This is my WebEnoid Internship deliverable; entire repository history
+  (git log --pretty=%an) shows only OMPRAKASH SUTHAR — sole author.
+- Full inch-by-inch report: FULL_PROJECT_REPORT.md (325 lines, 28KB) at
+  repo root, plus 10 end_of_day_report_*.txt logs.
+- AGENTS.md is the agent memory (read before every session) and enforces
+  GitHub push after every change (main branch rebuilds Render).
+- Secrets (.env, credentials*.json, tokens/) are gitignored and never
+  committed; GROQ_API_KEY on Render is set via dashboard env vars.
+- Camera: please test on phone over HTTPS (live view with edge brackets)
+  and note ephemeral storage on free tier.
+- Future: persistent disk on paid plan, true BLE, production TLS.
+
+Thank you for reviewing my WebEnoid Internship project!
+
+— Om Prakash Suthar, WebEnoid Intern
+================================================================
