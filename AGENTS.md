@@ -71,6 +71,12 @@ pytest tests/ -v
 Skipping `git push` leaves GitHub stale and Render/Railway will NOT redeploy — treat as incomplete work.
 
 ## Session Log (append newest first)
+### 2026-09-05 — Fix GitHub README + gitignore + railway.json; enforce push rule
+- **Root cause:** Repo had no `README.md` at root (only `ai_scanner/README.md`) → GitHub showed "Add a README" banner + API `read me: 404`. Missing root `.gitignore` left `data/` untracked, and `ai_scanner/.gitignore` `*.json` was ignoring `railway.json` (deploy config never reached GitHub).
+- **Fixed:** Created `README.md:1` (6754 bytes) — GitHub entrypoint explaining monolith, `Root Directory = ai_scanner`, quick start, deployment; links to `ai_scanner/README.md` + `DEPLOYMENT_GUIDE.md`. Created `.gitignore:1` (root, scoped JSON). Patched `ai_scanner/.gitignore:42` → `!railway.json` so deploy config IS committed.
+- **Verified:** `git ls-files --others` clean, `pytest ai_scanner/tests/` 73/73, `gh api repos/.../readme` now 6754 bytes, `.../contents/ai_scanner/railway.json` 316 bytes, `git push origin/main` → `7e44bef` pushed_at `2026-09-05T08:09:54Z`. GitHub landing page now renders.
+- **Rule added:** `## GitHub Maintenance — REQUIRED after every change` — verify locally, commit, push to `main` every session, keep both READMEs in sync, never commit secrets.
+
 ### 2026-09-05 — Local app OK, Render host NOT found (needs deploy)
 - **AGENTS.md** created/updated as persistent memory (this file).
 - **Local app: PASS** — `pytest ai_scanner/tests/` 73/73 passed (52s). Flask test_client: `GET /`→302→/login, `GET /login`→200, `GET /api/ocr/status`→`{"engine":"tesseract","tesseract":true}`, `GET /api/ai/status`→engine `transformer` (`google/flan-t5-small`, builtin fallback OK), `GET /stats`→2 docs, `POST /scan` with `test_invoice.png`→200 classified `invoice` 0.714 extracted `$234.50`, `POST /api/ai/chat` vault grounding works (deterministic, no hallucination).
