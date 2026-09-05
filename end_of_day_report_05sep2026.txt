@@ -1,0 +1,19 @@
+END OF DAY REPORT - 05 Sep 2026
+AI Scanner (WebEnoid Intern) | 73/73 Tests | Render LIVE https://ai-scanner-fnjh.onrender.com
+
+RESUMED FROM: 24 Aug (1fe977e) — fallback, deploy guide, trixie Dockerfile, Fernet race done, not pushed. No root README, railway.json ignored, Render 404.
+
+DONE TODAY
+1. GitHub Hygiene — Created root README.md 6754B (monolith, Root=ai_scanner) + root .gitignore (!railway.json) + fixed ai_scanner/.gitignore *.json->!railway.json (316B tracked). Added AGENTS.md 7-step push rule.
+2. Full Report — Wrote FULL_PROJECT_REPORT.md 28.5KB 325 lines, 19 Jul 1d0e735->05 Sep 110 commits, 80 files, 6673 LOC; clarified WebEnoid Internship (solely Om Prakash Suthar).
+3. Render LIVE — Deployed ai-scanner-fnjh.onrender.com (Docker, Root ai_scanner). Verified: GET / 200, /api/ocr tesseract:true, /api/ai cloud llama-3.3-70b, /stats 0B, chat grounded EMPTY, POST /scan invoice 0.714 171 chars. HTTPS OK.
+4. Portal Docs — Wrote PROJECT_DESCRIPTION_AND_NOTES.txt 12.7KB + expanded PROJECT_DOCUMENTATION.md 55KB/707 lines: added 5-month Advanced spec verbatim, 19-row map, flow/arch mermaid, edge cases (dewarp/fusion/handwriting), 116-commit log (all OMPRAKASH SUTHAR).
+5. Source ZIP — Built git archive ZIP 267KB 83 files (no .env/tokens/data) + this EOD (to be added).
+
+VERIFIED: pytest 73/73, Flask scan OK, gh api readme/railway/report/docs on main 5efc181, Render E2E OK.
+
+FILES: README, .gitignore, ai_scanner/.gitignore, AGENTS, FULL_REPORT, DOCS, NOTES, this EOD
+
+NOT DONE: Phone camera manual test; free tier ephemeral.
+
+RUN: python -m src.web_app (from ai_scanner/) -> localhost:5000
