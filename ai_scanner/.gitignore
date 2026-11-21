@@ -54,3 +54,4 @@ env/
 
 # Tokens (from cloud auth)
 tokens/
+.vercel
